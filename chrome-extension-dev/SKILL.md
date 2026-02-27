@@ -7,6 +7,21 @@ description: Expert Chrome extension development with Manifest V3. Use when crea
 
 Expert guide for building Chrome extensions using Manifest V3.
 
+## Skill Coordination (Soft Integration)
+
+Use this skill as the primary entry point for extension architecture, implementation, debugging, and local packaging.
+
+When work reaches release tasks, route to companion skills instead of duplicating instructions:
+
+- Use `$chrome-extension-publish` for Chrome Web Store submission workflow, CWS form answers, permission rationale, privacy-policy decisions, and release checklist output.
+- Use `$chrome-webstore-image-generator` for generating and validating store listing images (`icon`, `screenshots`, `small promo`, optional `marquee`).
+
+Suggested handoff sequence for end-to-end requests:
+
+1. Build and verify extension behavior in this skill.
+2. Generate/validate listing graphics with `$chrome-webstore-image-generator`.
+3. Complete submit-ready package and CWS text with `$chrome-extension-publish`.
+
 ## Quick Start
 
 ### 1. Create Project Structure
@@ -364,8 +379,9 @@ infsh app run falai/flux-dev-lora --input '{
 ### 7. Publish
 
 - Pay $5 developer fee
+- Use `$chrome-webstore-image-generator` to prepare and validate listing images
+- Use `$chrome-extension-publish` to finalize listing text/forms and submission checklist
 - Upload to Chrome Web Store
-- Fill store listing
 - Submit for review (1-3 days)
 
 ## Performance Tips
@@ -426,5 +442,9 @@ Use when:
 - Publishing to Chrome Web Store
 - Optimizing extension performance
 - **Generating professional extension icons** ⭐
+
+Route to companion skills when needed:
+- `$chrome-webstore-image-generator`: deterministic CWS image generation/validation
+- `$chrome-extension-publish`: CWS submission text, policy alignment, and release gate checks
 
 Always start with clear requirements, choose minimal permissions, generate custom icons, and test thoroughly before publishing.
