@@ -65,9 +65,12 @@ PY
 ```bash
 python3 scripts/generate_store_assets.py \
   --inputs /abs/path/source-1.png /abs/path/source-2.jpg \
+  --icon-source /abs/path/icon.png \
   --root release/store-assets \
   --include-marquee
 ```
+- The generator auto-picks an icon source from icon/logo-like names or near-square images.
+- If multiple provided images are all screenshot-like, set `--icon-source` explicitly to avoid screenshot-derived icons.
 - Use the naming convention in `references/cws-publish-templates.md`.
 - Validate asset dimensions/count:
 ```bash

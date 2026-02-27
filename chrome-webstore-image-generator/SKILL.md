@@ -20,22 +20,26 @@ Run from the skill directory:
 ```bash
 python3 scripts/generate_store_assets.py \
   --inputs /abs/path/source-1.png /abs/path/source-2.jpg \
+  --icon-source /abs/path/icon.png \
   --root /abs/project/release/store-assets \
   --include-marquee
 ```
 
 Default behavior:
 
-- Use the first input for `icon-128x128.png` and `small-promo-440x280.png`.
-- Use up to 5 input images for `screenshots/screenshot-<index>-<width>x<height>.png`.
+- Auto-pick icon source for `icon-128x128.png` from files with icon/logo-like names or near-square dimensions.
+- Use the first input for `small-promo-440x280.png` unless `--small-promo-source` is provided.
+- Use up to 5 non-icon input images for `screenshots/screenshot-<index>-<width>x<height>.png` (falls back to all inputs when needed).
 - Produce screenshots at `1280x800` by default.
 - Generate `marquee-1400x560.png` only when `--include-marquee` is set.
+- If multiple inputs are all screenshot-like (not near-square), pass `--icon-source` explicitly.
 
 Useful options:
 
 - `--screenshot-size 640x400`: switch screenshot size to `640x400`.
 - `--max-screenshots 3`: limit generated screenshots.
-- `--icon-source`, `--small-promo-source`, `--marquee-source`: override per-output source image.
+- `--icon-source`: explicitly set icon input (recommended).
+- `--small-promo-source`, `--marquee-source`: override other output source images.
 
 ## Validate Assets
 

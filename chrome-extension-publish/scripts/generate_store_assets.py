@@ -24,6 +24,8 @@ LEGACY_AND_CURRENT_ROOT_OUTPUTS = {
     MARQUEE_NAME,
 }
 
+ICON_KEYWORDS = ("icon", "logo", "favicon", "appicon", "brand")
+
 
 def run(cmd: list[str]) -> str:
     completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -120,6 +122,51 @@ def validate_source(path: Path) -> None:
         raise FileNotFoundError(f"Source image not found: {path}")
 
 
+def has_icon_keyword(path: Path) -> bool:
+    stem = path.stem.lower().replace("_", "-")
+    return any(keyword in stem for keyword in ICON_KEYWORDS)
+
+
+def pick_icon_source(input_paths: list[Path]) -> Path:
+    scored_by_keyword: list[tuple[float, int, int, Path]] = []
+    scored_by_shape: list[tuple[float, int, int, Path]] = []
+
+    for index, path in enumerate(input_paths):
+        width, height = read_image_size(path)
+        if width <= 0 or height <= 0:
+            raise ValueError(f"Invalid source dimensions: {path}")
+
+        square_delta = abs((width / height) - 1.0)
+        min_side = min(width, height)
+        score = (square_delta, min_side, index, path)
+
+        if has_icon_keyword(path):
+            scored_by_keyword.append(score)
+        if square_delta <= 0.2:
+            scored_by_shape.append(score)
+
+    def pick_best(candidates: list[tuple[float, int, int, Path]]) -> Path:
+        best = min(candidates, key=lambda item: (item[0], -item[1], item[2]))
+        return best[3]
+
+    if scored_by_keyword:
+        return pick_best(scored_by_keyword)
+    if scored_by_shape:
+        return pick_best(scored_by_shape)
+    if len(input_paths) == 1:
+        print(
+            "[WARN] Unable to infer icon source from a square/icon-like file. "
+            "Using the only provided input as icon source.",
+            file=sys.stderr,
+        )
+        return input_paths[0]
+
+    raise ValueError(
+        "Unable to infer icon source from multiple non-square inputs. "
+        "Pass --icon-source with a dedicated icon or logo image."
+    )
+
+
 def clean_screenshots_dir(folder: Path) -> None:
     if not folder.exists():
         return
@@ -148,7 +195,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--inputs",
         nargs="+",
         required=True,
-        help="One or more source image paths. First image is used for icon/promo by default.",
+        help=(
+            "One or more source image paths. Icon source is auto-selected from icon/logo-like "
+            "or near-square inputs unless --icon-source is provided."
+        ),
     )
     parser.add_argument(
         "--root",
@@ -174,7 +224,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--icon-source",
-        help="Override source image for icon-128x128.png",
+        help="Explicit source image for icon-128x128.png (recommended when inputs are screenshots)",
     )
     parser.add_argument(
         "--small-promo-source",
@@ -209,7 +259,9 @@ def main() -> int:
     clean_screenshots_dir(shots_dir)
 
     first = input_paths[0]
-    icon_source = Path(args.icon_source).expanduser().resolve() if args.icon_source else first
+    icon_source = (
+        Path(args.icon_source).expanduser().resolve() if args.icon_source else pick_icon_source(input_paths)
+    )
     small_promo_source = (
         Path(args.small_promo_source).expanduser().resolve() if args.small_promo_source else first
     )
@@ -228,12 +280,21 @@ def main() -> int:
         cover_resize(marquee_source, root / MARQUEE_NAME, 1400, 560)
 
     screenshot_w, screenshot_h = args.screenshot_size
-    screenshot_sources = input_paths[: args.max_screenshots]
+    screenshot_candidates = input_paths
+    if len(input_paths) > 1:
+        screenshot_candidates = [path for path in input_paths if path != icon_source]
+        if not screenshot_candidates:
+            screenshot_candidates = input_paths
+    screenshot_sources = screenshot_candidates[: args.max_screenshots]
+    if not screenshot_sources:
+        raise ValueError("No screenshot sources available. Provide at least one image input.")
+
     for i, src in enumerate(screenshot_sources, start=1):
         out = shots_dir / f"screenshot-{i}-{screenshot_w}x{screenshot_h}.png"
         cover_resize(src, out, screenshot_w, screenshot_h)
 
     print(f"[OK] generated assets in: {root}")
+    print(f"[OK] icon source: {icon_source.name}")
     print(f"[OK] icon: {icon_out.name} (128x128)")
     print(f"[OK] small promo: {small_promo_out.name} (440x280)")
     if args.include_marquee:
