@@ -30,15 +30,17 @@ Suggested handoff sequence for end-to-end requests:
 my-extension/
 ├── manifest.json
 ├── background.js
-├── popup/
-│   ├── popup.html
-│   ├── popup.js
-│   └── popup.css
-├── content/
-│   └── content.js
+├── popup.html
+├── popup.js
+├── content.js
+├── content.css
 └── icons/
-    └── icon48.png
+    ├── icon16.png
+    ├── icon48.png
+    └── icon128.png
 ```
+
+The templates in `assets/templates/` follow this flat file layout.
 
 ### 2. Basic manifest.json
 
@@ -49,12 +51,12 @@ my-extension/
   "version": "1.0.0",
   "description": "What your extension does",
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_popup": "popup.html",
     "default_icon": {
       "48": "icons/icon48.png"
     }
   },
-  "permissions": ["storage", "activeTab"]
+  "permissions": ["storage", "activeTab", "scripting"]
 }
 ```
 
@@ -116,7 +118,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 ### Popup UI
 
 ```html
-<!-- popup/popup.html -->
+<!-- popup.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -134,7 +136,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 ```
 
 ```javascript
-// popup/popup.js
+// popup.js
 document.getElementById('toggle').addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
   await chrome.tabs.sendMessage(tab.id, {action: 'toggle'});

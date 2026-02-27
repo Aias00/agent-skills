@@ -33,8 +33,11 @@ From the repository root:
 ```bash
 python3 -m py_compile \
   chrome-extension-dev/assets/templates/resize_icons.py \
+  chrome-extension-publish/scripts/audit_permissions.py \
+  chrome-extension-publish/scripts/package_extension.py \
   chrome-extension-publish/scripts/generate_store_assets.py \
   chrome-extension-publish/scripts/validate_store_assets.py \
+  chrome-webstore-image-generator/scripts/capture_extension_screenshots.py \
   chrome-webstore-image-generator/scripts/generate_store_assets.py \
   chrome-webstore-image-generator/scripts/validate_store_assets.py
 ```

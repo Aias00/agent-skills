@@ -3,6 +3,14 @@
 Use these as editable drafts. Replace product-specific placeholders before submitting.
 For generated listing documents, keep both Chinese and English versions together and semantically aligned.
 
+## 0) Store short summary (ZH/EN)
+
+### ZH
+在浏览器工具栏快速查看 [核心功能]，支持 [1-2 个关键能力]，帮助用户高效完成 [单一目的]。
+
+### EN
+Quickly access [core function] from the browser toolbar, with [1-2 key capabilities] to help users accomplish [single purpose] efficiently.
+
 ## 1) Chinese listing description (long)
 
 `Gold Price Monitor` 用于在浏览器工具栏实时查看国内投资金价（AU9999），并在弹窗中展示近 7 天价格趋势与历史记录。  
@@ -85,7 +93,19 @@ Permissions are minimized to `storage`, `alarms`, and specific host permissions 
 No remote code execution is used.  
 No personal user data is collected or transmitted.
 
-## 8) Store image asset checklist (publish required)
+## 8) Privacy policy update note template (ZH/EN)
+
+### ZH
+隐私政策位置：`docs/privacy-policy.md`（或仓库内等效受版本控制路径）。  
+本次版本隐私政策结论：[需要更新 / 无需更新]。  
+原因：[权限、数据来源、数据存储、数据流或功能范围是否变化的具体说明]。
+
+### EN
+Privacy policy location: `docs/privacy-policy.md` (or an equivalent version-controlled path in the repository).  
+Privacy policy decision for this release: [update required / not required].  
+Reason: [concrete explanation of changes or no-change in permissions, endpoints, storage, data flow, or feature scope].
+
+## 9) Store image asset checklist (publish required)
 
 Prepare images under `release/store-assets/`:
 

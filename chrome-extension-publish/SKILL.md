@@ -16,9 +16,11 @@ Use this skill to ship Chrome extensions with minimal review risk and fast itera
 2. Audit `manifest.json` for least privilege.
 - Keep only actually used permissions.
 - Remove unused host permissions and broad match patterns.
-- Verify permission usage by searching code:
+- Generate permission audit evidence report:
 ```bash
-rg -n "chrome\\.(storage|alarms|notifications|tabs|scripting|identity)|fetch\\(" -S .
+python3 scripts/audit_permissions.py \
+  --root . \
+  --out release/permission-audit.md
 ```
 
 3. Build upload ZIP from source files only.
@@ -33,26 +35,12 @@ release/
 __pycache__/
 *.py[cod]
 ```
-- Prefer deterministic packaging command:
+- Prefer deterministic packaging script:
 ```bash
-python3 - <<'PY'
-import os, zipfile
-root='.'
-out='release/chrome-webstore.zip'
-os.makedirs('release', exist_ok=True)
-include_dirs=['background','popup','utils','icons','data']
-files=['manifest.json']
-for d in include_dirs:
-    if not os.path.isdir(d): continue
-    for b, _, ns in os.walk(d):
-        for n in ns:
-            if n == '.DS_Store': continue
-            files.append(os.path.join(b,n))
-with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
-    for f in files:
-        z.write(f)
-print(out)
-PY
+python3 scripts/package_extension.py \
+  --root . \
+  --mode manifest \
+  --out release/chrome-webstore.zip
 ```
 
 4. Prepare store listing graphic assets (required before submit).
@@ -69,6 +57,7 @@ python3 scripts/generate_store_assets.py \
   --root release/store-assets \
   --include-marquee
 ```
+- If screenshots are missing, capture them from an unpacked extension via `$chrome-webstore-image-generator` (`scripts/capture_extension_screenshots.py`) before generation.
 - The generator auto-picks an icon source from icon/logo-like names or near-square images.
 - If multiple provided images are all screenshot-like, set `--icon-source` explicitly to avoid screenshot-derived icons.
 - Use the naming convention in `references/cws-publish-templates.md`.
@@ -147,9 +136,10 @@ When assisting a publish task, return:
 1. Release readiness checklist (pass/fail).
 2. Required manifest changes (if any).
 3. Graphic asset checklist (required/optional, size, status).
-4. Privacy policy decision for this release (`update required` / `not required`) with concrete reason.
-5. Ready-to-paste bilingual (`ZH`/`EN`) CWS text blocks (short summary, long description, single purpose, permissions, remote code, data use, review notes) and canonical privacy-policy file path.
-6. Final packaging command and ZIP path.
+4. Permission audit summary with report path (`release/permission-audit.md`) and required fixes.
+5. Privacy policy decision for this release (`update required` / `not required`) with concrete reason.
+6. Ready-to-paste bilingual (`ZH`/`EN`) CWS text blocks (short summary, long description, single purpose, permissions, remote code, data use, review notes) and canonical privacy-policy file path.
+7. Final packaging command and ZIP path.
 
 ## Templates
 

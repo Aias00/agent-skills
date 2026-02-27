@@ -9,9 +9,31 @@ Generate Chrome Web Store listing images from one or more source files and valid
 
 ## Quick Start
 
-1. Collect absolute paths for one or more source images.
+1. Collect absolute paths for one or more source images, or auto-capture screenshots from an unpacked extension.
 2. Generate assets with `scripts/generate_store_assets.py`.
 3. Validate output with `scripts/validate_store_assets.py`.
+
+## Auto-Capture Screenshots (Optional)
+
+Capture popup/options/page screenshots directly into `release/store-assets/screenshots`:
+
+```bash
+python3 scripts/capture_extension_screenshots.py \
+  --extension-root /abs/path/to/unpacked-extension \
+  --root /abs/project/release/store-assets \
+  --options-path options.html \
+  --urls https://example.com https://news.ycombinator.com
+```
+
+Then generate remaining assets (icon/small promo/marquee) using explicit icon input:
+
+```bash
+python3 scripts/generate_store_assets.py \
+  --inputs /abs/project/release/store-assets/screenshots/*.png \
+  --icon-source /abs/path/icon.png \
+  --root /abs/project/release/store-assets \
+  --include-marquee
+```
 
 ## Generate Assets
 
@@ -63,4 +85,5 @@ Read size and naming requirements in:
 ## Notes
 
 - This skill currently uses macOS `sips` for resizing/cropping.
+- `capture_extension_screenshots.py` requires Python Playwright (`pip install playwright`) and browser install (`playwright install chromium`).
 - If user uploads images in chat, first resolve them to accessible local file paths, then pass those paths to the script.
