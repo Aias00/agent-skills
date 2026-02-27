@@ -78,6 +78,7 @@ python3 scripts/validate_store_assets.py --root release/store-assets
 - Write short summary and detailed description focused on user value.
 - Always draft a Single Purpose statement for CWS (concise, concrete, feature-linked).
 - State non-advisory nature for finance-related extensions.
+- Produce paired Chinese and English versions for all listing text blocks (short summary, long description, single purpose, permissions rationale, remote code answer, data use disclosure, reviewer notes), unless user explicitly requests single-language output.
 - If user asks for text, load `references/cws-publish-templates.md`.
 
 6. Fill sensitive CWS forms correctly.
@@ -125,6 +126,10 @@ For every permission:
 - Must map major features back to that same single purpose.
 - Must explicitly state no unrelated functionality.
 
+### Language Completeness
+- Default output is bilingual (`ZH` + `EN`) for all CWS text content.
+- Chinese and English versions must be semantically aligned, with no policy or feature mismatch.
+
 ## Rejection Triage
 
 When CWS rejects:
@@ -140,7 +145,7 @@ When assisting a publish task, return:
 2. Required manifest changes (if any).
 3. Graphic asset checklist (required/optional, size, status).
 4. Privacy policy decision for this release (`update required` / `not required`) with concrete reason.
-5. Ready-to-paste CWS text blocks (single purpose/permissions/remote code/data use/review notes) and canonical privacy-policy file path.
+5. Ready-to-paste bilingual (`ZH`/`EN`) CWS text blocks (short summary, long description, single purpose, permissions, remote code, data use, review notes) and canonical privacy-policy file path.
 6. Final packaging command and ZIP path.
 
 ## Templates
