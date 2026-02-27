@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome Webstore Image Generator"
+  short_description: "Generate CWS image assets from source files."
+  default_prompt: "Generate required Chrome Web Store listing images from one or more source image files and validate dimensions before publish."

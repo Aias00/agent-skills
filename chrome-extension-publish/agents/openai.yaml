@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome Extension Publish"
+  short_description: "End-to-end Chrome Web Store publishing workflow"
+  default_prompt: "Use $chrome-extension-publish to prepare, validate, and submit my extension release."

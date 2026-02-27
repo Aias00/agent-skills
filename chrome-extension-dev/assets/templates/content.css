@@ -1,0 +1,12 @@
+html.dark-mode-extension {
+  background: #111 !important;
+  color: #e5e5e5 !important;
+  filter: invert(0.92) hue-rotate(180deg);
+}
+
+html.dark-mode-extension img,
+html.dark-mode-extension video,
+html.dark-mode-extension canvas,
+html.dark-mode-extension iframe {
+  filter: invert(1) hue-rotate(180deg);
+}
