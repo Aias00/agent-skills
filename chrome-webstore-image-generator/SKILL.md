@@ -18,6 +18,9 @@ Generate Chrome Web Store listing images from one or more source files and valid
 Capture popup/options/page screenshots directly into `release/store-assets/screenshots`:
 
 ```bash
+python3 -m pip install playwright
+python3 -m playwright install chromium
+
 python3 scripts/capture_extension_screenshots.py \
   --extension-root /abs/path/to/unpacked-extension \
   --root /abs/project/release/store-assets \
@@ -52,15 +55,19 @@ Default behavior:
 - Auto-pick icon source for `icon-128x128.png` from files with icon/logo-like names or near-square dimensions.
 - Use the first input for `small-promo-440x280.png` unless `--small-promo-source` is provided.
 - Use up to 5 non-icon input images for `screenshots/screenshot-<index>-<width>x<height>.png` (falls back to all inputs when needed).
+- Append screenshots by default (keep existing files and continue numbering when slots remain).
 - Produce screenshots at `1280x800` by default.
 - Generate `marquee-1400x560.png` only when `--include-marquee` is set.
-- If multiple inputs are all screenshot-like (not near-square), pass `--icon-source` explicitly.
+- If icon inference is ambiguous (for example, a single screenshot-like input), generation fails fast and requires `--icon-source`.
 
 Useful options:
 
 - `--screenshot-size 640x400`: switch screenshot size to `640x400`.
 - `--max-screenshots 3`: limit generated screenshots.
-- `--icon-source`: explicitly set icon input (recommended).
+- `--overwrite-screenshots`: clear existing screenshots and regenerate from `screenshot-1-*`.
+- `--append-screenshots`: compatibility flag (append is already default).
+- `--icon-source`: explicitly set icon input (recommended and safest).
+- `--allow-icon-fallback`: allow legacy single-input fallback (only when intentional).
 - `--small-promo-source`, `--marquee-source`: override other output source images.
 
 ## Validate Assets

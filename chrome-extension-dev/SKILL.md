@@ -7,20 +7,28 @@ description: Expert Chrome extension development with Manifest V3. Use when crea
 
 Expert guide for building Chrome extensions using Manifest V3.
 
-## Skill Coordination (Soft Integration)
+## Skill Coordination (Full Automation Integration)
 
 Use this skill as the primary entry point for extension architecture, implementation, debugging, and local packaging.
 
-When work reaches release tasks, route to companion skills instead of duplicating instructions:
+When work reaches release tasks, use companion skills through a single automated publish pipeline:
 
 - Use `$chrome-extension-publish` for Chrome Web Store submission workflow, CWS form answers, permission rationale, privacy-policy decisions, and release checklist output.
 - Use `$chrome-webstore-image-generator` for generating and validating store listing images (`icon`, `screenshots`, `small promo`, optional `marquee`).
 
-Suggested handoff sequence for end-to-end requests:
+Recommended handoff sequence for end-to-end requests:
 
 1. Build and verify extension behavior in this skill.
-2. Generate/validate listing graphics with `$chrome-webstore-image-generator`.
-3. Complete submit-ready package and CWS text with `$chrome-extension-publish`.
+2. Run one-command release pipeline from `$chrome-extension-publish`:
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --capture-screenshots \
+  --icon-source /abs/path/to/icon.png \
+  --include-marquee \
+  --headless
+```
+3. Only if needed, fine-tune assets and CWS wording manually with `$chrome-webstore-image-generator` and `references/cws-publish-templates.md`.
 
 ## Quick Start
 
@@ -376,13 +384,25 @@ infsh app run falai/flux-dev-lora --input '{
 
 ### 6. Package
 
-`chrome://extensions/` → "Pack extension" → Select directory
+Prefer deterministic script packaging via `$chrome-extension-publish`:
+
+```bash
+python3 scripts/package_extension.py --root . --mode manifest --out release/chrome-webstore.zip
+```
 
 ### 7. Publish
 
 - Pay $5 developer fee
-- Use `$chrome-webstore-image-generator` to prepare and validate listing images
-- Use `$chrome-extension-publish` to finalize listing text/forms and submission checklist
+- Run one-command full pipeline:
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --capture-screenshots \
+  --icon-source /abs/path/to/icon.png \
+  --include-marquee \
+  --headless
+```
+- If needed, refine assets with `$chrome-webstore-image-generator` and adjust wording with `$chrome-extension-publish/references/cws-publish-templates.md`.
 - Upload to Chrome Web Store
 - Submit for review (1-3 days)
 

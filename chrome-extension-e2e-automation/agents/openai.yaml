@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome Extension E2E Automation"
+  short_description: "One-command end-to-end Chrome extension release automation"
+  default_prompt: "Use $chrome-extension-e2e-automation to run development validation, packaging, store assets, and bilingual CWS draft generation in one pipeline."

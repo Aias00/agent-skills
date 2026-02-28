@@ -4,9 +4,12 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import re
 import sys
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlsplit
 
 DEFAULT_EXCLUDES = [
     ".git/**",
@@ -20,6 +23,38 @@ DEFAULT_EXCLUDES = [
 ]
 
 WILDCARD_CHARS = set("*?[")
+JS_EXT_FALLBACKS = [".js", ".mjs", ".cjs", ".json"]
+INDEX_EXT_FALLBACKS = [".js", ".mjs", ".cjs"]
+
+JS_IMPORT_FROM_RE = re.compile(r"""(?:import|export)\s+[^'"]*?\sfrom\s*['"]([^'"]+)['"]""")
+JS_IMPORT_BARE_RE = re.compile(r"""import\s*['"]([^'"]+)['"]""")
+JS_DYNAMIC_IMPORT_RE = re.compile(r"""import\s*\(\s*['"]([^'"]+)['"]\s*\)""")
+JS_WORKER_RE = re.compile(r"""new\s+(?:Shared)?Worker\s*\(\s*['"]([^'"]+)['"]""")
+JS_IMPORT_SCRIPTS_RE = re.compile(r"""importScripts\s*\(([^)]*)\)""")
+CSS_IMPORT_RE = re.compile(r"""@import\s+(?:url\(\s*)?['"]([^'"]+)['"]""")
+STRING_LITERAL_RE = re.compile(r"""['"]([^'"]+)['"]""")
+
+
+class HtmlDependencyParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.refs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {k.lower(): v for k, v in attrs if v is not None}
+        if tag.lower() == "script":
+            src = attr_map.get("src")
+            if src:
+                self.refs.append(src)
+            return
+
+        if tag.lower() == "link":
+            href = attr_map.get("href")
+            if not href:
+                return
+            rel = (attr_map.get("rel") or "").lower()
+            if not rel or "stylesheet" in rel or "modulepreload" in rel:
+                self.refs.append(href)
 
 
 def posix_rel(path: Path, root: Path) -> str:
@@ -43,6 +78,139 @@ def add_file_if_valid(
         return False
     selected.add(rel)
     return True
+
+
+def normalize_dependency_ref(token: str) -> tuple[str, bool] | None:
+    stripped = token.strip()
+    if not stripped:
+        return None
+
+    if stripped.startswith(("data:", "blob:", "javascript:", "mailto:", "#")):
+        return None
+
+    parsed = urlsplit(stripped)
+    if parsed.scheme or parsed.netloc:
+        return None
+
+    path_part = parsed.path.strip()
+    if not path_part:
+        return None
+
+    is_absolute = path_part.startswith("/")
+    if is_absolute:
+        path_part = path_part[1:]
+
+    if not path_part:
+        return None
+
+    return path_part, is_absolute
+
+
+def resolve_existing_file(candidate: Path) -> Path | None:
+    if candidate.is_file():
+        return candidate
+
+    if not candidate.suffix:
+        for ext in JS_EXT_FALLBACKS:
+            resolved = candidate.with_suffix(ext)
+            if resolved.is_file():
+                return resolved
+        for ext in INDEX_EXT_FALLBACKS:
+            index_file = candidate / f"index{ext}"
+            if index_file.is_file():
+                return index_file
+
+    return None
+
+
+def resolve_dependency_path(root: Path, source_rel: str, ref_expr: str) -> Path | None:
+    normalized = normalize_dependency_ref(ref_expr)
+    if not normalized:
+        return None
+
+    rel_path, is_absolute = normalized
+    source_abs = (root / source_rel).resolve()
+    candidate = (root / rel_path).resolve() if is_absolute else (source_abs.parent / rel_path).resolve()
+
+    if not candidate.is_relative_to(root.resolve()):
+        return None
+
+    return resolve_existing_file(candidate)
+
+
+def extract_references_from_html(content: str) -> list[str]:
+    parser = HtmlDependencyParser()
+    parser.feed(content)
+    return parser.refs
+
+
+def extract_references_from_js(content: str) -> list[str]:
+    refs: list[str] = []
+    refs.extend(JS_IMPORT_FROM_RE.findall(content))
+    refs.extend(JS_IMPORT_BARE_RE.findall(content))
+    refs.extend(JS_DYNAMIC_IMPORT_RE.findall(content))
+    refs.extend(JS_WORKER_RE.findall(content))
+    for match in JS_IMPORT_SCRIPTS_RE.findall(content):
+        refs.extend(STRING_LITERAL_RE.findall(match))
+    return refs
+
+
+def extract_references_from_css(content: str) -> list[str]:
+    return CSS_IMPORT_RE.findall(content)
+
+
+def extract_dependency_refs(file_path: Path) -> list[str]:
+    suffix = file_path.suffix.lower()
+    if suffix not in {".html", ".htm", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".css"}:
+        return []
+
+    try:
+        content = file_path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return []
+
+    if suffix in {".html", ".htm"}:
+        return extract_references_from_html(content)
+    if suffix in {".css"}:
+        return extract_references_from_css(content)
+    return extract_references_from_js(content)
+
+
+def collect_transitive_dependencies(
+    root: Path,
+    selected: set[str],
+    excludes: list[str],
+) -> list[str]:
+    missing: set[str] = set()
+    queue = sorted(selected)
+    visited: set[str] = set()
+
+    while queue:
+        rel = queue.pop(0)
+        if rel in visited:
+            continue
+        visited.add(rel)
+
+        source_file = (root / rel).resolve()
+        if not source_file.is_file():
+            continue
+
+        for ref_expr in extract_dependency_refs(source_file):
+            resolved = resolve_dependency_path(root, rel, ref_expr)
+            if not resolved:
+                normalized = normalize_dependency_ref(ref_expr)
+                if normalized is not None:
+                    missing.add(f"{rel}: {ref_expr}")
+                continue
+
+            dep_rel = posix_rel(resolved, root)
+            if is_excluded(dep_rel, excludes):
+                continue
+            if dep_rel not in selected:
+                selected.add(dep_rel)
+                queue.append(dep_rel)
+
+    return sorted(missing)
 
 
 def expand_input_path(path_expr: str, root: Path) -> list[Path]:
@@ -254,15 +422,21 @@ def main() -> int:
 
     selected: set[str]
     missing_refs: list[str] = []
+    missing_deps: list[str] = []
 
     if args.mode == "manifest":
         selected, missing_refs = collect_manifest_referenced_files(root, manifest, excludes)
+        missing_deps = collect_transitive_dependencies(root, selected, excludes)
     else:
         selected = collect_source_mode_files(root, out_path, excludes)
 
     missing_extras = add_extra_entries(root, selected, args.extra, excludes)
 
-    missing_all = [*(f"missing referenced file: {item}" for item in missing_refs), *(f"missing extra path: {item}" for item in missing_extras)]
+    missing_all = [
+        *(f"missing referenced file: {item}" for item in missing_refs),
+        *(f"missing transitive dependency: {item}" for item in missing_deps),
+        *(f"missing extra path: {item}" for item in missing_extras),
+    ]
     if missing_all and not args.allow_missing:
         print("[ERROR] packaging aborted due to missing files:", file=sys.stderr)
         for item in missing_all:

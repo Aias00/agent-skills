@@ -96,12 +96,12 @@ No personal user data is collected or transmitted.
 ## 8) Privacy policy update note template (ZH/EN)
 
 ### ZH
-隐私政策位置：`docs/privacy-policy.md`（或仓库内等效受版本控制路径）。  
+隐私政策位置：`privacy-policy.md`（扩展根目录，固定文件名）。  
 本次版本隐私政策结论：[需要更新 / 无需更新]。  
 原因：[权限、数据来源、数据存储、数据流或功能范围是否变化的具体说明]。
 
 ### EN
-Privacy policy location: `docs/privacy-policy.md` (or an equivalent version-controlled path in the repository).  
+Privacy policy location: `privacy-policy.md` (fixed filename at extension root).  
 Privacy policy decision for this release: [update required / not required].  
 Reason: [concrete explanation of changes or no-change in permissions, endpoints, storage, data flow, or feature scope].
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import re
 import shutil
 import subprocess
 import sys
@@ -25,6 +26,8 @@ LEGACY_AND_CURRENT_ROOT_OUTPUTS = {
 }
 
 ICON_KEYWORDS = ("icon", "logo", "favicon", "appicon", "brand")
+SCREENSHOT_KEYWORDS = ("screenshot", "screen-shot", "screen_shot", "capture", "screen", "shot")
+SCREENSHOT_FILE_RE = re.compile(r"^screenshot-(\d+)-(\d+)x(\d+)\.png$", re.IGNORECASE)
 
 
 def run(cmd: list[str]) -> str:
@@ -127,7 +130,12 @@ def has_icon_keyword(path: Path) -> bool:
     return any(keyword in stem for keyword in ICON_KEYWORDS)
 
 
-def pick_icon_source(input_paths: list[Path]) -> Path:
+def has_screenshot_keyword(path: Path) -> bool:
+    stem = path.stem.lower().replace("_", "-")
+    return any(keyword in stem for keyword in SCREENSHOT_KEYWORDS)
+
+
+def pick_icon_source(input_paths: list[Path], allow_icon_fallback: bool) -> Path:
     scored_by_keyword: list[tuple[float, int, int, Path]] = []
     scored_by_shape: list[tuple[float, int, int, Path]] = []
 
@@ -152,14 +160,26 @@ def pick_icon_source(input_paths: list[Path]) -> Path:
     if scored_by_keyword:
         return pick_best(scored_by_keyword)
     if scored_by_shape:
-        return pick_best(scored_by_shape)
+        candidate = pick_best(scored_by_shape)
+        if has_screenshot_keyword(candidate):
+            raise ValueError(
+                "Icon source looks like a screenshot by filename. "
+                "Pass --icon-source with a dedicated icon/logo, or rename source file."
+            )
+        return candidate
     if len(input_paths) == 1:
-        print(
-            "[WARN] Unable to infer icon source from a square/icon-like file. "
-            "Using the only provided input as icon source.",
-            file=sys.stderr,
+        if allow_icon_fallback:
+            print(
+                "[WARN] Unable to infer icon source from a square/icon-like file. "
+                "Using the only provided input as icon source due to --allow-icon-fallback.",
+                file=sys.stderr,
+            )
+            return input_paths[0]
+        raise ValueError(
+            "Unable to infer icon source from a single non-icon input. "
+            "Pass --icon-source with a dedicated icon/logo (recommended). "
+            "If you really want fallback behavior, add --allow-icon-fallback."
         )
-        return input_paths[0]
 
     raise ValueError(
         "Unable to infer icon source from multiple non-square inputs. "
@@ -167,12 +187,30 @@ def pick_icon_source(input_paths: list[Path]) -> Path:
     )
 
 
-def clean_screenshots_dir(folder: Path) -> None:
+def clean_screenshots_dir(folder: Path, preserve: set[Path] | None = None) -> None:
+    keep = {path.resolve() for path in (preserve or set())}
     if not folder.exists():
         return
     for item in folder.iterdir():
-        if item.is_file() and item.suffix.lower() in ALLOWED_OUTPUT_SUFFIXES:
-            item.unlink()
+        if not item.is_file() or item.suffix.lower() not in ALLOWED_OUTPUT_SUFFIXES:
+            continue
+        if item.resolve() in keep:
+            continue
+        item.unlink()
+
+
+def list_existing_screenshots(folder: Path) -> list[tuple[int, Path]]:
+    if not folder.exists():
+        return []
+    snapshots: list[tuple[int, Path]] = []
+    for item in folder.iterdir():
+        if not item.is_file():
+            continue
+        matched = SCREENSHOT_FILE_RE.match(item.name)
+        if not matched:
+            continue
+        snapshots.append((int(matched.group(1)), item))
+    return sorted(snapshots, key=lambda item: item[0])
 
 
 def clean_root_outputs(root: Path) -> None:
@@ -227,12 +265,35 @@ def build_parser() -> argparse.ArgumentParser:
         help="Explicit source image for icon-128x128.png (recommended when inputs are screenshots)",
     )
     parser.add_argument(
+        "--allow-icon-fallback",
+        action="store_true",
+        help=(
+            "Allow single-input fallback for icon selection when no icon/logo-like source is detected. "
+            "Use only when you intentionally want icon derived from the sole input."
+        ),
+    )
+    parser.add_argument(
         "--small-promo-source",
         help="Override source image for small-promo-440x280.png",
     )
     parser.add_argument(
         "--marquee-source",
         help="Override source image for marquee-1400x560.png",
+    )
+    parser.add_argument(
+        "--append-screenshots",
+        action="store_true",
+        help=(
+            "Deprecated compatibility flag. Append is now the default screenshot behavior."
+        ),
+    )
+    parser.add_argument(
+        "--overwrite-screenshots",
+        action="store_true",
+        help=(
+            "Clear existing screenshots and regenerate from screenshot-1. "
+            "Use this when deterministic replacement is preferred."
+        ),
     )
     return parser
 
@@ -256,11 +317,32 @@ def main() -> int:
     ensure_dir(root)
     ensure_dir(shots_dir)
     clean_root_outputs(root)
-    clean_screenshots_dir(shots_dir)
+
+    append_mode = not args.overwrite_screenshots
+    if args.append_screenshots and args.overwrite_screenshots:
+        print(
+            "[WARN] Both --append-screenshots and --overwrite-screenshots were provided; "
+            "using overwrite mode.",
+            file=sys.stderr,
+        )
+
+    existing: list[tuple[int, Path]] = []
+    existing_count = 0
+    next_index = 1
+    available_slots = args.max_screenshots
+    if append_mode:
+        existing = list_existing_screenshots(shots_dir)
+        existing_count = len(existing)
+        next_index = existing[-1][0] + 1 if existing else 1
+        available_slots = max(0, args.max_screenshots - existing_count)
+    else:
+        clean_screenshots_dir(shots_dir, preserve=set(input_paths))
 
     first = input_paths[0]
     icon_source = (
-        Path(args.icon_source).expanduser().resolve() if args.icon_source else pick_icon_source(input_paths)
+        Path(args.icon_source).expanduser().resolve()
+        if args.icon_source
+        else pick_icon_source(input_paths, allow_icon_fallback=args.allow_icon_fallback)
     )
     small_promo_source = (
         Path(args.small_promo_source).expanduser().resolve() if args.small_promo_source else first
@@ -285,12 +367,23 @@ def main() -> int:
         screenshot_candidates = [path for path in input_paths if path != icon_source]
         if not screenshot_candidates:
             screenshot_candidates = input_paths
-    screenshot_sources = screenshot_candidates[: args.max_screenshots]
-    if not screenshot_sources:
-        raise ValueError("No screenshot sources available. Provide at least one image input.")
+    if append_mode and existing:
+        existing_paths = {path.resolve() for _, path in existing}
+        screenshot_candidates = [path for path in screenshot_candidates if path.resolve() not in existing_paths]
 
-    for i, src in enumerate(screenshot_sources, start=1):
-        out = shots_dir / f"screenshot-{i}-{screenshot_w}x{screenshot_h}.png"
+    screenshot_sources = screenshot_candidates[:available_slots]
+    if not screenshot_sources:
+        if append_mode and existing_count > 0:
+            print(
+                "[WARN] No new screenshot sources appended; keeping existing screenshots as-is.",
+                file=sys.stderr,
+            )
+        else:
+            raise ValueError("No screenshot sources available. Provide at least one image input.")
+
+    for offset, src in enumerate(screenshot_sources):
+        index = next_index + offset
+        out = shots_dir / f"screenshot-{index}-{screenshot_w}x{screenshot_h}.png"
         cover_resize(src, out, screenshot_w, screenshot_h)
 
     print(f"[OK] generated assets in: {root}")
@@ -299,7 +392,14 @@ def main() -> int:
     print(f"[OK] small promo: {small_promo_out.name} (440x280)")
     if args.include_marquee:
         print(f"[OK] marquee: {MARQUEE_NAME} (1400x560)")
-    print(f"[OK] screenshots: {len(screenshot_sources)} @ {screenshot_w}x{screenshot_h}")
+    if append_mode:
+        print(
+            f"[OK] screenshots appended: +{len(screenshot_sources)} "
+            f"(total {existing_count + len(screenshot_sources)}/{args.max_screenshots}) "
+            f"@ {screenshot_w}x{screenshot_h}"
+        )
+    else:
+        print(f"[OK] screenshots: {len(screenshot_sources)} @ {screenshot_w}x{screenshot_h}")
     return 0
 
 
@@ -308,4 +408,4 @@ if __name__ == "__main__":
         raise SystemExit(main())
     except Exception as exc:  # noqa: BLE001
         print(f"[ERROR] {exc}", file=sys.stderr)
-        raise
+        raise SystemExit(1)

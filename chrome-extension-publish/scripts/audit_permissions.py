@@ -6,6 +6,7 @@ import fnmatch
 import json
 import re
 import sys
+from urllib.parse import urlparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +18,16 @@ DEFAULT_EXCLUDES = {
     "release",
     "__pycache__",
 }
-URL_RE = re.compile(r"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+")
+URL_RE = re.compile(r"https?://[^\s\"'`<>]+")
+IPV4_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
+XML_NAMESPACE_HOSTS = {"www.w3.org", "w3.org"}
+XML_NAMESPACE_PATH_PREFIXES = ("/1999/", "/2000/", "/2001/")
+BROAD_HOST_PATTERNS = {
+    "<all_urls>",
+    "http://*/*",
+    "https://*/*",
+    "*://*/*",
+}
 
 PERMISSION_ALIASES = {
     "activeTab": ["chrome.tabs", "chrome.scripting"],
@@ -28,6 +38,12 @@ PERMISSION_ALIASES = {
     "cookies": ["chrome.cookies"],
     "declarativeNetRequest": ["chrome.declarativeNetRequest"],
     "declarativeNetRequestWithHostAccess": ["chrome.declarativeNetRequest"],
+    "clipboardWrite": [
+        "navigator.clipboard.writeText(",
+        "navigator.clipboard.write(",
+        "document.execCommand(\"copy\")",
+        "document.execCommand('copy')",
+    ],
     "downloads": ["chrome.downloads"],
     "history": ["chrome.history"],
     "identity": ["chrome.identity"],
@@ -52,6 +68,13 @@ class Evidence:
     file: str
     line: int
     text: str
+
+
+@dataclass
+class HostPattern:
+    pattern: str
+    scope: str
+    sources: list[str]
 
 
 class AuditError(Exception):
@@ -107,6 +130,52 @@ def normalize_permission_aliases(permission: str) -> list[str]:
     return [f"chrome.{candidate}"]
 
 
+def extract_match_patterns(entries: object) -> list[str]:
+    patterns: list[str] = []
+    if not isinstance(entries, list):
+        return patterns
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        matches = entry.get("matches")
+        if not isinstance(matches, list):
+            continue
+        for item in matches:
+            if isinstance(item, str) and item.strip():
+                patterns.append(item.strip())
+    return patterns
+
+
+def collect_declared_host_patterns(manifest: dict) -> list[HostPattern]:
+    merged: dict[str, HostPattern] = {}
+
+    def add(pattern: str, scope: str, source: str) -> None:
+        token = pattern.strip()
+        if not token:
+            return
+        existing = merged.get(token)
+        if existing is None:
+            merged[token] = HostPattern(pattern=token, scope=scope, sources=[source])
+            return
+        if scope == "required" and existing.scope != "required":
+            existing.scope = "required"
+        if source not in existing.sources:
+            existing.sources.append(source)
+
+    for pattern in manifest.get("host_permissions", []) or []:
+        if isinstance(pattern, str):
+            add(pattern, "required", "host_permissions")
+
+    for pattern in manifest.get("optional_host_permissions", []) or []:
+        if isinstance(pattern, str):
+            add(pattern, "optional", "optional_host_permissions")
+
+    for pattern in extract_match_patterns(manifest.get("content_scripts")):
+        add(pattern, "required", "content_scripts.matches")
+
+    return sorted(merged.values(), key=lambda item: item.pattern)
+
+
 def collect_permission_evidence(files: list[Path], root: Path, permission: str) -> list[Evidence]:
     aliases = normalize_permission_aliases(permission)
     evidence: list[Evidence] = []
@@ -129,6 +198,7 @@ def collect_permission_evidence(files: list[Path], root: Path, permission: str) 
 
 
 def collect_detected_urls(files: list[Path], root: Path) -> list[Evidence]:
+    seen: set[tuple[str, int, str]] = set()
     evidence: list[Evidence] = []
     for file_path in files:
         try:
@@ -138,14 +208,62 @@ def collect_detected_urls(files: list[Path], root: Path) -> list[Evidence]:
 
         for line_num, line in enumerate(content.splitlines(), start=1):
             for matched in URL_RE.findall(line):
+                normalized = normalize_detected_url(matched)
+                if not normalized:
+                    continue
+                key = (file_path.relative_to(root).as_posix(), line_num, normalized)
+                if key in seen:
+                    continue
+                seen.add(key)
                 evidence.append(
                     Evidence(
                         file=file_path.relative_to(root).as_posix(),
                         line=line_num,
-                        text=matched,
+                        text=normalized,
                     )
                 )
     return evidence
+
+
+def normalize_detected_url(url: str) -> str | None:
+    cleaned = url.strip().rstrip(".,;:)]}>")
+    if not cleaned:
+        return None
+
+    parsed = urlparse(cleaned)
+    if parsed.scheme not in {"http", "https"}:
+        return None
+
+    host = (parsed.hostname or "").strip().lower()
+    if not host:
+        return None
+
+    if host in XML_NAMESPACE_HOSTS and parsed.path.startswith(XML_NAMESPACE_PATH_PREFIXES):
+        return None
+
+    if any(char in host for char in ("$", "{", "}")):
+        return None
+
+    if host == "localhost" or IPV4_RE.match(host):
+        return cleaned
+
+    if "." not in host:
+        return None
+
+    tld = host.rsplit(".", 1)[-1]
+    if not re.fullmatch(r"[a-z]{2,63}", tld):
+        return None
+
+    return cleaned
+
+
+def is_broad_host_pattern(pattern: str) -> bool:
+    token = pattern.strip()
+    if token in BROAD_HOST_PATTERNS:
+        return True
+    if token.startswith("*://*.") and token.endswith("/*"):
+        return True
+    return False
 
 
 def match_host_pattern(url: str, pattern: str) -> bool:
@@ -163,8 +281,7 @@ def build_report(
     manifest: dict,
     required_permissions: list[str],
     optional_permissions: list[str],
-    host_permissions: list[str],
-    optional_host_permissions: list[str],
+    declared_host_patterns: list[HostPattern],
     permission_evidence: dict[str, list[Evidence]],
     url_evidence: list[Evidence],
     max_evidence: int,
@@ -221,17 +338,25 @@ def build_report(
             lines.append(f"- ... and {len(ev_list) - max_evidence} more")
         lines.append("")
 
-    declared_host = [*host_permissions, *optional_host_permissions]
+    declared_host = [item.pattern for item in declared_host_patterns]
+    broad_host_patterns = [item.pattern for item in declared_host_patterns if is_broad_host_pattern(item.pattern)]
     uncovered_urls: list[str] = []
 
     lines.extend([
         "## Host Permission Review",
         "",
-        "### Declared Host Permissions",
+        "### Declared Host Match Patterns (CWS-Relevant)",
     ])
-    if declared_host:
-        for pattern in declared_host:
-            lines.append(f"- `{pattern}`")
+    if declared_host_patterns:
+        lines.extend([
+            "",
+            "| Pattern | Scope | Source | Breadth |",
+            "|---|---|---|---|",
+        ])
+        for item in declared_host_patterns:
+            source = ", ".join(item.sources)
+            breadth = "BROAD" if is_broad_host_pattern(item.pattern) else "narrow"
+            lines.append(f"| `{item.pattern}` | {item.scope} | `{source}` | {breadth} |")
     else:
         lines.append("- None")
 
@@ -268,6 +393,16 @@ def build_report(
     else:
         lines.append("- Declared host permissions cover detected URLs.")
 
+    if broad_host_patterns:
+        lines.append(
+            "- Tighten broad host match patterns (for example `<all_urls>`/wildcards) unless strictly required."
+        )
+    else:
+        lines.append("- Host match patterns are scoped without broad wildcard patterns.")
+
+    if declared_host_patterns:
+        lines.append("- If CWS asks for host permission reason, explain each declared pattern source and feature linkage.")
+
     lines.append("")
 
     return "\n".join(lines), missing_permissions, uncovered_urls
@@ -278,7 +413,8 @@ def main() -> int:
 
     root = Path(args.root).expanduser().resolve()
     manifest_path = (root / args.manifest).resolve()
-    out_path = Path(args.out).expanduser().resolve()
+    out_arg = Path(args.out).expanduser()
+    out_path = out_arg.resolve() if out_arg.is_absolute() else (root / out_arg).resolve()
 
     if not root.is_dir():
         print(f"[ERROR] root is not a directory: {root}", file=sys.stderr)
@@ -295,8 +431,7 @@ def main() -> int:
 
     required_permissions = [str(item) for item in manifest.get("permissions", []) or []]
     optional_permissions = [str(item) for item in manifest.get("optional_permissions", []) or []]
-    host_permissions = [str(item) for item in manifest.get("host_permissions", []) or []]
-    optional_host_permissions = [str(item) for item in manifest.get("optional_host_permissions", []) or []]
+    declared_host_patterns = collect_declared_host_patterns(manifest)
 
     files = scan_source_files(root)
     permission_evidence = {
@@ -309,8 +444,7 @@ def main() -> int:
         manifest=manifest,
         required_permissions=required_permissions,
         optional_permissions=optional_permissions,
-        host_permissions=host_permissions,
-        optional_host_permissions=optional_host_permissions,
+        declared_host_patterns=declared_host_patterns,
         permission_evidence=permission_evidence,
         url_evidence=url_evidence,
         max_evidence=max(1, args.max_evidence),
@@ -322,6 +456,7 @@ def main() -> int:
     print(f"[OK] permission audit report written: {out_path}")
     print(f"[OK] required permissions: {len(required_permissions)}")
     print(f"[OK] optional permissions: {len(optional_permissions)}")
+    print(f"[OK] host match patterns: {len(declared_host_patterns)}")
     print(f"[OK] uncovered URLs: {len(uncovered_urls)}")
 
     if args.fail_on_missing and (missing_permissions or uncovered_urls):

@@ -7,6 +7,29 @@ description: Publish or update Chrome extensions on Chrome Web Store end-to-end.
 
 Use this skill to ship Chrome extensions with minimal review risk and fast iteration.
 
+## Full Pipeline (Recommended)
+
+Run one command to execute the end-to-end release flow (baseline files, permission audit, packaging, assets, and bilingual listing draft):
+
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --icon-source /abs/path/to/icon.png \
+  --include-marquee
+```
+
+Behavior note:
+- If `--inputs` is not provided, the pipeline auto-captures screenshots first (Playwright).
+- Use `--no-auto-capture-if-no-inputs` to disable this default.
+- Use `--headless` only when you explicitly want headless capture mode.
+
+Outputs:
+- `release/chrome-webstore.zip`
+- `release/permission-audit.md`
+- `release/store-assets/*`
+- `release/cws-listing.zh-en.md`
+- `release/full-release-summary.md`
+
 ## Workflow
 
 1. Confirm release intent.
@@ -16,6 +39,7 @@ Use this skill to ship Chrome extensions with minimal review risk and fast itera
 2. Audit `manifest.json` for least privilege.
 - Keep only actually used permissions.
 - Remove unused host permissions and broad match patterns.
+- Treat `content_scripts.matches` as host-match scope for CWS host-permission review.
 - Generate permission audit evidence report:
 ```bash
 python3 scripts/audit_permissions.py \
@@ -28,13 +52,14 @@ python3 scripts/audit_permissions.py \
 - Exclude: `.git`, screenshots, local notes, test artifacts.
 - Before packaging, ensure release artifacts are git-ignored to avoid noisy commits.
 - Treat `release/` as generated output only. Do not keep canonical docs only in `release/` if that folder is ignored.
-- Keep the source-of-truth privacy policy in a tracked path (for example `docs/privacy-policy.md` or `privacy-policy.md`), and optionally copy/export a release copy when needed.
-- Add/update `.gitignore` with:
+- Canonical privacy policy file must be root-level `privacy-policy.md` (fixed filename).
+- Generate baseline files before packaging:
 ```bash
-release/
-__pycache__/
-*.py[cod]
+python3 scripts/prepare_publish_basics.py --root .
 ```
+- This command ensures:
+  - `privacy-policy.md` exists at project root.
+  - `.gitignore` includes `release/`, `__pycache__/`, `*.py[cod]`.
 - Prefer deterministic packaging script:
 ```bash
 python3 scripts/package_extension.py \
@@ -42,6 +67,7 @@ python3 scripts/package_extension.py \
   --mode manifest \
   --out release/chrome-webstore.zip
 ```
+- `--mode manifest` now includes manifest-declared files plus transitive local dependencies (for example popup `script src`, `link href`, and ES module imports).
 
 4. Prepare store listing graphic assets (required before submit).
 - Follow current CWS image specs:
@@ -57,9 +83,16 @@ python3 scripts/generate_store_assets.py \
   --root release/store-assets \
   --include-marquee
 ```
-- If screenshots are missing, capture them from an unpacked extension via `$chrome-webstore-image-generator` (`scripts/capture_extension_screenshots.py`) before generation.
+- In `run_full_release_pipeline.py`, when `--inputs` is omitted, screenshot capture is triggered automatically before asset generation.
+- For manual capture or debugging, use `$chrome-webstore-image-generator` (`scripts/capture_extension_screenshots.py`). Preinstall dependency once:
+```bash
+python3 -m pip install playwright
+python3 -m playwright install chromium
+```
 - The generator auto-picks an icon source from icon/logo-like names or near-square images.
-- If multiple provided images are all screenshot-like, set `--icon-source` explicitly to avoid screenshot-derived icons.
+- If icon inference is ambiguous (for example, screenshot-like inputs), generation fails fast. Set `--icon-source` explicitly to avoid screenshot-derived icons.
+- Screenshot files append by default (keep existing screenshots and continue numbering). Use `--overwrite-screenshots` when you need deterministic replacement from `screenshot-1-*`.
+- Use `--allow-icon-fallback` only when you intentionally want legacy single-input fallback behavior.
 - Use the naming convention in `references/cws-publish-templates.md`.
 - Validate asset dimensions/count:
 ```bash
@@ -71,14 +104,22 @@ python3 scripts/validate_store_assets.py --root release/store-assets
 - Always draft a Single Purpose statement for CWS (concise, concrete, feature-linked).
 - State non-advisory nature for finance-related extensions.
 - Produce paired Chinese and English versions for all listing text blocks (short summary, long description, single purpose, permissions rationale, remote code answer, data use disclosure, reviewer notes), unless user explicitly requests single-language output.
-- If user asks for text, load `references/cws-publish-templates.md`.
+- Ensure host match rationale exists for CWS when any `host_permissions` or `content_scripts.matches` is declared.
+- Prefer automatic draft generation:
+```bash
+python3 scripts/generate_publish_docs.py \
+  --root . \
+  --out release/cws-listing.zh-en.md \
+  --privacy-policy privacy-policy.md
+```
+- For custom wording, load `references/cws-publish-templates.md`.
 
 6. Fill sensitive CWS forms correctly.
 - Permissions rationale: explain each permission with concrete feature linkage.
 - Remote code: answer "No" unless extension executes remote JS/Wasm/eval/new Function.
 - Data use: if no personal data collection, select none and keep policy consistent.
 - Privacy policy: provide public URL and ensure wording matches actual behavior.
-- Privacy policy file location: default to a git-tracked file (for example `docs/privacy-policy.md`), not `release/privacy-policy.md` when `release/` is ignored.
+- Privacy policy file location: always `privacy-policy.md` at extension root, not `release/privacy-policy.md`.
 - Privacy policy maintenance on every release/update:
   - Run a policy drift check against current code and manifest changes.
   - If behavior changed (permissions, host permissions, external endpoints, data storage keys, data flow, user-visible features), update policy text and `Last updated` date.
@@ -138,8 +179,9 @@ When assisting a publish task, return:
 3. Graphic asset checklist (required/optional, size, status).
 4. Permission audit summary with report path (`release/permission-audit.md`) and required fixes.
 5. Privacy policy decision for this release (`update required` / `not required`) with concrete reason.
-6. Ready-to-paste bilingual (`ZH`/`EN`) CWS text blocks (short summary, long description, single purpose, permissions, remote code, data use, review notes) and canonical privacy-policy file path.
+6. Ready-to-paste bilingual (`ZH`/`EN`) CWS text blocks (short summary, long description, single purpose, permissions, remote code, data use, review notes) and canonical privacy-policy file path (`privacy-policy.md` at extension root).
 7. Final packaging command and ZIP path.
+8. Full-pipeline command and summary path (`release/full-release-summary.md`).
 
 ## Templates
 

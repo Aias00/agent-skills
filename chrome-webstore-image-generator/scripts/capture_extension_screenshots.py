@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ALLOWED_OUTPUT_SUFFIXES = {".png", ".jpg", ".jpeg"}
+EXTENSION_ID_ERROR = "Unable to resolve extension ID from service workers/pages."
 
 
 def parse_size(value: str) -> tuple[int, int]:
@@ -41,7 +42,7 @@ def parse_extension_id(url: str) -> str | None:
     return parsed.netloc or None
 
 
-async def resolve_extension_id(context, timeout_ms: int) -> str:
+async def resolve_extension_id(context, timeout_ms: int, headless: bool) -> str:
     for worker in context.service_workers:
         ext_id = parse_extension_id(worker.url)
         if ext_id:
@@ -60,46 +61,34 @@ async def resolve_extension_id(context, timeout_ms: int) -> str:
         if ext_id:
             return ext_id
 
+    hint = ""
+    if headless:
+        hint = " Headless Chromium may not expose extension workers/pages; retry without --headless."
     raise RuntimeError(
-        "Unable to resolve extension ID from service workers/pages. "
-        "Verify the extension root is valid and loads in Chromium."
+        f"{EXTENSION_ID_ERROR} Verify the extension root is valid and loads in Chromium.{hint}"
     )
 
 
-async def capture(args: argparse.Namespace) -> int:
-    try:
-        from playwright.async_api import async_playwright
-    except Exception as exc:  # noqa: BLE001
-        raise RuntimeError(
-            "playwright is required. Install with `pip install playwright` and run `playwright install chromium`."
-        ) from exc
-
-    extension_root = Path(args.extension_root).expanduser().resolve()
-    if not extension_root.is_dir():
-        raise FileNotFoundError(f"Extension root not found: {extension_root}")
-    if not (extension_root / "manifest.json").is_file():
-        raise FileNotFoundError(f"manifest.json not found in extension root: {extension_root}")
-
-    output_root = Path(args.root).expanduser().resolve()
-    shots_dir = output_root / "screenshots"
-    shots_dir.mkdir(parents=True, exist_ok=True)
-    clean_screenshots_dir(shots_dir)
-
-    width, height = args.screenshot_size
-
-    popup_rel = args.popup_path.strip("/") if args.popup_path else ""
-    options_rel = args.options_path.strip("/") if args.options_path else ""
-
-    if args.skip_popup and not options_rel and not args.urls:
-        raise ValueError("Nothing to capture. Provide --options-path and/or --urls when --skip-popup is set.")
-
+async def capture_once(
+    *,
+    extension_root: Path,
+    shots_dir: Path,
+    width: int,
+    height: int,
+    popup_rel: str,
+    options_rel: str,
+    args: argparse.Namespace,
+    headless: bool,
+) -> list[Path]:
     screenshots: list[Path] = []
 
-    async with async_playwright() as playwright:
-        with tempfile.TemporaryDirectory(prefix="ext-shot-user-data-") as user_data_dir:
+    with tempfile.TemporaryDirectory(prefix="ext-shot-user-data-") as user_data_dir:
+        from playwright.async_api import async_playwright
+
+        async with async_playwright() as playwright:
             context = await playwright.chromium.launch_persistent_context(
                 user_data_dir=user_data_dir,
-                headless=args.headless,
+                headless=headless,
                 viewport={"width": width, "height": height},
                 args=[
                     f"--disable-extensions-except={extension_root}",
@@ -108,7 +97,7 @@ async def capture(args: argparse.Namespace) -> int:
             )
 
             try:
-                extension_id = await resolve_extension_id(context, args.timeout_ms)
+                extension_id = await resolve_extension_id(context, args.timeout_ms, headless)
 
                 index = 1
 
@@ -150,6 +139,64 @@ async def capture(args: argparse.Namespace) -> int:
                     await snap(url, url)
             finally:
                 await context.close()
+
+    return screenshots
+
+
+async def capture(args: argparse.Namespace) -> int:
+    try:
+        from playwright.async_api import async_playwright
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(
+            "playwright is required. Install with `pip install playwright` and run `playwright install chromium`."
+        ) from exc
+
+    extension_root = Path(args.extension_root).expanduser().resolve()
+    if not extension_root.is_dir():
+        raise FileNotFoundError(f"Extension root not found: {extension_root}")
+    if not (extension_root / "manifest.json").is_file():
+        raise FileNotFoundError(f"manifest.json not found in extension root: {extension_root}")
+
+    output_root = Path(args.root).expanduser().resolve()
+    shots_dir = output_root / "screenshots"
+    shots_dir.mkdir(parents=True, exist_ok=True)
+    clean_screenshots_dir(shots_dir)
+
+    width, height = args.screenshot_size
+
+    popup_rel = args.popup_path.strip("/") if args.popup_path else ""
+    options_rel = args.options_path.strip("/") if args.options_path else ""
+
+    if args.skip_popup and not options_rel and not args.urls:
+        raise ValueError("Nothing to capture. Provide --options-path and/or --urls when --skip-popup is set.")
+
+    screenshots: list[Path] = []
+
+    capture_modes = [args.headless]
+    if args.headless:
+        capture_modes.append(False)
+
+    for idx, headless_mode in enumerate(capture_modes):
+        clean_screenshots_dir(shots_dir)
+        try:
+            screenshots = await capture_once(
+                extension_root=extension_root,
+                shots_dir=shots_dir,
+                width=width,
+                height=height,
+                popup_rel=popup_rel,
+                options_rel=options_rel,
+                args=args,
+                headless=headless_mode,
+            )
+            if args.headless and idx == 1:
+                print("[WARN] headless capture failed earlier; fallback to headed mode succeeded.")
+            break
+        except RuntimeError as exc:
+            if args.headless and headless_mode and EXTENSION_ID_ERROR in str(exc):
+                print("[WARN] Unable to resolve extension ID in headless mode; retrying without --headless.")
+                continue
+            raise
 
     if not screenshots:
         raise RuntimeError("No screenshots captured. Check paths/options and try again.")
