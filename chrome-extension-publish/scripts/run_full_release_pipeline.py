@@ -87,6 +87,91 @@ def parse_args() -> argparse.Namespace:
         default="release/full-release-summary.md",
         help="Pipeline summary output path relative to --root",
     )
+    parser.add_argument(
+        "--submit-playwright",
+        action="store_true",
+        help="Run optional Playwright-based CWS dashboard automation after artifact generation",
+    )
+    parser.add_argument(
+        "--submit-item-id",
+        default="",
+        help="Chrome Web Store item id for submit automation (recommended for updates)",
+    )
+    parser.add_argument(
+        "--submit-item-name",
+        default="",
+        help="Extension item name for dashboard auto-selection when --submit-item-id is omitted",
+    )
+    parser.add_argument(
+        "--submit-locale",
+        choices=["zh", "en"],
+        default="en",
+        help="Locale to use when auto-filling listing fields (default: en)",
+    )
+    parser.add_argument(
+        "--submit-privacy-policy-url",
+        default="",
+        help="Optional privacy policy URL to auto-fill in CWS dashboard",
+    )
+    parser.add_argument(
+        "--submit-review-notes",
+        default="",
+        help="Optional explicit reviewer notes override",
+    )
+    parser.add_argument(
+        "--submit-dashboard-url",
+        default="https://chrome.google.com/webstore/devconsole",
+        help="CWS developer dashboard URL for Playwright submit flow",
+    )
+    parser.add_argument(
+        "--submit-item-url-template",
+        default="https://chrome.google.com/webstore/devconsole/{item_id}/edit",
+        help="CWS item edit URL template; must contain {item_id}",
+    )
+    parser.add_argument(
+        "--submit-user-data-dir",
+        default="",
+        help="Optional persistent browser user-data-dir for Playwright submit flow",
+    )
+    parser.add_argument(
+        "--submit-headless",
+        action="store_true",
+        help="Use headless mode in Playwright submit flow (not recommended for login/2FA)",
+    )
+    parser.add_argument(
+        "--submit-for-review",
+        action="store_true",
+        help="Click final submit-for-review button in Playwright submit flow",
+    )
+    parser.add_argument(
+        "--submit-login-timeout-ms",
+        type=int,
+        default=300000,
+        help="Max login/session wait time in Playwright submit flow (default: 300000)",
+    )
+    parser.add_argument(
+        "--submit-timeout-ms",
+        type=int,
+        default=25000,
+        help="Control timeout in Playwright submit flow (default: 25000)",
+    )
+    parser.add_argument(
+        "--submit-wait-ms",
+        type=int,
+        default=1200,
+        help="Post-action wait in Playwright submit flow (default: 1200)",
+    )
+    parser.add_argument(
+        "--submit-evidence-out",
+        default="release/cws-submit-proof.png",
+        help="Submit-flow evidence screenshot path relative to --root",
+    )
+    parser.add_argument(
+        "--submit-hold-ms",
+        type=int,
+        default=0,
+        help="Keep browser open for extra review in Playwright submit flow (default: 0)",
+    )
     return parser.parse_args()
 
 
@@ -189,6 +274,7 @@ def main() -> int:
     generate_assets_script = script_dir / "generate_store_assets.py"
     validate_assets_script = script_dir / "validate_store_assets.py"
     docs_script = script_dir / "generate_publish_docs.py"
+    submit_script = script_dir / "submit_cws_playwright.py"
 
     results: list[StepResult] = []
     python = args.python
@@ -342,6 +428,50 @@ def main() -> int:
                     cwd=root,
                 )
             )
+
+        if args.submit_playwright:
+            submit_cmd = [
+                python,
+                str(submit_script),
+                "--root",
+                str(root),
+                "--zip",
+                str(Path(args.zip_out).as_posix()),
+                "--listing",
+                str(Path(args.listing_out).as_posix()),
+                "--locale",
+                args.submit_locale,
+                "--dashboard-url",
+                args.submit_dashboard_url,
+                "--item-url-template",
+                args.submit_item_url_template,
+                "--login-timeout-ms",
+                str(args.submit_login_timeout_ms),
+                "--timeout-ms",
+                str(args.submit_timeout_ms),
+                "--wait-ms",
+                str(args.submit_wait_ms),
+                "--evidence-out",
+                str(Path(args.submit_evidence_out).as_posix()),
+                "--hold-ms",
+                str(args.submit_hold_ms),
+            ]
+            if args.submit_item_id:
+                submit_cmd.extend(["--item-id", args.submit_item_id])
+            if args.submit_item_name:
+                submit_cmd.extend(["--item-name", args.submit_item_name])
+            if args.submit_privacy_policy_url:
+                submit_cmd.extend(["--privacy-policy-url", args.submit_privacy_policy_url])
+            if args.submit_review_notes:
+                submit_cmd.extend(["--review-notes", args.submit_review_notes])
+            if args.submit_user_data_dir:
+                submit_cmd.extend(["--user-data-dir", args.submit_user_data_dir])
+            if args.submit_headless:
+                submit_cmd.append("--headless")
+            if args.submit_for_review:
+                submit_cmd.append("--submit-for-review")
+
+            results.append(run_step("submit_cws_playwright", submit_cmd, cwd=root))
 
         write_summary(
             root=root,

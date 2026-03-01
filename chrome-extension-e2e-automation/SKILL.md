@@ -46,6 +46,7 @@ This command performs:
 8. Bilingual CWS listing draft generation
 9. Pipeline summary output
 10. Optional popup preview capture (`--capture-popup-preview`)
+11. Optional Playwright dashboard submission (`--submit-playwright`)
 
 ## Auto Behavior
 
@@ -71,6 +72,12 @@ Useful forwarded flags:
 - `--mode source`
 - `--zip-out ...`
 - `--listing-out ...`
+- `--submit-playwright`
+- `--submit-item-id ...`
+- `--submit-item-name ...`
+- `--submit-locale zh|en`
+- `--submit-privacy-policy-url ...`
+- `--submit-for-review`
 
 Wrapper-only flags:
 - `--skip-icon-bootstrap`
@@ -102,6 +109,9 @@ Expected artifacts under extension root:
 
 Optional artifact (only when `--capture-popup-preview` is used):
 - `release/store-assets/screenshots/popup-preview-620x760.png`
+
+Optional artifact (only when `--submit-playwright` is used):
+- `release/cws-submit-proof.png`
 
 ## Guardrails
 

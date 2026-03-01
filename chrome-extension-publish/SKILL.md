@@ -29,6 +29,38 @@ Outputs:
 - `release/store-assets/*`
 - `release/cws-listing.zh-en.md`
 - `release/full-release-summary.md`
+- `release/cws-submit-proof.png` (only when `--submit-playwright` is enabled)
+
+Optional submit automation (Playwright, human-in-the-loop safe default):
+
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --icon-source /abs/path/to/icon.png \
+  --include-marquee \
+  --submit-playwright \
+  --submit-item-id <CWS_ITEM_ID> \
+  --submit-locale zh
+```
+
+If item id is unknown, fallback to name-based auto-selection from dashboard:
+
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --submit-playwright \
+  --submit-item-name "Image Compressor"
+```
+
+Execute final submission click only when explicitly requested:
+
+```bash
+python3 scripts/run_full_release_pipeline.py \
+  --root /abs/path/to/extension \
+  --submit-playwright \
+  --submit-item-id <CWS_ITEM_ID> \
+  --submit-for-review
+```
 
 ## Workflow
 
@@ -130,6 +162,16 @@ python3 scripts/generate_publish_docs.py \
 - Upload ZIP.
 - Add review notes describing test path and why permissions are required.
 - Keep a changelog entry for each submitted version.
+- For dashboard automation, use Playwright submit helper:
+```bash
+python3 scripts/submit_cws_playwright.py \
+  --root . \
+  --item-id <CWS_ITEM_ID> \
+  --locale zh \
+  --privacy-policy-url https://example.com/privacy
+```
+- Safe default: helper does **not** click final submit unless `--submit-for-review` is passed.
+- Keep `--headless` off for login/2FA unless you already have a valid persisted session.
 
 ## Decision Rules
 

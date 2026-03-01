@@ -111,3 +111,28 @@ or
 ```bash
 --skip-docs
 ```
+
+## `submit_cws_playwright failed`
+
+Cause:
+- `--submit-playwright` enabled but browser automation did not match current CWS UI.
+- Login/2FA did not complete within `--submit-login-timeout-ms`.
+- Item edit page URL template does not match current dashboard URL pattern.
+
+Fix:
+- Re-run with headed mode (default), complete login manually, and keep a persistent profile:
+```bash
+--submit-playwright --submit-user-data-dir ~/.codex/chrome-webstore-playwright-profile
+```
+- Increase login wait:
+```bash
+--submit-login-timeout-ms 600000
+```
+- Disable final destructive click for verification runs:
+```bash
+--submit-playwright
+```
+- Enable final click only after manual confirmation:
+```bash
+--submit-playwright --submit-for-review
+```

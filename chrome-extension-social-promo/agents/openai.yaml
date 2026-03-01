@@ -1,0 +1,4 @@
+interface:
+  display_name: "Chrome Extension Social Promo"
+  short_description: "Generate cross-platform social launch copy for extension releases."
+  default_prompt: "Use $chrome-extension-social-promo to generate bilingual social promotion posts for my Chrome extension."

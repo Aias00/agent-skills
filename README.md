@@ -8,6 +8,7 @@ A skill library for Chrome extension development and Chrome Web Store release wo
 - `chrome-extension-e2e-automation`: One-command integrated pipeline across dev checks and publish artifacts.
 - `chrome-extension-publish`: Release checklist, CWS form templates, and asset validation scripts.
 - `chrome-webstore-image-generator`: Generate and validate CWS listing images from source images.
+- `chrome-extension-social-promo`: Generate bilingual social media promotion copy for extension launches/updates.
 
 ## End-to-end automation
 
@@ -47,6 +48,10 @@ agent-skills/
 │   ├── SKILL.md
 │   ├── scripts/
 │   └── references/
+├── chrome-extension-social-promo/
+│   ├── SKILL.md
+│   ├── scripts/
+│   └── references/
 └── chrome-webstore-image-generator/
     ├── SKILL.md
     ├── scripts/
@@ -65,9 +70,11 @@ python3 -m py_compile \
   chrome-extension-publish/scripts/prepare_publish_basics.py \
   chrome-extension-publish/scripts/generate_publish_docs.py \
   chrome-extension-publish/scripts/run_full_release_pipeline.py \
+  chrome-extension-publish/scripts/submit_cws_playwright.py \
   chrome-extension-publish/scripts/package_extension.py \
   chrome-extension-publish/scripts/generate_store_assets.py \
   chrome-extension-publish/scripts/validate_store_assets.py \
+  chrome-extension-social-promo/scripts/generate_social_promo.py \
   chrome-webstore-image-generator/scripts/capture_extension_screenshots.py \
   chrome-webstore-image-generator/scripts/generate_store_assets.py \
   chrome-webstore-image-generator/scripts/validate_store_assets.py
