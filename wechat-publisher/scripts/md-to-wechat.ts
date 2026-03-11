@@ -23,6 +23,10 @@ interface ParsedResult {
   contentImages: ImageInfo[];
 }
 
+function stripStandaloneBadges(markdown: string): string {
+  return markdown.replace(/^\[![^\]]+\](?:\s+\[![^\]]+\])*\s*$/gm, '').replace(/\n{3,}/g, '\n\n');
+}
+
 function downloadFile(url: string, destPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http;
@@ -118,23 +122,24 @@ export async function convertMarkdown(markdownPath: string, options?: { title?: 
   const theme = options?.theme ?? 'default';
 
   const { frontmatter, body } = parseFrontmatter(content);
+  const normalizedBody = stripStandaloneBadges(body);
 
   let title = options?.title ?? frontmatter.title ?? '';
-  let bodyWithoutTitle = body;
+  let bodyWithoutTitle = normalizedBody;
   if (!title) {
-    const lines = body.split('\n');
+    const lines = normalizedBody.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       const headingMatch = trimmed.match(/^#{1,2}\s+(.+)$/);
       if (headingMatch) {
         title = headingMatch[1]!;
-        bodyWithoutTitle = body.replace(/^#{1,2}\s+.+\r?\n?/, '');
+        bodyWithoutTitle = normalizedBody.replace(/^#{1,2}\s+.+\r?\n?/, '');
       }
       break;
     }
   } else {
-    bodyWithoutTitle = body.replace(/^#{1,2}\s+.+\r?\n?/, '');
+    bodyWithoutTitle = normalizedBody.replace(/^#{1,2}\s+.+\r?\n?/, '');
   }
   if (!title) title = path.basename(markdownPath, path.extname(markdownPath));
   const author = frontmatter.author || '';

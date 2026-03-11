@@ -1,0 +1,478 @@
+#!/usr/bin/env python3
+"""
+Authentication Manager for Toutiao Publisher
+Handles Toutiao login and browser state persistence
+"""
+
+import json
+import time
+import argparse
+import shutil
+import os
+import sys
+from pathlib import Path
+from typing import Dict, Any
+
+from patchright.sync_api import sync_playwright, BrowserContext
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from config import (
+    BROWSER_STATE_DIR,
+    STATE_FILE,
+    AUTH_INFO_FILE,
+    DATA_DIR,
+    LOGIN_URL,
+    HOME_URL,
+    PUBLISH_URL,
+)
+from browser_utils import BrowserFactory
+from extend_config import load_extend_settings, to_bool, to_int
+
+
+class AuthManager:
+    """
+    Manages authentication and browser state for Toutiao
+    """
+
+    def __init__(self):
+        """Initialize the authentication manager"""
+        # Ensure directories exist
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        BROWSER_STATE_DIR.mkdir(parents=True, exist_ok=True)
+
+        self.state_file = STATE_FILE
+        self.auth_info_file = AUTH_INFO_FILE
+        self.browser_state_dir = BROWSER_STATE_DIR
+
+    def is_authenticated(self) -> bool:
+        """Check if valid authentication exists"""
+        if not self.state_file.exists():
+            return False
+
+        # Check if state file is not too old (7 days)
+        age_days = (time.time() - self.state_file.stat().st_mtime) / 86400
+        if age_days > 7:
+            print(
+                f"⚠️ Browser state is {age_days:.1f} days old, may need re-authentication"
+            )
+
+        return True
+
+    def get_auth_info(self) -> Dict[str, Any]:
+        """Get authentication information"""
+        info = {
+            "authenticated": self.is_authenticated(),
+            "state_file": str(self.state_file),
+            "state_exists": self.state_file.exists(),
+        }
+
+        if self.auth_info_file.exists():
+            try:
+                with open(self.auth_info_file, "r") as f:
+                    saved_info = json.load(f)
+                    info.update(saved_info)
+            except Exception:
+                pass
+
+        if info["state_exists"]:
+            age_hours = (time.time() - self.state_file.stat().st_mtime) / 3600
+            info["state_age_hours"] = age_hours
+
+        return info
+
+    def setup_auth(self, headless: bool = False, timeout_minutes: int = 10) -> bool:
+        """
+        Perform interactive authentication setup
+
+        Args:
+            headless: Run browser in headless mode (False for login)
+            timeout_minutes: Maximum time to wait for login
+
+        Returns:
+            True if authentication successful
+        """
+        print("🔐 Starting authentication setup...")
+        print(f"  Timeout: {timeout_minutes} minutes")
+
+        playwright = None
+        context = None
+
+        try:
+            playwright = sync_playwright().start()
+
+            # Launch using factory
+            context = BrowserFactory.launch_persistent_context(
+                playwright, headless=headless
+            )
+
+            # Navigate to Toutiao Login
+            page = context.new_page()
+            page.goto(LOGIN_URL, wait_until="domcontentloaded")
+
+            # Check if already authenticated (redirected to home)
+            if "mp.toutiao.com" in page.url and "auth/page/login" not in page.url:
+                print("  ✅ Already authenticated!")
+                self._save_browser_state(context)
+                self._save_auth_info()
+                return True
+
+            # Wait for manual login
+            print("\n  ⏳ Please log in to your Toutiao account...")
+            print(f"  ⏱️  Waiting up to {timeout_minutes} minutes for login...")
+            print("  (Please scan the QR code or login with password)")
+            print(f"  💡 After login, open: {PUBLISH_URL}")
+
+            try:
+                # Wait for URL to be the home page or dashboard, implying login success
+                # Often it redirects to https://mp.toutiao.com/profile_v4/index or similar
+                # timeout_ms = int(timeout_minutes * 60 * 1000)
+
+                start_time = time.time()
+                last_probe_time = 0.0
+                last_wait_log_second = -1
+                while time.time() - start_time < (timeout_minutes * 60):
+                    elapsed = int(time.time() - start_time)
+                    if elapsed % 15 == 0 and elapsed != last_wait_log_second:
+                        last_wait_log_second = elapsed
+                        print(f"  ...waiting ({elapsed}s)")
+
+                    # Check all pages in the context
+                    login_detected = False
+                    detected_url = ""
+                    for p in context.pages:
+                        try:
+                            current_url = p.url
+
+                            # Check for success indicators
+                            is_login_page = "auth/page/login" in current_url
+                            is_toutiao_domain = "mp.toutiao.com" in current_url
+                            is_profile_page = "profile_v4" in current_url
+
+                            # Check URL match
+                            if (
+                                not is_login_page and is_toutiao_domain
+                            ) or is_profile_page:
+                                login_detected = True
+                                detected_url = current_url
+                                break
+                        except Exception:
+                            continue
+
+                    # Fallback: actively probe home page in a temporary tab
+                    # because some login flows keep URL unchanged in the original tab.
+                    now = time.time()
+                    if (not login_detected) and (now - last_probe_time >= 5):
+                        last_probe_time = now
+                        login_detected, detected_url = self._probe_authenticated(context)
+
+                    if login_detected:
+                        print(f"  ✅ Login successful! (Detected in tab: {detected_url})")
+                        # Wait a bit for cookies to settle
+                        time.sleep(3)
+
+                        # Save authentication state
+                        self._save_browser_state(context)
+                        self._save_auth_info()
+                        return True
+
+                    time.sleep(1)
+
+                print("  ❌ Timeout waiting for login redirect")
+                return False
+
+            except Exception as e:
+                print(f"  ❌ Authentication error: {e}")
+                return False
+
+        except Exception as e:
+            print(f"  ❌ Error: {e}")
+            return False
+
+        finally:
+            # Clean up browser resources
+            if context:
+                try:
+                    context.close()
+                except Exception:
+                    pass
+
+            if playwright:
+                try:
+                    playwright.stop()
+                except Exception:
+                    pass
+
+    def _save_browser_state(self, context: BrowserContext):
+        """Save browser state to disk"""
+        try:
+            # Save storage state (cookies, localStorage)
+            context.storage_state(path=str(self.state_file))
+            self._harden_file_permissions(self.state_file)
+            print(f"  💾 Saved browser state to: {self.state_file}")
+        except Exception as e:
+            print(f"  ❌ Failed to save browser state: {e}")
+            raise
+
+    def _save_auth_info(self):
+        """Save authentication metadata"""
+        try:
+            info = {
+                "authenticated_at": time.time(),
+                "authenticated_at_iso": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            with open(self.auth_info_file, "w", encoding="utf-8") as f:
+                json.dump(info, f, indent=2)
+            self._harden_file_permissions(self.auth_info_file)
+        except Exception:
+            pass  # Non-critical
+
+    def _probe_authenticated(self, context: BrowserContext):
+        """Actively probe if current browser context is authenticated."""
+        probe_page = None
+        try:
+            probe_page = context.new_page()
+            probe_page.goto(HOME_URL, wait_until="domcontentloaded", timeout=15000)
+            current_url = probe_page.url
+            is_login_page = "auth/page/login" in current_url
+            is_toutiao_domain = "mp.toutiao.com" in current_url
+
+            if is_toutiao_domain and not is_login_page:
+                return True, current_url
+
+            # Cookie fallback: treat as authenticated if we can read multiple
+            # Toutiao cookies and domain probe page isn't the login URL.
+            cookies = context.cookies([HOME_URL])
+            toutiao_cookies = [
+                c for c in cookies if "toutiao.com" in c.get("domain", "")
+            ]
+            if len(toutiao_cookies) >= 3 and not is_login_page:
+                return True, current_url
+        except Exception:
+            pass
+        finally:
+            if probe_page:
+                try:
+                    probe_page.close()
+                except Exception:
+                    pass
+
+        return False, ""
+
+    @staticmethod
+    def _harden_file_permissions(path: Path):
+        """Restrict sensitive files to current user on POSIX systems."""
+        if os.name == "nt":
+            return
+        try:
+            path.chmod(0o600)
+        except Exception as e:
+            print(f"  ⚠️ Could not harden permissions for {path}: {e}")
+
+    def clear_auth(self) -> bool:
+        """
+        Clear all authentication data
+
+        Returns:
+            True if cleared successfully
+        """
+        print("🗑️ Clearing authentication data...")
+
+        try:
+            # Remove browser state
+            if self.state_file.exists():
+                self.state_file.unlink()
+                print("  ✅ Removed browser state")
+
+            # Remove auth info
+            if self.auth_info_file.exists():
+                self.auth_info_file.unlink()
+                print("  ✅ Removed auth info")
+
+            # Clear entire browser state directory
+            if self.browser_state_dir.exists():
+                shutil.rmtree(self.browser_state_dir)
+                self.browser_state_dir.mkdir(parents=True, exist_ok=True)
+                print("  ✅ Cleared browser data")
+
+            return True
+
+        except Exception as e:
+            print(f"  ❌ Error clearing auth: {e}")
+            return False
+
+    def re_auth(self, headless: bool = False, timeout_minutes: int = 10) -> bool:
+        """
+        Perform re-authentication (clear and setup)
+
+        Args:
+            headless: Run browser in headless mode
+            timeout_minutes: Login timeout in minutes
+
+        Returns:
+            True if successful
+        """
+        print("🔄 Starting re-authentication...")
+
+        # Clear existing auth
+        self.clear_auth()
+
+        # Setup new auth
+        return self.setup_auth(headless, timeout_minutes)
+
+    def validate_auth(self) -> bool:
+        """
+        Validate that stored authentication works
+        """
+        if not self.is_authenticated():
+            return False
+
+        print("🔍 Validating authentication...")
+
+        playwright = None
+        context = None
+
+        try:
+            playwright = sync_playwright().start()
+
+            # Launch using factory
+            context = BrowserFactory.launch_persistent_context(
+                playwright, headless=True
+            )
+
+            # Try to access HOME_URL
+            page = context.new_page()
+            page.goto(HOME_URL, wait_until="domcontentloaded", timeout=30000)
+
+            # Check if we are redirected to login
+            if "auth/page/login" in page.url:
+                print("  ❌ Authentication is invalid (redirected to login)")
+                return False
+            else:
+                print("  ✅ Authentication is valid")
+                return True
+
+        except Exception as e:
+            print(f"  ❌ Validation failed: {e}")
+            return False
+
+        finally:
+            if context:
+                try:
+                    context.close()
+                except Exception:
+                    pass
+            if playwright:
+                try:
+                    playwright.stop()
+                except Exception:
+                    pass
+
+
+def main():
+    """Command-line interface for authentication management"""
+    parser = argparse.ArgumentParser(description="Manage Toutiao authentication")
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Setup command
+    setup_parser = subparsers.add_parser("setup", help="Setup authentication")
+    setup_parser.add_argument(
+        "--headless",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Run in headless mode (default from EXTEND.md or false)",
+    )
+    setup_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Login timeout in minutes (default: 10)",
+    )
+
+    # Status command
+    subparsers.add_parser("status", help="Check authentication status")
+
+    # Validate command
+    subparsers.add_parser("validate", help="Validate authentication")
+
+    # Clear command
+    subparsers.add_parser("clear", help="Clear authentication")
+
+    # Re-auth command
+    reauth_parser = subparsers.add_parser(
+        "reauth", help="Re-authenticate (clear + setup)"
+    )
+    reauth_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Login timeout in minutes (default: 10)",
+    )
+
+    args = parser.parse_args()
+    extend_path, extend = load_extend_settings()
+    if extend_path:
+        print(f"⚙️ Loaded preferences from: {extend_path}")
+
+    # Initialize manager
+    auth = AuthManager()
+
+    # Execute command
+    if args.command == "setup":
+        headless = (
+            args.headless
+            if args.headless is not None
+            else to_bool(extend.get("default_auth_headless"), False)
+        )
+        timeout = (
+            args.timeout
+            if args.timeout is not None
+            else to_int(extend.get("default_login_timeout_minutes"), 10)
+        )
+        if auth.setup_auth(headless=headless, timeout_minutes=timeout):
+            print("\n✅ Authentication setup complete!")
+        else:
+            print("\n❌ Authentication setup failed")
+            exit(1)
+
+    elif args.command == "status":
+        info = auth.get_auth_info()
+        print("\n🔐 Authentication Status:")
+        print(f"  Authenticated: {'Yes' if info['authenticated'] else 'No'}")
+        if info.get("state_age_hours"):
+            print(f"  State age: {info['state_age_hours']:.1f} hours")
+        if info.get("authenticated_at_iso"):
+            print(f"  Last auth: {info['authenticated_at_iso']}")
+        print(f"  State file: {info['state_file']}")
+
+    elif args.command == "validate":
+        if auth.validate_auth():
+            print("Authentication is valid and working")
+        else:
+            print("Authentication is invalid or expired")
+            print("Run: auth_manager.py setup")
+
+    elif args.command == "clear":
+        if auth.clear_auth():
+            print("Authentication cleared")
+
+    elif args.command == "reauth":
+        timeout = (
+            args.timeout
+            if args.timeout is not None
+            else to_int(extend.get("default_login_timeout_minutes"), 10)
+        )
+        if auth.re_auth(timeout_minutes=timeout):
+            print("\n✅ Re-authentication complete!")
+        else:
+            print("\n❌ Re-authentication failed")
+            exit(1)
+
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

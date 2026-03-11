@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Hotspot Collector"
+  short_description: "聚合多个来源的 AI 热点候选并统一写稿发布"
+  default_prompt: "Use $ai-hotspot-collector to gather AI-related candidates from multiple source skills, build a single review queue, draft a Chinese article for review, and publish only after approval."

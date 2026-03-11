@@ -15,6 +15,14 @@ npx -y bun ./scripts/wechat-article.ts --markdown article.md --theme grace
 npx -y bun ./scripts/wechat-article.ts --markdown article.md --author "作者名" --summary "摘要"
 ```
 
+## Recommended source files
+
+- Browser automation on article bundles: prefer `article-preview.md`
+- Manual copy/paste into the WeChat editor: prefer `article-wechat.html`
+- API publishing on article bundles: prefer `article-api.html`
+
+If you only have one markdown source, keep the intended cover image inside the body image set and place it near the top.
+
 ## Cover Generation (Recommended)
 
 When cover image is missing or mismatched with article topic, generate a new cover first:
@@ -27,6 +35,15 @@ python3 ./scripts/generate-cover-image.py \
 ```
 
 Then publish by API/browser flow. API flow can auto-pick frontmatter `coverImage` or default `imgs/cover.png`.
+
+## Browser cover behavior
+
+- The stable browser path is not generic local upload; it is `从正文选择`
+- Use the same file for `--cover` and one of the inline body images whenever deterministic cover behavior matters
+- In generated article bundles, the most reliable setup is:
+  1. publish `article-preview.md`
+  2. insert the cover image as the first real inline body image
+  3. let the script open the cover chooser and confirm the crop dialog
 
 ## Parameters
 
@@ -74,6 +91,12 @@ Regular paragraph with **bold** and *italic*.
    - Scroll into view
    - Press Backspace to delete the placeholder
    - Paste the image from clipboard
+5. **Cover**: If the resolved cover file matches one of the inline images:
+   - Open `#js_cover_area`
+   - Use `从正文选择`
+   - Select that inline image
+   - Wait for a visible crop confirmation button
+   - Confirm crop and save draft
 
 ## Scripts
 

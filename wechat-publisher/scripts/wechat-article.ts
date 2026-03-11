@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,7 @@ interface ArticleOptions {
   content?: string;
   htmlFile?: string;
   markdownFile?: string;
+  coverPath?: string;
   theme?: string;
   color?: string;
   author?: string;
@@ -27,6 +29,42 @@ interface ArticleOptions {
   submit?: boolean;
   profileDir?: string;
   cdpPort?: number;
+}
+
+interface ExtendConfig {
+  defaultTheme?: string;
+  defaultColor?: string;
+  defaultAuthor?: string;
+  chromeProfilePath?: string;
+}
+
+function loadExtendConfig(): ExtendConfig {
+  const extendPaths = [
+    path.join(process.cwd(), '.baoyu-skills', 'wechat-publisher', 'EXTEND.md'),
+    path.join(os.homedir(), '.baoyu-skills', 'wechat-publisher', 'EXTEND.md'),
+  ];
+  const extendPath = extendPaths.find((candidate) => fs.existsSync(candidate));
+  if (!extendPath) return {};
+
+  const config: ExtendConfig = {};
+  const content = fs.readFileSync(extendPath, 'utf-8');
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const colonIdx = line.indexOf(':');
+    if (colonIdx <= 0) continue;
+
+    const key = line.slice(0, colonIdx).trim().toLowerCase();
+    const value = line.slice(colonIdx + 1).trim();
+    if (!value) continue;
+
+    if (key === 'default_theme') config.defaultTheme = value;
+    else if (key === 'default_color') config.defaultColor = value;
+    else if (key === 'default_author') config.defaultAuthor = value;
+    else if (key === 'chrome_profile_path') config.chromeProfilePath = value;
+  }
+
+  return config;
 }
 
 async function waitForLogin(session: ChromeSession, timeoutMs = 120_000): Promise<boolean> {
@@ -54,49 +92,15 @@ async function clickMenuByText(session: ChromeSession, text: string): Promise<vo
   const posResult = await session.cdp.send<{ result: { value: string } }>('Runtime.evaluate', {
     expression: `
       (function() {
-        const targetText = ${JSON.stringify(text)};
         const items = document.querySelectorAll('.new-creation__menu .new-creation__menu-item');
         for (const item of items) {
           const title = item.querySelector('.new-creation__menu-title');
-          if (title && ((title.textContent || '').trim() === targetText || (title.textContent || '').includes(targetText))) {
+          if (title && title.textContent?.trim() === '${text}') {
             item.scrollIntoView({ block: 'center' });
             const rect = item.getBoundingClientRect();
             return JSON.stringify({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
           }
         }
-
-        // Fallback for newer WeChat UI: find any visible clickable element containing target text.
-        const isVisible = (el) => {
-          if (!el) return false;
-          const rect = el.getBoundingClientRect();
-          const style = window.getComputedStyle(el);
-          return rect.width > 2 && rect.height > 2 && style.visibility !== 'hidden' && style.display !== 'none';
-        };
-        const toClickable = (el) => {
-          if (!el) return null;
-          const clickable = el.closest('button, a, [role="button"], .weui-desktop-btn, .new-creation__menu-item, .weui-desktop-popover__menu-item');
-          return clickable || el;
-        };
-
-        const all = Array.from(document.querySelectorAll('button, a, div, span'));
-        const candidates = [];
-        for (const el of all) {
-          const txt = (el.textContent || '').trim();
-          if (!txt || !txt.includes(targetText)) continue;
-          const node = toClickable(el);
-          if (!node || !isVisible(node)) continue;
-          const rect = node.getBoundingClientRect();
-          if (rect.top < 0 || rect.bottom > window.innerHeight + 200) continue;
-          candidates.push(node);
-        }
-
-        if (candidates.length > 0) {
-          const node = candidates[0];
-          node.scrollIntoView({ block: 'center' });
-          const rect = node.getBoundingClientRect();
-          return JSON.stringify({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
-        }
-
         return 'null';
       })()
     `,
@@ -216,6 +220,51 @@ async function pasteFromClipboardInEditor(session: ChromeSession): Promise<void>
   await sleep(1000);
 }
 
+async function editorHasSubstantiveContent(session: ChromeSession): Promise<boolean> {
+  return await evaluate<boolean>(session, `
+    (function() {
+      const editor = document.querySelector('.ProseMirror');
+      if (!editor) return false;
+      const text = (editor.innerText || '').replace(/\\s+/g, '').trim();
+      const html = (editor.innerHTML || '')
+        .replace(/<p><br class="ProseMirror-trailingBreak"><\\/p>/g, '')
+        .replace(/&nbsp;/g, '')
+        .trim();
+      const hasImage = !!editor.querySelector('img');
+      return text.length > 20 || hasImage || html.length > 40;
+    })()
+  `);
+}
+
+async function pasteHtmlIntoEditorWithRetry(
+  cdp: CdpConnection,
+  session: ChromeSession,
+  htmlFilePath: string,
+  contentImages: ImageInfo[],
+  maxAttempts = 3,
+): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log(`[wechat] Copying HTML content from: ${htmlFilePath} (attempt ${attempt}/${maxAttempts})`);
+    await copyHtmlFromBrowser(cdp, htmlFilePath, contentImages);
+    await sleep(500);
+    await clickElement(session, '.ProseMirror');
+    await sleep(400);
+    console.log('[wechat] Pasting into editor...');
+    await pasteFromClipboardInEditor(session);
+    await sleep(3000);
+
+    const ok = await editorHasSubstantiveContent(session);
+    if (ok) {
+      console.log('[wechat] Body content verified OK.');
+      return true;
+    }
+
+    console.warn(`[wechat] Body content verification failed after attempt ${attempt}.`);
+    await sleep(1200);
+  }
+  return false;
+}
+
 async function parseMarkdownWithPlaceholders(markdownPath: string, theme?: string, color?: string): Promise<{ title: string; author: string; summary: string; htmlPath: string; contentImages: ImageInfo[] }> {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -232,6 +281,29 @@ async function parseMarkdownWithPlaceholders(markdownPath: string, theme?: strin
 
   const output = result.stdout.toString();
   return JSON.parse(output);
+}
+
+function parseFrontmatter(content: string): Record<string, string> {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (!match) return {};
+
+  const frontmatter: Record<string, string> = {};
+  for (const line of match[1]!.split('\n')) {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx <= 0) continue;
+    const key = line.slice(0, colonIdx).trim();
+    let value = line.slice(colonIdx + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    frontmatter[key] = value;
+  }
+  return frontmatter;
+}
+
+function loadFrontmatterFromMarkdown(markdownPath: string): Record<string, string> {
+  if (!fs.existsSync(markdownPath)) return {};
+  return parseFrontmatter(fs.readFileSync(markdownPath, 'utf-8'));
 }
 
 function parseHtmlMeta(htmlPath: string): { title: string; author: string; summary: string; contentImages: ImageInfo[] } {
@@ -302,47 +374,482 @@ function parseHtmlMeta(htmlPath: string): { title: string; author: string; summa
   return { title, author, summary, contentImages };
 }
 
-async function selectAndReplacePlaceholder(session: ChromeSession, placeholder: string): Promise<boolean> {
-  const result = await session.cdp.send<{ result: { value: boolean } }>('Runtime.evaluate', {
-    expression: `
-      (function() {
-        const editor = document.querySelector('.ProseMirror');
-        if (!editor) return false;
+function resolveExistingPath(baseDir: string, value?: string): string | undefined {
+  if (!value) return undefined;
+  const resolved = path.isAbsolute(value) ? value : path.resolve(baseDir, value);
+  return fs.existsSync(resolved) ? resolved : undefined;
+}
 
-        const placeholder = ${JSON.stringify(placeholder)};
-        const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
-        let node;
+function resolveCoverPath(options: {
+  explicitCoverPath?: string;
+  markdownFile?: string;
+  htmlFile?: string;
+  contentImages: ImageInfo[];
+}): string | undefined {
+  const { explicitCoverPath, markdownFile, htmlFile, contentImages } = options;
+  const sourceFile = markdownFile || htmlFile;
+  const baseDir = sourceFile ? path.dirname(sourceFile) : process.cwd();
 
-        while ((node = walker.nextNode())) {
-          const text = node.textContent || '';
-          let searchStart = 0;
-          let idx;
-          // Search for exact match (not prefix of longer placeholder like XIMGPH_1 in XIMGPH_10)
-          while ((idx = text.indexOf(placeholder, searchStart)) !== -1) {
-            const afterIdx = idx + placeholder.length;
-            const charAfter = text[afterIdx];
-            // Exact match if next char is not a digit
-            if (charAfter === undefined || !/\\d/.test(charAfter)) {
-              node.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const candidates: Array<string | undefined> = [];
+  candidates.push(resolveExistingPath(process.cwd(), explicitCoverPath));
 
-              const range = document.createRange();
-              range.setStart(node, idx);
-              range.setEnd(node, idx + placeholder.length);
-              const sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(range);
-              return true;
-            }
-            searchStart = afterIdx;
-          }
-        }
-        return false;
-      })()
-    `,
-    returnByValue: true,
+  let frontmatter: Record<string, string> = {};
+  if (markdownFile) {
+    frontmatter = loadFrontmatterFromMarkdown(markdownFile);
+  } else if (htmlFile) {
+    const mdPath = htmlFile.replace(/\.html$/i, '.md');
+    if (fs.existsSync(mdPath)) {
+      frontmatter = loadFrontmatterFromMarkdown(mdPath);
+    }
+  }
+
+  candidates.push(resolveExistingPath(baseDir, frontmatter.coverImage));
+  candidates.push(resolveExistingPath(baseDir, frontmatter.featureImage));
+  candidates.push(resolveExistingPath(baseDir, frontmatter.cover));
+  candidates.push(resolveExistingPath(baseDir, frontmatter.image));
+  candidates.push(resolveExistingPath(baseDir, 'imgs/cover.png'));
+  candidates.push(resolveExistingPath(baseDir, 'images/cover-wide.png'));
+  candidates.push(resolveExistingPath(baseDir, 'images/cover.png'));
+  candidates.push(resolveExistingPath(baseDir, 'cover.png'));
+
+  if (contentImages.length > 0 && fs.existsSync(contentImages[0]!.localPath)) {
+    candidates.push(contentImages[0]!.localPath);
+  }
+
+  return candidates.find(Boolean);
+}
+
+async function setFileInputFiles(session: ChromeSession, selector: string, files: string[]): Promise<void> {
+  const root = await session.cdp.send<{ root: { nodeId: number } }>('DOM.getDocument', {}, { sessionId: session.sessionId });
+  const query = await session.cdp.send<{ nodeId: number }>('DOM.querySelector', {
+    nodeId: root.root.nodeId,
+    selector,
   }, { sessionId: session.sessionId });
 
-  return result.result.value;
+  if (!query.nodeId) {
+    throw new Error(`File input not found: ${selector}`);
+  }
+
+  await session.cdp.send('DOM.setFileInputFiles', {
+    nodeId: query.nodeId,
+    files,
+  }, { sessionId: session.sessionId });
+}
+
+async function querySelectorAllNodeIds(session: ChromeSession, selector: string): Promise<number[]> {
+  const root = await session.cdp.send<{ root: { nodeId: number } }>('DOM.getDocument', {}, { sessionId: session.sessionId });
+  const query = await session.cdp.send<{ nodeIds: number[] }>('DOM.querySelectorAll', {
+    nodeId: root.root.nodeId,
+    selector,
+  }, { sessionId: session.sessionId });
+  return query.nodeIds || [];
+}
+
+function getCoverReadyExpression(): string {
+  return `
+    (function() {
+      const area = document.querySelector('#js_cover_area');
+      if (!area) return false;
+
+      const candidates = [
+        area.querySelector('.js_cover_preview_new'),
+        area.querySelector('.weui-desktop-publish__cover__thumb'),
+        area.querySelector('.weui-desktop-publish__cover-item .weui-desktop-publish__cover__thumb'),
+      ].filter(Boolean);
+
+      for (const node of candidates) {
+        const bg = getComputedStyle(node).backgroundImage || '';
+        if (bg && bg !== 'none' && !/url\\((["'])?\\s*(data:)?\\s*\\1?\\)/.test(bg)) {
+          return true;
+        }
+        const img = node.querySelector('img');
+        if (img && img.getAttribute('src')) {
+          return true;
+        }
+      }
+
+      return false;
+    })()
+  `.trim();
+}
+
+async function setCoverFileInput(session: ChromeSession, absoluteCoverPath: string): Promise<void> {
+  const selectors = [
+    '.weui-desktop-dialog__wrp input[type="file"][name="file"]',
+    '.weui-desktop-dialog__wrp input[type="file"]',
+    '#js_cover_area input[type="file"][name="file"]',
+    '#js_cover_area input[type="file"]',
+    'input[type="file"][name="file"]',
+  ];
+
+  for (const selector of selectors) {
+    const nodeIds = await querySelectorAllNodeIds(session, selector);
+    if (nodeIds.length === 0) continue;
+
+    for (const nodeId of [...nodeIds].reverse()) {
+      await session.cdp.send('DOM.setFileInputFiles', {
+        nodeId,
+        files: [absoluteCoverPath],
+      }, { sessionId: session.sessionId });
+
+      const changed = await waitForCondition(session, `
+        (function() {
+          const dialogs = Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'));
+          const hasVisibleDialog = dialogs.some(el => getComputedStyle(el).display !== 'none');
+          if (hasVisibleDialog) return true;
+          return ${getCoverReadyExpression()};
+        })()
+      `, 4_000);
+
+      if (changed) return;
+      await sleep(400);
+    }
+  }
+
+  throw new Error('Cover file input not found or did not react to upload.');
+}
+
+async function waitForCondition(session: ChromeSession, expression: string, timeoutMs = 15_000): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const ok = await evaluate<boolean>(session, expression);
+    if (ok) return true;
+    await sleep(500);
+  }
+  return false;
+}
+
+async function clickVisibleDialogPrimaryButton(session: ChromeSession): Promise<boolean> {
+  return await evaluate<boolean>(session, `
+    (function() {
+      const wrappers = Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'));
+      const visible = wrappers.find(el => getComputedStyle(el).display !== 'none');
+      if (!visible) return false;
+
+      const buttons = Array.from(visible.querySelectorAll('button, a, .weui-desktop-btn'))
+        .filter(btn => {
+          const style = getComputedStyle(btn);
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+          if ((btn.offsetWidth || 0) === 0 && (btn.offsetHeight || 0) === 0) return false;
+          return true;
+        });
+      const textMatch = ['确定', '完成', '确认', '使用', '保存', '下一步'];
+      for (const btn of buttons) {
+        const text = (btn.textContent || '').trim();
+        if (textMatch.some(word => text.includes(word))) {
+          btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          return true;
+        }
+      }
+
+      const primary = visible.querySelector('.weui-desktop-btn_primary, .btn_primary, .weui-desktop-btn_main');
+      if (primary) {
+        primary.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        return true;
+      }
+
+      return false;
+    })()
+  `);
+}
+
+async function clickVisibleDialogButtonByText(session: ChromeSession, labels: string[]): Promise<boolean> {
+  return await evaluate<boolean>(session, `
+    (function() {
+      const wrappers = Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'));
+      const visible = wrappers.find(el => getComputedStyle(el).display !== 'none');
+      if (!visible) return false;
+
+      const buttons = Array.from(visible.querySelectorAll('button, a, .weui-desktop-btn'))
+        .filter(btn => {
+          const style = getComputedStyle(btn);
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+          if ((btn.offsetWidth || 0) === 0 && (btn.offsetHeight || 0) === 0) return false;
+          return true;
+        });
+      const labels = ${JSON.stringify(labels)};
+      for (const label of labels) {
+        const target = buttons.find(btn => (btn.textContent || '').trim().includes(label));
+        if (target) {
+          target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          return true;
+        }
+      }
+      return false;
+    })()
+  `);
+}
+
+async function resolveCoverDialogs(session: ChromeSession): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    const dialogVisible = await evaluate<boolean>(session, `
+      Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+        .some(el => getComputedStyle(el).display !== 'none')
+    `);
+    if (!dialogVisible) return;
+
+    const clicked = await clickVisibleDialogPrimaryButton(session);
+    if (!clicked) return;
+    await sleep(2500);
+  }
+}
+
+async function openCoverChooser(session: ChromeSession): Promise<void> {
+  await clickElement(session, '#js_cover_area .js_cover_btn_area');
+  const opened = await waitForCondition(session, `
+    (function() {
+      const chooser = document.querySelector('#js_cover_area #js_cover_null');
+      return !!chooser && getComputedStyle(chooser).display !== 'none';
+    })()
+  `, 3_000);
+  if (!opened) {
+    throw new Error('Cover chooser did not open.');
+  }
+}
+
+async function selectCoverFromContent(session: ChromeSession, coverIndex: number): Promise<boolean> {
+  console.log(`[wechat] Selecting cover from article content at index ${coverIndex + 1}...`);
+  await openCoverChooser(session);
+
+  const sourceClicked = await evaluate<boolean>(session, `
+    (function() {
+      const btn = document.querySelector('#js_cover_area .js_selectCoverFromContent');
+      if (!btn) return false;
+      btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      return true;
+    })()
+  `);
+  if (!sourceClicked) {
+    throw new Error('Could not open "select cover from content" flow.');
+  }
+
+  const pickerVisible = await waitForCondition(session, `
+    Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+      .some(el => getComputedStyle(el).display !== 'none' && (el.textContent || '').includes('选择图片'))
+  `, 8_000);
+  if (!pickerVisible) {
+    const debug = await evaluate<string>(session, `
+      JSON.stringify(
+        Array.from(document.querySelectorAll('body *'))
+          .filter(el => {
+            const text = (el.textContent || '').trim();
+            const cls = el.className || '';
+            return text.includes('从正文选择')
+              || text.includes('选择图片')
+              || text.includes('编辑封面')
+              || text.includes('封面')
+              || String(cls).includes('cover')
+              || String(cls).includes('img');
+          })
+          .slice(0, 40)
+          .map(el => ({
+            tag: el.tagName,
+            cls: String(el.className || ''),
+            text: (el.textContent || '').trim().slice(0, 120)
+          }))
+      )
+    `);
+    console.log(`[wechat] Cover picker debug: ${debug}`);
+    throw new Error('Content image picker did not open.');
+  }
+
+  const pickerInfo = await evaluate<string>(session, `
+    JSON.stringify(
+      Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+        .filter(el => getComputedStyle(el).display !== 'none' && (el.textContent || '').includes('选择图片'))
+        .map(el => ({
+          text: (el.textContent || '').trim().slice(0, 300),
+          itemCount: el.querySelectorAll('.appmsg_content_img_item').length,
+          html: el.outerHTML.slice(0, 2000)
+        }))
+    )
+  `);
+  console.log(`[wechat] Cover picker visible: ${pickerInfo}`);
+
+  const selected = await evaluate<boolean>(session, `
+    (function() {
+      const wrappers = Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'));
+      const visible = wrappers.find(el => getComputedStyle(el).display !== 'none' && (el.textContent || '').includes('选择图片'));
+      if (!visible) return false;
+      const items = Array.from(visible.querySelectorAll('.appmsg_content_img_item'));
+      const target = items[${coverIndex}] || items[0];
+      if (!target) return false;
+      target.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      return true;
+    })()
+  `);
+  if (!selected) {
+    throw new Error('Could not select a content image as cover.');
+  }
+  await sleep(500);
+
+  const selectedState = await evaluate<string>(session, `
+    JSON.stringify(
+      Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+        .filter(el => getComputedStyle(el).display !== 'none' && (el.textContent || '').includes('选择图片'))
+        .map(el => ({
+          selectedCount: el.querySelectorAll('.appmsg_content_img_item.selected, .appmsg_content_img_item.actived, .appmsg_content_img_item.active').length,
+          html: el.outerHTML.slice(0, 2000)
+        }))
+    )
+  `);
+  console.log(`[wechat] Cover picker selected state: ${selectedState}`);
+
+  const advanced = await clickVisibleDialogButtonByText(session, ['完成', '下一步']);
+  if (!advanced) {
+    throw new Error('Could not advance from content image picker.');
+  }
+
+  const cropVisible = await waitForCondition(session, `
+    Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+      .some(el => {
+        if (getComputedStyle(el).display === 'none') return false;
+        if (!(el.textContent || '').includes('编辑封面')) return false;
+        const buttons = Array.from(el.querySelectorAll('button, a, .weui-desktop-btn'));
+        return buttons.some(btn => {
+          const text = (btn.textContent || '').trim();
+          const style = getComputedStyle(btn);
+          return (text.includes('确认') || text.includes('完成'))
+            && style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && ((btn.offsetWidth || 0) > 0 || (btn.offsetHeight || 0) > 0);
+        });
+      })
+  `, 12_000);
+  if (!cropVisible) {
+    throw new Error('Cover crop dialog did not appear.');
+  }
+
+  const cropInfo = await evaluate<string>(session, `
+    JSON.stringify(
+      Array.from(document.querySelectorAll('.weui-desktop-dialog__wrp'))
+        .filter(el => getComputedStyle(el).display !== 'none' && (el.textContent || '').includes('编辑封面'))
+        .map(el => ({
+          text: (el.textContent || '').trim().slice(0, 300),
+          html: el.outerHTML.slice(0, 2000)
+        }))
+    )
+  `);
+  console.log(`[wechat] Cover crop dialog: ${cropInfo}`);
+
+  const confirmed = await clickVisibleDialogButtonByText(session, ['确认', '完成']);
+  if (!confirmed) {
+    throw new Error('Could not confirm cover crop.');
+  }
+  await sleep(3_000);
+
+  return await waitForCondition(session, getCoverReadyExpression(), 20_000);
+}
+
+async function uploadCoverImage(session: ChromeSession, coverPath: string, contentImages: ImageInfo[] = []): Promise<boolean> {
+  const absoluteCoverPath = path.resolve(coverPath);
+  if (!fs.existsSync(absoluteCoverPath)) {
+    throw new Error(`Cover image not found: ${absoluteCoverPath}`);
+  }
+
+  console.log(`[wechat] Uploading cover: ${absoluteCoverPath}`);
+  await waitForElement(session, '#js_cover_area', 20_000);
+
+  const matchedContentIndex = contentImages.findIndex((img) => {
+    try {
+      return path.resolve(img.localPath) === absoluteCoverPath;
+    } catch {
+      return false;
+    }
+  });
+  if (matchedContentIndex >= 0) {
+    const selected = await selectCoverFromContent(session, matchedContentIndex);
+    if (selected) {
+      console.log('[wechat] Cover selected from article content.');
+      return true;
+    }
+  }
+
+  try {
+    await clickElement(session, '#js_cover_area .js_cover_btn_area');
+    await sleep(400);
+  } catch {}
+
+  try {
+    await setCoverFileInput(session, absoluteCoverPath);
+    await sleep(1000);
+    await resolveCoverDialogs(session);
+  } catch (error) {
+    console.warn('[wechat] Cover file input path failed, trying clipboard paste fallback.');
+    await copyImageToClipboard(absoluteCoverPath);
+    try {
+      await clickElement(session, '#js_cover_area .js_cover_btn_area');
+    } catch {
+      try {
+        await clickElement(session, '#js_cover_area');
+      } catch {}
+    }
+    await sleep(500);
+    await pasteInEditor(session);
+    await sleep(1000);
+    await resolveCoverDialogs(session);
+  }
+
+  const uploaded = await waitForCondition(session, getCoverReadyExpression(), 20_000);
+
+  if (uploaded) {
+    console.log('[wechat] Cover uploaded successfully.');
+  } else {
+    console.warn('[wechat] Cover upload did not reach a confirmed preview state.');
+  }
+
+  return uploaded;
+}
+
+async function selectAndReplacePlaceholder(session: ChromeSession, placeholder: string): Promise<boolean> {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    const result = await session.cdp.send<{ result: { value: boolean } }>('Runtime.evaluate', {
+      expression: `
+        (function() {
+          const editor = document.querySelector('.ProseMirror');
+          if (!editor) return false;
+
+          const placeholder = ${JSON.stringify(placeholder)};
+          const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
+          let node;
+
+          while ((node = walker.nextNode())) {
+            const text = node.textContent || '';
+            let searchStart = 0;
+            let idx;
+            // Search for exact match (not prefix of longer placeholder like XIMGPH_1 in XIMGPH_10)
+            while ((idx = text.indexOf(placeholder, searchStart)) !== -1) {
+              const afterIdx = idx + placeholder.length;
+              const charAfter = text[afterIdx];
+              // Exact match if next char is not a digit
+              if (charAfter === undefined || !/\\d/.test(charAfter)) {
+                node.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                const range = document.createRange();
+                range.setStart(node, idx);
+                range.setEnd(node, idx + placeholder.length);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                return true;
+              }
+              searchStart = afterIdx;
+            }
+          }
+          return false;
+        })()
+      `,
+      returnByValue: true,
+    }, { sessionId: session.sessionId });
+
+    if (result.result.value) {
+      return true;
+    }
+
+    await sleep(800);
+  }
+
+  return false;
 }
 
 async function pressDeleteKey(session: ChromeSession): Promise<void> {
@@ -416,8 +923,26 @@ async function removeExtraEmptyLineAfterImage(session: ChromeSession): Promise<b
   return removed;
 }
 
+async function placeCursorAtEndOfEditor(session: ChromeSession): Promise<void> {
+  await evaluate(session, `
+    (function() {
+      const editor = document.querySelector('.ProseMirror');
+      if (!editor) return false;
+      editor.focus();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    })()
+  `);
+  await sleep(200);
+}
+
 export async function postArticle(options: ArticleOptions): Promise<void> {
-  const { title, content, htmlFile, markdownFile, theme, color, author, summary, images = [], submit = false, profileDir, cdpPort } = options;
+  const { title, content, htmlFile, markdownFile, coverPath, theme, color, author, summary, images = [], submit = false, profileDir, cdpPort } = options;
   let { contentImages = [] } = options;
   let effectiveTitle = title || '';
   let effectiveAuthor = author || '';
@@ -450,6 +975,18 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
     console.log(`[wechat] Author: ${effectiveAuthor || '(empty)'}`);
     console.log(`[wechat] Summary: ${effectiveSummary || '(empty)'}`);
     console.log(`[wechat] Found ${contentImages.length} images to insert`);
+  }
+
+  const effectiveCoverPath = resolveCoverPath({
+    explicitCoverPath: coverPath,
+    markdownFile,
+    htmlFile,
+    contentImages,
+  });
+  if (effectiveCoverPath) {
+    console.log(`[wechat] Cover candidate: ${effectiveCoverPath}`);
+  } else {
+    console.warn('[wechat] No cover candidate found. Draft card may show placeholder background.');
   }
 
   if (effectiveTitle && effectiveTitle.length > 64) throw new Error(`Title too long: ${effectiveTitle.length} chars (max 64)`);
@@ -496,11 +1033,18 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
         await cdp.send('DOM.enable', {}, { sessionId: reuseSid });
         session = { cdp, sessionId: reuseSid, targetId: wechatTab.targetId };
 
-        // Navigate to home if not already there
+        // If the reused tab is not already on home, open a fresh home tab instead of
+        // mutating an editor tab that may have unsaved state or missing home UI.
         const currentUrl = await evaluate<string>(session, 'window.location.href');
         if (!currentUrl.includes('/cgi-bin/home')) {
-          console.log('[wechat] Navigating to home...');
-          await evaluate(session, `window.location.href = '${WECHAT_URL}cgi-bin/home?t=home/index'`);
+          console.log('[wechat] Opening a fresh home tab...');
+          const homeUrl = `${WECHAT_URL}cgi-bin/home?t=home/index`;
+          const { targetId: homeTargetId } = await cdp.send<{ targetId: string }>('Target.createTarget', { url: homeUrl });
+          const { sessionId: homeSid } = await cdp.send<{ sessionId: string }>('Target.attachToTarget', { targetId: homeTargetId, flatten: true });
+          await cdp.send('Page.enable', {}, { sessionId: homeSid });
+          await cdp.send('Runtime.enable', {}, { sessionId: homeSid });
+          await cdp.send('DOM.enable', {}, { sessionId: homeSid });
+          session = { cdp, sessionId: homeSid, targetId: homeTargetId };
           await sleep(5000);
         }
       } else {
@@ -566,6 +1110,19 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
       }
     }
 
+    const shouldDeferCoverSelection = Boolean(
+      effectiveCoverPath &&
+      contentImages.some((img) => path.resolve(img.localPath) === path.resolve(effectiveCoverPath))
+    );
+
+    if (effectiveCoverPath && !shouldDeferCoverSelection) {
+      const uploaded = await uploadCoverImage(session, effectiveCoverPath, contentImages);
+      if (!uploaded) {
+        throw new Error('Cover upload failed: WeChat editor did not show a usable cover preview.');
+      }
+      await sleep(1000);
+    }
+
     console.log('[wechat] Clicking on editor...');
     await clickElement(session, '.ProseMirror');
     await sleep(1000);
@@ -575,29 +1132,14 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
     await sleep(500);
 
     if (effectiveHtmlFile && fs.existsSync(effectiveHtmlFile)) {
-      console.log(`[wechat] Copying HTML content from: ${effectiveHtmlFile}`);
-      await copyHtmlFromBrowser(cdp, effectiveHtmlFile, contentImages);
-      await sleep(500);
-      console.log('[wechat] Pasting into editor...');
-      await pasteFromClipboardInEditor(session);
-      await sleep(3000);
-
-      const editorHasContent = await evaluate<boolean>(session, `
-        (function() {
-          const editor = document.querySelector('.ProseMirror');
-          if (!editor) return false;
-          const text = editor.innerText?.trim() || '';
-          return text.length > 0;
-        })()
-      `);
-      if (editorHasContent) {
-        console.log('[wechat] Body content verified OK.');
-      } else {
-        console.warn('[wechat] Body content verification failed: editor appears empty after paste.');
+      const editorHasContent = await pasteHtmlIntoEditorWithRetry(cdp, session, effectiveHtmlFile, contentImages);
+      if (!editorHasContent) {
+        throw new Error('Editor remained empty after repeated paste attempts.');
       }
 
       if (contentImages.length > 0) {
         console.log(`[wechat] Inserting ${contentImages.length} images...`);
+        await sleep(1200);
         for (let i = 0; i < contentImages.length; i++) {
           const img = contentImages[i]!;
           console.log(`[wechat] [${i + 1}/${contentImages.length}] Processing: ${img.placeholder}`);
@@ -605,6 +1147,15 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
           const found = await selectAndReplacePlaceholder(session, img.placeholder);
           if (!found) {
             console.warn(`[wechat] Placeholder not found: ${img.placeholder}`);
+            console.log('[wechat] Falling back to appending image at end of article...');
+            await placeCursorAtEndOfEditor(session);
+            console.log(`[wechat] Copying image: ${path.basename(img.localPath)}`);
+            await copyImageToClipboard(img.localPath);
+            await sleep(300);
+            console.log('[wechat] Pasting image at end...');
+            await pasteFromClipboardInEditor(session);
+            await sleep(3000);
+            await removeExtraEmptyLineAfterImage(session);
             continue;
           }
 
@@ -625,6 +1176,15 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
         }
         console.log('[wechat] All images inserted.');
       }
+
+      if (effectiveCoverPath && shouldDeferCoverSelection) {
+        console.log('[wechat] Selecting cover after body images are inserted...');
+        const uploaded = await uploadCoverImage(session, effectiveCoverPath, contentImages);
+        if (!uploaded) {
+          throw new Error('Cover upload failed after inserting body images.');
+        }
+        await sleep(1000);
+      }
     } else if (content) {
       for (const img of images) {
         if (fs.existsSync(img)) {
@@ -641,14 +1201,7 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
       await typeText(session, content);
       await sleep(1000);
 
-      const editorHasContent = await evaluate<boolean>(session, `
-        (function() {
-          const editor = document.querySelector('.ProseMirror');
-          if (!editor) return false;
-          const text = editor.innerText?.trim() || '';
-          return text.length > 0;
-        })()
-      `);
+      const editorHasContent = await editorHasSubstantiveContent(session);
       if (editorHasContent) {
         console.log('[wechat] Body content verified OK.');
       } else {
@@ -713,9 +1266,10 @@ Options:
   --color <name|hex> Primary color (blue, green, vermilion, etc. or hex)
   --author <name>    Author name
   --summary <text>   Article summary
+  --cover <path>     Cover image path (optional; falls back to imgs/cover.png, images/cover-wide.png, or first content image)
   --image <path>     Content image, can repeat (only with --content)
   --submit           Save as draft
-  --profile <dir>    Chrome profile directory
+  --profile <dir>    Chrome profile directory (defaults to wechat-publisher/EXTEND.md if set)
   --cdp-port <port>  Connect to existing Chrome debug port instead of launching new instance
 
 Examples:
@@ -735,18 +1289,20 @@ Markdown mode:
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.includes('--help') || args.includes('-h')) printUsage();
+  const extendConfig = loadExtendConfig();
 
   const images: string[] = [];
   let title: string | undefined;
   let content: string | undefined;
   let htmlFile: string | undefined;
   let markdownFile: string | undefined;
-  let theme: string | undefined;
-  let color: string | undefined;
-  let author: string | undefined;
+  let theme: string | undefined = extendConfig.defaultTheme;
+  let color: string | undefined = extendConfig.defaultColor;
+  let author: string | undefined = extendConfig.defaultAuthor;
   let summary: string | undefined;
+  let coverPath: string | undefined;
   let submit = false;
-  let profileDir: string | undefined;
+  let profileDir: string | undefined = extendConfig.chromeProfilePath;
   let cdpPort: number | undefined;
 
   for (let i = 0; i < args.length; i++) {
@@ -759,6 +1315,7 @@ async function main(): Promise<void> {
     else if (arg === '--color' && args[i + 1]) color = args[++i];
     else if (arg === '--author' && args[i + 1]) author = args[++i];
     else if (arg === '--summary' && args[i + 1]) summary = args[++i];
+    else if (arg === '--cover' && args[i + 1]) coverPath = args[++i];
     else if (arg === '--image' && args[i + 1]) images.push(args[++i]!);
     else if (arg === '--submit') submit = true;
     else if (arg === '--profile' && args[i + 1]) profileDir = args[++i];
@@ -768,7 +1325,7 @@ async function main(): Promise<void> {
   if (!markdownFile && !htmlFile && !title) { console.error('Error: --title is required (or use --markdown/--html)'); process.exit(1); }
   if (!markdownFile && !htmlFile && !content) { console.error('Error: --content, --html, or --markdown is required'); process.exit(1); }
 
-  await postArticle({ title: title || '', content, htmlFile, markdownFile, theme, color, author, summary, images, submit, profileDir, cdpPort });
+  await postArticle({ title: title || '', content, htmlFile, markdownFile, coverPath, theme, color, author, summary, images, submit, profileDir, cdpPort });
 }
 
 await main().then(() => {

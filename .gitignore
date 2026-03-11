@@ -1,5 +1,18 @@
 .DS_Store
+
+# Local dev environment
+.idea/
+.venv-wechat-format/
+.baoyu-skills/
+
+# Runtime/build artifacts
 __pycache__/
 *.py[cod]
-release/
 node_modules/
+release/
+
+# Generated article outputs
+content/
+tmp/
+toutiao-posts/
+ai-hotspot-collector/content/

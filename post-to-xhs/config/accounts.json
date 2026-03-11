@@ -1,0 +1,10 @@
+{
+  "default_account": "default",
+  "accounts": {
+    "default": {
+      "alias": "默认账号",
+      "profile_dir": "/Users/aias/Library/Application Support/Google/Chrome/XiaohongshuProfiles/default",
+      "created_at": "2026-03-10T11:59:38+0800"
+    }
+  }
+}

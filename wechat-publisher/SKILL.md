@@ -15,6 +15,7 @@ description: Posts content to WeChat Official Account (微信公众号) via API 
 
 | Script | Purpose |
 |--------|---------|
+| `scripts/wechat-publish.ts` | Unified article entry: delegate to API or browser based on `wechat-publisher` defaults/current environment |
 | `scripts/wechat-browser.ts` | Image-text posts (图文) |
 | `scripts/wechat-article.ts` | Article posting via browser (文章) |
 | `scripts/wechat-api.ts` | Article posting via API (文章) |
@@ -146,6 +147,8 @@ Resolve and store these defaults for later steps:
 - `need_open_comment` (default `1`)
 - `only_fans_can_comment` (default `0`)
 
+The direct scripts also read `wechat-publisher/EXTEND.md`, so CLI runs stay aligned with these defaults even when the agent is not manually passing every field.
+
 ### Step 1: Determine Input Type
 
 | Input Type | Detection | Action |
@@ -153,6 +156,14 @@ Resolve and store these defaults for later steps:
 | HTML file | Path ends with `.html`, file exists | Skip to Step 3 |
 | Markdown file | Path ends with `.md`, file exists | Continue to Step 2 |
 | Plain text | Not a file path, or file doesn't exist | Save to markdown, continue to Step 2 |
+
+**HTML file preference**:
+- If the article package contains `article-api.html`, use it for API publishing.
+- If the article package contains `article-preview.md`, use it for browser automation publishing. This path keeps real image references and lets the browser workflow reinsert images reliably.
+- `article-wechat.html` is the preferred file for manual copy/paste into the WeChat editor, not the first choice for browser automation.
+- `article-api.html` should be considered the API-safe variant when long URLs, lists, or WeChat line-breaking quirks need special handling.
+- For browser automation, the most reliable cover strategy is to keep the chosen cover image inside the article body as a real inline image, ideally near the top of `article-preview.md`.
+- For markdown sources, standalone badge marker lines such as `[!AI] [!推荐]` are treated as source-side artifacts and stripped before rendering to WeChat HTML.
 
 **Plain Text Handling**:
 
@@ -231,6 +242,10 @@ WECHAT_APP_SECRET=<user_input>
 | Summary | Prompt: "Enter summary, or press Enter to auto-generate (recommended for SEO)" |
 | Author | Use fallback chain: CLI `--author` → frontmatter `author` → EXTEND.md `default_author` |
 
+**Recommended practice**:
+- Set `default_author` in `wechat-publisher/EXTEND.md` for the public account, instead of relying on empty author fields at publish time.
+- If the article package is expected to be reused across platforms, prefer keeping platform-specific badges or labels out of the WeChat markdown source, or let `md-to-wechat.ts` strip standalone badge lines.
+
 **Auto-Generation Logic**:
 - **Title**: First H1/H2 heading, or first sentence
 - **Summary**: First paragraph, truncated to 120 characters
@@ -251,6 +266,11 @@ python3 ${SKILL_DIR}/scripts/generate-cover-image.py \
 
    6. If auto-generation fails, stop and request a manual cover image.
 
+**Browser-mode cover note**:
+- The current WeChat browser editor does not expose a stable plain file-input path for article covers.
+- The reliable browser flow is `从正文选择`: the cover image should also exist in the article body.
+- If you provide `--cover` for browser publishing, also make sure that same file is inserted inline in the article body. Otherwise cover upload may be unreliable on newer editor revisions.
+
 ### Step 4: Publish to WeChat
 
 **CRITICAL**: Publishing scripts handle markdown conversion internally. Do NOT pre-convert markdown to HTML — pass the original markdown file directly. This ensures the API method renders images as `<img>` tags (for API upload) while the browser method uses placeholders (for paste-and-replace workflow).
@@ -260,6 +280,35 @@ python3 ${SKILL_DIR}/scripts/generate-cover-image.py \
 ```bash
 npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts <file> --theme <theme> [--color <color>] [--title <title>] [--summary <summary>] [--author <author>] [--cover <cover_path>]
 ```
+
+**Unified method dispatch** (preferred when another tool/skill is delegating WeChat publishing):
+
+```bash
+npx -y bun ${SKILL_DIR}/scripts/wechat-publish.ts <source> [--title <title>] [--summary <summary>] [--author <author>] [--cover <cover_path>]
+```
+
+Behavior:
+- `wechat-publish.ts` chooses API or browser inside `wechat-publisher`.
+- It reads `default_publish_method` from `wechat-publisher/EXTEND.md` when present.
+- If no method is pinned, it prefers API when credentials exist, otherwise browser.
+- If API is blocked by WeChat IP whitelist, it may fall back to browser publishing automatically.
+
+When an article bundle already provides `article-api.html`, prefer passing that file directly to the API script.
+
+For browser automation on generated article bundles, prefer `article-preview.md` over `article-wechat.html`.
+
+**Draft management via API**:
+
+```bash
+npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts --draft-list --count 10
+npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts --draft-delete <media_id>
+npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts --draft-delete-title "文章标题" --keep-latest 1 --dry-run
+```
+
+Recommended cleanup flow:
+- First run `--draft-list` or `--draft-delete-title ... --dry-run`
+- Verify which drafts would be kept vs deleted
+- Then rerun without `--dry-run`
 
 **CRITICAL**: Always include `--theme` parameter. Never omit it, even if using `default`. Only include `--color` if explicitly set by user or EXTEND.md.
 
@@ -271,6 +320,7 @@ npx -y bun ${SKILL_DIR}/scripts/wechat-api.ts <file> --theme <theme> [--color <c
   - `need_open_comment` (default `1`)
   - `only_fans_can_comment` (default `0`)
 - `author` resolution: CLI `--author` → frontmatter `author` → EXTEND.md `default_author`
+- Cover fallback order for direct script use: `--cover` → frontmatter cover fields → `imgs/cover.png` → `images/cover-wide.png` → first inline image
 
 If script parameters do not expose the two comment fields, still ensure final API request body includes resolved values.
 
@@ -280,6 +330,15 @@ If script parameters do not expose the two comment fields, still ensure final AP
 npx -y bun ${SKILL_DIR}/scripts/wechat-article.ts --markdown <markdown_file> --theme <theme> [--color <color>]
 npx -y bun ${SKILL_DIR}/scripts/wechat-article.ts --html <html_file>
 ```
+
+If `--profile`, `--author`, `--theme`, or `--color` are omitted, the browser script should fall back to `wechat-publisher/EXTEND.md` when those defaults are present.
+
+**Browser cover behavior**:
+- If the resolved cover image matches one of the inline article images, the browser script should open the cover chooser inside `#js_cover_area`, use `从正文选择`, select that image, and confirm the crop dialog.
+- This is the preferred path for generated article bundles and current WeChat editor revisions.
+- The crop step must wait for a visible `确认` or `完成` button before clicking; hidden dialog buttons are not reliable in newer editor revisions.
+- If the cover image does not exist in body content, a separate local-cover upload may still be attempted, but it is less reliable than `从正文选择`.
+- If WeChat API publishing is blocked by IP whitelist or unavailable, prefer the browser method with `article-preview.md`.
 
 ### Step 5: Completion Report
 
@@ -350,11 +409,16 @@ Files created:
 | Multiple images | ✓ (up to 9) | ✓ (inline) | ✓ (inline) |
 | Themes | ✗ | ✓ | ✓ |
 | Auto-generate metadata | ✗ | ✓ | ✓ |
-| Default cover fallback (`imgs/cover.png`) | ✗ | ✓ | ✗ |
+| Default cover fallback (`imgs/cover.png` / `images/cover-wide.png`) | ✗ | ✓ | ✓ |
 | Comment control (`need_open_comment`, `only_fans_can_comment`) | ✗ | ✓ | ✗ |
 | Requires Chrome | ✓ | ✗ | ✓ |
 | Requires API credentials | ✗ | ✓ | ✗ |
 | Speed | Medium | Fast | Slow |
+
+**Browser article best practice**:
+- Use `article-preview.md` as the browser source.
+- Keep the intended cover image inside the body image set.
+- Prefer the same file for `--cover` and the first inline image when deterministic cover behavior matters.
 
 ## Prerequisites
 
@@ -385,6 +449,9 @@ Files created:
 | Cover script missing Pillow | Re-run with `--bootstrap-pillow` to auto-create venv and install Pillow |
 | Wrong comment defaults | Check `EXTEND.md` keys `need_open_comment` and `only_fans_can_comment` |
 | Paste fails | Check system clipboard permissions |
+| API returns `invalid ip` | Switch to browser publishing or add the current egress IP to the WeChat API whitelist |
+| Draft card shows a gray placeholder instead of a cover | Re-publish with `article-preview.md` and ensure the cover image also exists as an inline body image so the browser script can use `从正文选择` |
+| Browser draft has body images but no cover | Use the same local image as both `--cover` and the first inserted body image; current stable browser flow depends on selecting cover from body content |
 
 ## Extension Support
 

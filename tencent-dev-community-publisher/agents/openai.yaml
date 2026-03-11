@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tencent Dev Community Publisher"
+  short_description: "Publish Tencent Developer posts"
+  default_prompt: "Publish an article to Tencent Developer Community"

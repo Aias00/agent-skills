@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Article Review"
+  short_description: "Audit technical drafts for accuracy and publish readiness"
+  default_prompt: "Use $technical-article-review to audit this draft and produce a publish-ready revision with evidence checks."

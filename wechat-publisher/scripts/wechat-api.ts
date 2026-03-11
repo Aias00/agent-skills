@@ -9,6 +9,14 @@ interface WechatConfig {
   appSecret: string;
 }
 
+interface ExtendConfig {
+  defaultTheme?: string;
+  defaultColor?: string;
+  defaultAuthor?: string;
+  needOpenComment?: boolean;
+  onlyFansCanComment?: boolean;
+}
+
 interface AccessTokenResponse {
   access_token?: string;
   errcode?: number;
@@ -28,7 +36,33 @@ interface PublishResponse {
   errmsg?: string;
 }
 
+interface DraftDeleteResponse {
+  errcode?: number;
+  errmsg?: string;
+}
+
+interface DraftNewsItem {
+  title?: string;
+}
+
+interface DraftBatchItem {
+  media_id: string;
+  update_time?: number;
+  content?: {
+    news_item?: DraftNewsItem[];
+  };
+}
+
+interface DraftBatchGetResponse {
+  total_count?: number;
+  item_count?: number;
+  item?: DraftBatchItem[];
+  errcode?: number;
+  errmsg?: string;
+}
+
 type ArticleType = "news" | "newspic";
+type CommandMode = "publish" | "draft-list" | "draft-delete" | "draft-delete-title";
 
 interface ArticleOptions {
   title: string;
@@ -38,11 +72,53 @@ interface ArticleOptions {
   thumbMediaId: string;
   articleType: ArticleType;
   imageMediaIds?: string[];
+  needOpenComment: boolean;
+  onlyFansCanComment: boolean;
 }
 
 const TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token";
 const UPLOAD_URL = "https://api.weixin.qq.com/cgi-bin/material/add_material";
 const DRAFT_URL = "https://api.weixin.qq.com/cgi-bin/draft/add";
+const DRAFT_BATCHGET_URL = "https://api.weixin.qq.com/cgi-bin/draft/batchget";
+const DRAFT_DELETE_URL = "https://api.weixin.qq.com/cgi-bin/draft/delete";
+
+function parseBool(value?: string): boolean | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return undefined;
+}
+
+function loadExtendConfig(): ExtendConfig {
+  const extendPaths = [
+    path.join(process.cwd(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
+    path.join(os.homedir(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
+  ];
+  const extendPath = extendPaths.find((candidate) => fs.existsSync(candidate));
+  if (!extendPath) return {};
+
+  const config: ExtendConfig = {};
+  const content = fs.readFileSync(extendPath, "utf-8");
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const colonIdx = line.indexOf(":");
+    if (colonIdx <= 0) continue;
+
+    const key = line.slice(0, colonIdx).trim().toLowerCase();
+    const value = line.slice(colonIdx + 1).trim();
+    if (!value) continue;
+
+    if (key === "default_theme") config.defaultTheme = value;
+    else if (key === "default_color") config.defaultColor = value;
+    else if (key === "default_author") config.defaultAuthor = value;
+    else if (key === "need_open_comment") config.needOpenComment = parseBool(value);
+    else if (key === "only_fans_can_comment") config.onlyFansCanComment = parseBool(value);
+  }
+
+  return config;
+}
 
 function loadEnvFile(envPath: string): Record<string, string> {
   const env: Record<string, string> = {};
@@ -249,8 +325,8 @@ async function publishToDraft(
       article_type: "newspic",
       title: options.title,
       content: options.content,
-      need_open_comment: 1,
-      only_fans_can_comment: 0,
+      need_open_comment: options.needOpenComment ? 1 : 0,
+      only_fans_can_comment: options.onlyFansCanComment ? 1 : 0,
       image_info: {
         image_list: options.imageMediaIds.map(id => ({ image_media_id: id })),
       },
@@ -262,8 +338,8 @@ async function publishToDraft(
       title: options.title,
       content: options.content,
       thumb_media_id: options.thumbMediaId,
-      need_open_comment: 1,
-      only_fans_can_comment: 0,
+      need_open_comment: options.needOpenComment ? 1 : 0,
+      only_fans_can_comment: options.onlyFansCanComment ? 1 : 0,
     };
     if (options.author) article.author = options.author;
     if (options.digest) article.digest = options.digest;
@@ -283,6 +359,85 @@ async function publishToDraft(
   }
 
   return data;
+}
+
+async function batchGetDrafts(
+  accessToken: string,
+  offset: number,
+  count: number,
+  noContent = true
+): Promise<DraftBatchGetResponse> {
+  const url = `${DRAFT_BATCHGET_URL}?access_token=${accessToken}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      offset,
+      count,
+      no_content: noContent ? 1 : 0,
+    }),
+  });
+
+  const data = await res.json() as DraftBatchGetResponse;
+  if (data.errcode && data.errcode !== 0) {
+    throw new Error(`Draft batch get failed ${data.errcode}: ${data.errmsg}`);
+  }
+
+  return data;
+}
+
+async function deleteDraft(accessToken: string, mediaId: string): Promise<void> {
+  const url = `${DRAFT_DELETE_URL}?access_token=${accessToken}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ media_id: mediaId }),
+  });
+
+  const data = await res.json() as DraftDeleteResponse;
+  if (data.errcode && data.errcode !== 0) {
+    throw new Error(`Draft delete failed ${data.errcode}: ${data.errmsg}`);
+  }
+}
+
+function extractDraftTitles(item: DraftBatchItem): string[] {
+  return (item.content?.news_item || [])
+    .map((news) => news.title?.trim() || "")
+    .filter(Boolean);
+}
+
+async function getAllDrafts(accessToken: string): Promise<DraftBatchItem[]> {
+  const all: DraftBatchItem[] = [];
+  const batchSize = 20;
+  let offset = 0;
+
+  while (true) {
+    const resp = await batchGetDrafts(accessToken, offset, batchSize, true);
+    const items = resp.item || [];
+    all.push(...items);
+    if (items.length < batchSize) {
+      break;
+    }
+    offset += items.length;
+  }
+
+  return all;
+}
+
+function summarizeDraftItem(item: DraftBatchItem): Record<string, unknown> {
+  const titles = extractDraftTitles(item);
+  const updateTime = item.update_time || 0;
+  return {
+    media_id: item.media_id,
+    titles,
+    primary_title: titles[0] || "",
+    update_time: updateTime,
+    update_time_iso: updateTime ? new Date(updateTime * 1000).toISOString() : null,
+  };
 }
 
 function parseFrontmatter(content: string): { frontmatter: Record<string, string>; body: string } {
@@ -335,6 +490,28 @@ function renderMarkdownToHtml(markdownPath: string, theme: string = "default", c
   return htmlPath;
 }
 
+function resolveExistingPath(baseDir: string, value?: string): string | undefined {
+  if (!value) return undefined;
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  const resolved = path.isAbsolute(value) ? value : path.resolve(baseDir, value);
+  return fs.existsSync(resolved) ? resolved : undefined;
+}
+
+function resolveCoverPath(baseDir: string, explicitCover: string | undefined, frontmatter: Record<string, string>): string | undefined {
+  const candidates = [
+    resolveExistingPath(process.cwd(), explicitCover),
+    resolveExistingPath(baseDir, frontmatter.coverImage),
+    resolveExistingPath(baseDir, frontmatter.featureImage),
+    resolveExistingPath(baseDir, frontmatter.cover),
+    resolveExistingPath(baseDir, frontmatter.image),
+    resolveExistingPath(baseDir, "imgs/cover.png"),
+    resolveExistingPath(baseDir, "images/cover-wide.png"),
+    resolveExistingPath(baseDir, "images/cover.png"),
+    resolveExistingPath(baseDir, "cover.png"),
+  ];
+  return candidates.find(Boolean);
+}
+
 function extractHtmlContent(htmlPath: string): string {
   const html = fs.readFileSync(htmlPath, "utf-8");
   const match = html.match(/<div id="output">([\s\S]*?)<\/div>\s*<\/body>/);
@@ -345,11 +522,85 @@ function extractHtmlContent(htmlPath: string): string {
   return bodyMatch ? bodyMatch[1]!.trim() : html;
 }
 
+function escapeHtmlText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/gi, "\u00a0")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+function stripTagsPreserveBreaks(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<[^>]+>/g, "");
+}
+
+function formatCodeLineForWeChatApi(line: string): string {
+  const expanded = line.replace(/\t/g, "    ");
+  const leadingMatch = expanded.match(/^ +/);
+  const leading = leadingMatch?.[0] || "";
+  const remainder = expanded.slice(leading.length);
+  const content = `${"&nbsp;".repeat(leading.length)}${escapeHtmlText(remainder)}`;
+  return content || "&nbsp;";
+}
+
+function buildWeChatApiCodeBlock(rawText: string): string {
+  const lines = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const safeLines = lines.length > 0 ? lines : [""];
+  const lineHtml = safeLines.map((line, idx) => {
+    const margin = idx < safeLines.length - 1 ? "0 0 6px 0" : "0";
+    return `<p style="margin: ${margin};">${formatCodeLineForWeChatApi(line)}</p>`;
+  }).join("");
+
+  return `<section style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; margin: 16px 0;"><div style="line-height: 1.6; color: #abb2bf; text-align: left; word-break: break-word; overflow-wrap: anywhere; font-family: &quot;SFMono-Regular&quot;, Consolas, &quot;Liberation Mono&quot;, Menlo, Courier, monospace; font-size: 14px; font-weight: 400;">${lineHtml}</div></section>`;
+}
+
+function replacePreBlocksForWeChatApi(html: string): string {
+  return html.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_full, inner) => {
+    const rawText = decodeHtmlEntities(stripTagsPreserveBreaks(inner))
+      .replace(/\u00a0/g, " ")
+      .replace(/\n+$/g, "");
+    return buildWeChatApiCodeBlock(rawText);
+  });
+}
+
+function normalizeHtmlForWeChatApi(html: string): string {
+  let normalized = replacePreBlocksForWeChatApi(html);
+
+  normalized = normalized.replace(/<(ul|ol)([^>]*)>([\s\S]*?)<\/\1>/gi, (_full, tag, attrs, inner) => {
+    const compactInner = inner
+      .replace(/>\s+</g, "><")
+      .replace(/<li([^>]*)>\s*<\/li>/gi, "")
+      .replace(/<li([^>]*)>\s+/gi, "<li$1>")
+      .replace(/\s+<\/li>/gi, "</li>");
+    return `<${tag}${attrs}>${compactInner}</${tag}>`;
+  });
+
+  normalized = normalized.replace(/<p([^>]*)>\s*<\/p>/gi, "");
+  normalized = normalized.replace(/\n{3,}/g, "\n\n");
+  return normalized.trim();
+}
+
 function printUsage(): never {
   console.log(`Publish article to WeChat Official Account draft using API
 
 Usage:
   npx -y bun wechat-api.ts <file> [options]
+  npx -y bun wechat-api.ts --draft-list [--offset 0 --count 20]
+  npx -y bun wechat-api.ts --draft-delete <media_id>
+  npx -y bun wechat-api.ts --draft-delete-title <title> [--keep-latest 1] [--dry-run]
 
 Arguments:
   file                Markdown (.md) or HTML (.html) file
@@ -359,10 +610,16 @@ Options:
   --title <title>     Override title
   --author <name>     Author name (max 16 chars)
   --summary <text>    Article summary/digest (max 128 chars)
-  --theme <name>      Theme name for markdown (default, grace, simple, modern). Default: default
+  --theme <name>      Theme name for markdown (default, grace, simple, modern). Default: EXTEND.md or default
   --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
   --cover <path>      Cover image path (local or URL)
-  --dry-run           Parse and render only, don't publish
+  --draft-list        List drafts (paged)
+  --draft-delete <id> Delete one draft by media_id
+  --draft-delete-title <title> Delete drafts whose title exactly matches
+  --keep-latest <n>   When deleting by title, keep newest n drafts (default 1)
+  --offset <n>        Draft list offset (default 0)
+  --count <n>         Draft list page size, max 20 (default 20)
+  --dry-run           Parse/render only, or preview draft deletions without deleting
   --help              Show this help
 
 Frontmatter Fields (markdown):
@@ -372,7 +629,7 @@ Frontmatter Fields (markdown):
   coverImage/featureImage/cover/image   Cover image path
 
 Comments:
-  Comments are enabled by default, open to all users.
+  Comment defaults come from wechat-publisher/EXTEND.md, falling back to open for all users.
 
 Environment Variables:
   WECHAT_APP_ID       WeChat App ID
@@ -390,21 +647,30 @@ Example:
   npx -y bun wechat-api.ts article.html --title "My Article"
   npx -y bun wechat-api.ts images/ --type newspic --title "Photo Album"
   npx -y bun wechat-api.ts article.md --dry-run
+  npx -y bun wechat-api.ts --draft-list --count 10
+  npx -y bun wechat-api.ts --draft-delete MEDIA_ID
+  npx -y bun wechat-api.ts --draft-delete-title "OpenClaw 通道实战：先接一个真正能用的消息入口" --keep-latest 1 --dry-run
 `);
   process.exit(0);
 }
 
 interface CliArgs {
+  command: CommandMode;
   filePath: string;
   isHtml: boolean;
   articleType: ArticleType;
   title?: string;
   author?: string;
   summary?: string;
-  theme: string;
+  theme?: string;
   color?: string;
   cover?: string;
   dryRun: boolean;
+  draftMediaId?: string;
+  draftTitle?: string;
+  keepLatest: number;
+  offset: number;
+  count: number;
 }
 
 function parseArgs(argv: string[]): CliArgs {
@@ -413,16 +679,36 @@ function parseArgs(argv: string[]): CliArgs {
   }
 
   const args: CliArgs = {
+    command: "publish",
     filePath: "",
     isHtml: false,
     articleType: "news",
-    theme: "default",
     dryRun: false,
+    keepLatest: 1,
+    offset: 0,
+    count: 20,
   };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
-    if (arg === "--type" && argv[i + 1]) {
+    if (arg === "--draft-list") {
+      args.command = "draft-list";
+    } else if (arg === "--draft-delete" && argv[i + 1]) {
+      args.command = "draft-delete";
+      args.draftMediaId = argv[++i];
+    } else if (arg === "--draft-delete-title" && argv[i + 1]) {
+      args.command = "draft-delete-title";
+      args.draftTitle = argv[++i];
+    } else if (arg === "--keep-latest" && argv[i + 1]) {
+      const parsed = parseInt(argv[++i]!, 10);
+      if (!Number.isNaN(parsed) && parsed >= 0) args.keepLatest = parsed;
+    } else if (arg === "--offset" && argv[i + 1]) {
+      const parsed = parseInt(argv[++i]!, 10);
+      if (!Number.isNaN(parsed) && parsed >= 0) args.offset = parsed;
+    } else if (arg === "--count" && argv[i + 1]) {
+      const parsed = parseInt(argv[++i]!, 10);
+      if (!Number.isNaN(parsed) && parsed > 0) args.count = Math.min(parsed, 20);
+    } else if (arg === "--type" && argv[i + 1]) {
       const t = argv[++i]!.toLowerCase();
       if (t === "news" || t === "newspic") {
         args.articleType = t;
@@ -448,12 +734,22 @@ function parseArgs(argv: string[]): CliArgs {
     }
   }
 
-  if (!args.filePath) {
-    console.error("Error: File path required");
-    process.exit(1);
+  if (args.command === "publish") {
+    if (!args.filePath) {
+      console.error("Error: File path required");
+      process.exit(1);
+    }
+    args.isHtml = args.filePath.toLowerCase().endsWith(".html");
+  } else {
+    if (args.command === "draft-delete" && !args.draftMediaId) {
+      console.error("Error: --draft-delete requires a media_id");
+      process.exit(1);
+    }
+    if (args.command === "draft-delete-title" && !args.draftTitle) {
+      console.error("Error: --draft-delete-title requires a title");
+      process.exit(1);
+    }
   }
-
-  args.isHtml = args.filePath.toLowerCase().endsWith(".html");
 
   return args;
 }
@@ -468,6 +764,90 @@ function extractHtmlTitle(html: string): string {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  const extendConfig = loadExtendConfig();
+  const resolvedTheme = args.theme || extendConfig.defaultTheme || "default";
+  const resolvedColor = args.color || extendConfig.defaultColor;
+  const needOpenComment = extendConfig.needOpenComment ?? true;
+  const onlyFansCanComment = extendConfig.onlyFansCanComment ?? false;
+
+  if (args.command !== "publish") {
+    const config = loadConfig();
+    console.error("[wechat-api] Fetching access token...");
+    const accessToken = await fetchAccessToken(config.appId, config.appSecret);
+
+    if (args.command === "draft-list") {
+      const result = await batchGetDrafts(accessToken, args.offset, args.count, true);
+      const items = (result.item || []).map(summarizeDraftItem);
+      console.log(JSON.stringify({
+        success: true,
+        operation: "draft-list",
+        offset: args.offset,
+        count: args.count,
+        total_count: result.total_count || 0,
+        item_count: result.item_count || items.length,
+        items,
+      }, null, 2));
+      return;
+    }
+
+    if (args.command === "draft-delete") {
+      if (args.dryRun) {
+        console.log(JSON.stringify({
+          success: true,
+          operation: "draft-delete-dry-run",
+          media_id: args.draftMediaId,
+        }, null, 2));
+        return;
+      }
+
+      console.error(`[wechat-api] Deleting draft: ${args.draftMediaId}`);
+      await deleteDraft(accessToken, args.draftMediaId!);
+      console.log(JSON.stringify({
+        success: true,
+        operation: "draft-delete",
+        media_id: args.draftMediaId,
+      }, null, 2));
+      return;
+    }
+
+    const allDrafts = await getAllDrafts(accessToken);
+    const matched = allDrafts
+      .filter((item) => extractDraftTitles(item).some((title) => title === args.draftTitle))
+      .sort((a, b) => (b.update_time || 0) - (a.update_time || 0));
+
+    const keep = matched.slice(0, args.keepLatest).map(summarizeDraftItem);
+    const toDelete = matched.slice(args.keepLatest).map(summarizeDraftItem);
+
+    if (args.dryRun) {
+      console.log(JSON.stringify({
+        success: true,
+        operation: "draft-delete-title-dry-run",
+        title: args.draftTitle,
+        keep_latest: args.keepLatest,
+        matched_count: matched.length,
+        keep,
+        delete: toDelete,
+      }, null, 2));
+      return;
+    }
+
+    for (const item of matched.slice(args.keepLatest)) {
+      console.error(`[wechat-api] Deleting old draft: ${item.media_id}`);
+      await deleteDraft(accessToken, item.media_id);
+    }
+
+    console.log(JSON.stringify({
+      success: true,
+      operation: "draft-delete-title",
+      title: args.draftTitle,
+      keep_latest: args.keepLatest,
+      matched_count: matched.length,
+      deleted_count: Math.max(matched.length - args.keepLatest, 0),
+      keep,
+      delete: toDelete,
+    }, null, 2));
+    return;
+  }
 
   const filePath = path.resolve(args.filePath);
   if (!fs.existsSync(filePath)) {
@@ -485,7 +865,7 @@ async function main(): Promise<void> {
 
   if (args.isHtml) {
     htmlPath = filePath;
-    htmlContent = extractHtmlContent(htmlPath);
+    htmlContent = normalizeHtmlForWeChatApi(extractHtmlContent(htmlPath));
     const mdPath = filePath.replace(/\.html$/i, ".md");
     if (fs.existsSync(mdPath)) {
       const mdContent = fs.readFileSync(mdPath, "utf-8");
@@ -513,11 +893,13 @@ async function main(): Promise<void> {
     if (!author) author = frontmatter.author || "";
     if (!digest) digest = frontmatter.digest || frontmatter.summary || frontmatter.description || "";
 
-    console.error(`[wechat-api] Theme: ${args.theme}${args.color ? `, color: ${args.color}` : ""}`);
-    htmlPath = renderMarkdownToHtml(filePath, args.theme, args.color);
+    console.error(`[wechat-api] Theme: ${resolvedTheme}${resolvedColor ? `, color: ${resolvedColor}` : ""}`);
+    htmlPath = renderMarkdownToHtml(filePath, resolvedTheme, resolvedColor);
     console.error(`[wechat-api] HTML generated: ${htmlPath}`);
-    htmlContent = extractHtmlContent(htmlPath);
+    htmlContent = normalizeHtmlForWeChatApi(extractHtmlContent(htmlPath));
   }
+
+  if (!author) author = extendConfig.defaultAuthor || "";
 
   if (!title) {
     console.error("Error: No title found. Provide via --title, frontmatter, or <title> tag.");
@@ -535,6 +917,9 @@ async function main(): Promise<void> {
   if (author) console.error(`[wechat-api] Author: ${author}`);
   if (digest) console.error(`[wechat-api] Digest: ${digest.slice(0, 50)}...`);
   console.error(`[wechat-api] Type: ${args.articleType}`);
+  console.error(
+    `[wechat-api] Comments: ${needOpenComment ? "open" : "closed"}, ${onlyFansCanComment ? "fans-only" : "all-users"}`
+  );
 
   if (args.dryRun) {
     console.log(JSON.stringify({
@@ -544,6 +929,10 @@ async function main(): Promise<void> {
       digest: digest || undefined,
       htmlPath,
       contentLength: htmlContent.length,
+      theme: resolvedTheme,
+      color: resolvedColor,
+      needOpenComment,
+      onlyFansCanComment,
     }, null, 2));
     return;
   }
@@ -561,14 +950,7 @@ async function main(): Promise<void> {
   htmlContent = processedHtml;
 
   let thumbMediaId = "";
-  const rawCoverPath = args.cover ||
-    frontmatter.coverImage ||
-    frontmatter.featureImage ||
-    frontmatter.cover ||
-    frontmatter.image;
-  const coverPath = rawCoverPath && !path.isAbsolute(rawCoverPath) && args.cover
-    ? path.resolve(process.cwd(), rawCoverPath)
-    : rawCoverPath;
+  const coverPath = resolveCoverPath(baseDir, args.cover, frontmatter);
 
   if (coverPath) {
     console.error(`[wechat-api] Uploading cover: ${coverPath}`);
@@ -603,6 +985,8 @@ async function main(): Promise<void> {
     thumbMediaId,
     articleType: args.articleType,
     imageMediaIds: args.articleType === "newspic" ? allMediaIds : undefined,
+    needOpenComment,
+    onlyFansCanComment,
   }, accessToken);
 
   console.log(JSON.stringify({

@@ -1,0 +1,59 @@
+# 来源编辑提示
+
+这个文件不负责抓取方法，只负责提醒不同来源的编辑取向和用稿差异。
+
+## 来源与实际 skill 映射
+
+- TechCrunch → [$techcrunch-writer](/Users/aias/.codex/skills/techcrunch-writer/SKILL.md)
+- The Verge → [$the-verge-writer](/Users/aias/.codex/skills/the-verge-writer/SKILL.md)
+- Hacker News → [$hn-ai-writer](/Users/aias/.codex/skills/hn-ai-writer/SKILL.md)
+- GitHub Trending → [$github-trending-writer](/Users/aias/.codex/skills/github-trending-writer/SKILL.md)
+- Engadget → [$engadget-writer](/Users/aias/.codex/skills/engadget-writer/SKILL.md)
+- Fast Company → [$fast-company-writer](/Users/aias/.codex/skills/fast-company-writer/SKILL.md)
+
+## TechCrunch
+
+- 更适合：融资、产品发布、公司动作
+- 写法重点：把“发生了什么”讲清楚，再补行业影响
+- 风险点：不要把记者分析写成公司官方结论
+
+## The Verge
+
+- 更适合：产品体验、行业争议、媒体评论色彩较强的话题
+- 写法重点：保留观点，但要提醒读者它常带评论立场
+- 风险点：不要把评论性判断写成客观事实
+
+## Hacker News
+
+- 更适合：社区热议、技术趋势、工具讨论、Show HN / Launch HN
+- 写法重点：区分“原始项目/文章内容”和“HN 用户讨论共识”
+- 风险点：HN 高分不等于事实更可靠
+
+## GitHub Trending
+
+- 更适合：项目发现、工具速览、趋势观察
+- 写法重点：项目做什么、为什么最近火、适合谁
+- 风险点：不要把 README 宣传语直接当能力边界
+
+## Engadget
+
+- 更适合：消费科技、平台策略、版权和法律争议
+- 写法重点：用更直白的中文把新闻事实讲透
+- 风险点：很多稿子是快讯，不要硬扩成深度报道
+
+## Fast Company
+
+- 更适合：商业创新、管理议题、AI 社会影响
+- 写法重点：把商业背景和现实影响讲清楚
+- 风险点：非所有稿子都偏技术，挑选时注意与 AI 的相关性
+
+## 聚合后的选题建议
+
+- 同一事件被多个来源报道时：
+  - 选信息最完整的一篇做主稿
+  - 其余来源作为补充背景或对照观点
+- 如果候选太多：
+  - 优先保留“事实密度高”的稿子
+  - 其余合并成速读合集
+- 如果用户要“日报”：
+  - 建议 1-2 篇独立稿 + 1 篇速读合集
