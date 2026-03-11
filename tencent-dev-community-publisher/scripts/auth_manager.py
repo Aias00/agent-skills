@@ -39,6 +39,12 @@ class AuthManager:
         self.auth_info_file = AUTH_INFO_FILE
         self.browser_state_dir = BROWSER_STATE_DIR
 
+    def _profile_cookie_db(self) -> Path:
+        return self.browser_state_dir / "browser_profile" / "Default" / "Cookies"
+
+    def has_profile_auth_state(self) -> bool:
+        return self._profile_cookie_db().exists()
+
     def is_authenticated(self) -> bool:
         if not self.state_file.exists():
             return False
@@ -53,6 +59,8 @@ class AuthManager:
             "authenticated": self.is_authenticated(),
             "state_file": str(self.state_file),
             "state_exists": self.state_file.exists(),
+            "profile_cookie_db": str(self._profile_cookie_db()),
+            "profile_cookie_db_exists": self.has_profile_auth_state(),
         }
 
         if self.auth_info_file.exists():
@@ -92,7 +100,6 @@ class AuthManager:
             print(f"  💡 After login, open: {PUBLISH_URL}")
 
             start_time = time.time()
-            last_probe_time = 0.0
             last_wait_log_second = -1
 
             while time.time() - start_time < timeout_minutes * 60:
@@ -102,10 +109,6 @@ class AuthManager:
                     print(f"  ...waiting ({elapsed}s)")
 
                 ok, detected_url = self._scan_context_authenticated(context)
-                if not ok and (time.time() - last_probe_time >= 5):
-                    last_probe_time = time.time()
-                    ok, detected_url = self._probe_authenticated(context)
-
                 if ok:
                     print(f"  ✅ Login successful! (Detected URL: {detected_url})")
                     time.sleep(2)
@@ -144,33 +147,8 @@ class AuthManager:
                 continue
         return False, ""
 
-    def _probe_authenticated(self, context: BrowserContext) -> Tuple[bool, str]:
-        probe_page = None
-        try:
-            probe_page = context.new_page()
-            probe_page.goto(PUBLISH_URL, wait_until="domcontentloaded", timeout=15000)
-            current_url = probe_page.url
-
-            if is_authenticated_url(current_url):
-                return True, current_url
-
-            cookies = context.cookies([HOME_URL])
-            tencent_cookies = [c for c in cookies if "cloud.tencent.com" in c.get("domain", "")]
-            if len(tencent_cookies) >= 3 and not is_login_url(current_url):
-                return True, current_url
-        except Exception:
-            pass
-        finally:
-            if probe_page:
-                try:
-                    probe_page.close()
-                except Exception:
-                    pass
-
-        return False, ""
-
     def validate_auth(self) -> bool:
-        if not self.is_authenticated():
+        if not self.state_file.exists() and not self.has_profile_auth_state():
             return False
 
         print("🔍 Validating authentication...")
@@ -188,6 +166,10 @@ class AuthManager:
 
             if is_authenticated_url(page.url):
                 print("  ✅ Authentication is valid")
+                if not self.state_file.exists():
+                    self._save_browser_state(context)
+                    self._save_auth_info()
+                    print("  💾 Auto-saved browser state from existing profile login")
                 return True
 
             print(f"  ⚠️ Unknown validation URL: {page.url}")
@@ -299,6 +281,8 @@ def main() -> None:
         info = auth.get_auth_info()
         print("\n🔐 Authentication Status:")
         print(f"  Authenticated: {'Yes' if info['authenticated'] else 'No'}")
+        if info.get("profile_cookie_db_exists"):
+            print("  Profile cookies: Present")
         if info.get("state_age_hours") is not None:
             print(f"  State age: {info['state_age_hours']:.1f} hours")
         if info.get("authenticated_at_iso"):

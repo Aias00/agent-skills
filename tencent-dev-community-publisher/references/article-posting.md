@@ -7,6 +7,13 @@
 - `--title "<title>"`: Recommended for automation stability
 - `--cover <path>`: Local cover image path
 
+## Markdown image behavior
+
+- Local Markdown images such as `![配图](images/01.jpg)` are uploaded into the Tencent editor and inserted into the body in order.
+- `--cover` is uploaded separately as the article cover.
+- If the Markdown file also contains the same cover image path, the body upload step skips that duplicate image.
+- Remote image links in Markdown are still converted as normal HTML images.
+
 ## Recommended commands
 
 ### Safe first run

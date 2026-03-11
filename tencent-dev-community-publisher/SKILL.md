@@ -106,6 +106,8 @@ Rules:
 - `--content` accepts file path or inline text.
 - `--cover` is optional.
 - `--no-cover` can force no-cover mode.
+- When `--content` is a Markdown file that contains local image references like `![图](images/01.jpg)`, the publisher now uploads those body images in order and inserts them into the editor.
+- If `--cover` points to the same image as the first Markdown image, the body insertion step skips that duplicate and keeps it only as cover.
 
 ### Step 4: Publish
 

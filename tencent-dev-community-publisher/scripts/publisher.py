@@ -10,7 +10,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 from patchright.sync_api import Page, sync_playwright
 
@@ -36,6 +36,88 @@ def clip_title(title: str) -> str:
         print(f"⚠️ Title too short, expanded: {fixed}")
         return fixed
     return title
+
+
+def build_summary(title: str, content_text: str, max_len: int = 120) -> str:
+    source = (content_text or "").replace("\r\n", "\n")
+    paragraphs = []
+    for raw_line in source.split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("#") or line.startswith("![") or line == "---":
+            continue
+        if line.startswith("> "):
+            continue
+        if line.startswith("*原文：") or line.startswith("*原文:"):
+            continue
+        if line.startswith("* ") or line.startswith("- "):
+            continue
+        line = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", line)
+        line = re.sub(r"[*_`#>-]", "", line).strip()
+        if len(line) >= 12:
+            paragraphs.append(line)
+
+    summary = " ".join(paragraphs[:2]).strip()
+    if not summary:
+        summary = title.strip()
+    if len(summary) > max_len:
+        summary = summary[: max_len - 1].rstrip() + "…"
+    return summary
+
+
+def _parse_local_markdown_image(line: str, content_source_path: Optional[str]) -> Optional[str]:
+    if not content_source_path:
+        return None
+    match = re.fullmatch(r"!\[(.*?)\]\((.*?)\)", line.strip())
+    if not match:
+        return None
+    src = match.group(2).strip()
+    if re.match(r"^https?://", src, re.IGNORECASE):
+        return None
+    resolved = (Path(content_source_path).resolve().parent / src).resolve()
+    return str(resolved) if resolved.exists() else None
+
+
+def build_content_ops(
+    content_text: str,
+    content_source_path: Optional[str],
+    body_title_to_skip: str = "",
+    skip_image_path: Optional[str] = None,
+) -> list[tuple[str, str]]:
+    if not content_text:
+        return []
+
+    skip_image_resolved = str(Path(skip_image_path).resolve()) if skip_image_path else None
+    lines = content_text.replace("\r\n", "\n").split("\n")
+    ops: list[tuple[str, str]] = []
+    buffer: list[str] = []
+    skipped_first_title = False
+
+    def flush_buffer() -> None:
+        segment = "\n".join(buffer).strip("\n")
+        buffer.clear()
+        if segment.strip():
+            ops.append(("html", segment))
+
+    for line in lines:
+        stripped = line.strip()
+        if not skipped_first_title and body_title_to_skip and stripped == f"# {body_title_to_skip}":
+            skipped_first_title = True
+            continue
+
+        image_path = _parse_local_markdown_image(line, content_source_path)
+        if image_path:
+            flush_buffer()
+            if skip_image_resolved and str(Path(image_path).resolve()) == skip_image_resolved:
+                continue
+            ops.append(("image", image_path))
+            continue
+
+        buffer.append(line)
+
+    flush_buffer()
+    return ops
 
 
 def screenshot(page: Page, enabled: bool, name: str) -> None:
@@ -186,30 +268,57 @@ def ensure_article_tag(page: Page, candidates) -> bool:
     if before is not None and before < 5:
         return True
 
-    tag_input = None
-    try:
-        tag_input = page.locator("input.com-2-tag-input").first
-        if tag_input.count() == 0 or not tag_input.is_visible():
-            return False
-    except Exception:
-        return False
-
-    for keyword in candidates:
-        kw = (keyword or "").strip()
-        if not kw:
-            continue
+    def use_new_tags_input(keyword: str) -> bool:
         try:
+            ok = page.evaluate(
+                """(kw) => {
+                    const inputs = Array.from(document.querySelectorAll('input.cdc-tags-input__input'));
+                    const el = inputs[0];
+                    if (!el) return false;
+                    el.scrollIntoView({ block: 'center' });
+                    el.focus();
+                    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                    setter.call(el, '');
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    return document.activeElement === el;
+                }""",
+                keyword,
+            )
+            if not ok:
+                return False
+            page.wait_for_timeout(300)
+            page.keyboard.type(keyword, delay=60)
+            page.wait_for_timeout(900)
+            page.keyboard.press("ArrowDown")
+            page.keyboard.press("Enter")
+            page.wait_for_timeout(1000)
+            after = _remaining_tag_slots(page)
+            return after is not None and after < 5
+        except Exception:
+            return False
+
+    def use_legacy_tags_input(keyword: str) -> bool:
+        try:
+            tag_input = page.locator("input.com-2-tag-input").first
+            if tag_input.count() == 0 or not tag_input.is_visible():
+                return False
             tag_input.click()
-            tag_input.fill(kw)
+            tag_input.fill(keyword)
             page.wait_for_timeout(700)
             page.keyboard.press("ArrowDown")
             page.keyboard.press("Enter")
             page.wait_for_timeout(700)
             after = _remaining_tag_slots(page)
-            if after is not None and after < 5:
-                return True
+            return after is not None and after < 5
         except Exception:
+            return False
+
+    for keyword in candidates:
+        kw = (keyword or "").strip()
+        if not kw:
             continue
+        if use_new_tags_input(kw) or use_legacy_tags_input(kw):
+            return True
     return False
 
 
@@ -238,8 +347,47 @@ def click_confirm_publish(page: Page, timeout_ms: int = 10000) -> bool:
         except Exception:
             pass
 
+        try:
+            clicked = page.evaluate(
+                """() => {
+                    const btn = Array.from(document.querySelectorAll('button')).find(
+                        el => (el.innerText || '').includes('确认发布')
+                    );
+                    if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return false;
+                    btn.click();
+                    return true;
+                }"""
+            )
+            if clicked:
+                return True
+        except Exception:
+            pass
+
         time.sleep(0.5)
     return False
+
+
+def can_confirm_publish(page: Page) -> bool:
+    try:
+        btn = page.get_by_role("button", name="确认发布").first
+        if btn.count() > 0 and btn.is_visible():
+            return not btn.is_disabled()
+    except Exception:
+        pass
+
+    try:
+        return bool(
+            page.evaluate(
+                """() => {
+                    const btn = Array.from(document.querySelectorAll('button')).find(
+                        el => (el.innerText || '').includes('确认发布')
+                    );
+                    return !!btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
+                }"""
+            )
+        )
+    except Exception:
+        return False
 
 
 def fill_title(page: Page, title: str) -> bool:
@@ -292,7 +440,7 @@ def fill_content(page: Page, html: str) -> bool:
             text = page.evaluate(
                 """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
             )
-            m = re.search(r"字数\s*[:：]\s*(\d+)\s*/\s*50000", text or "")
+            m = re.search(r"(?:正文)?字数\s*[:：]\s*(\d+)(?:\s*/\s*50000)?", text or "")
             return int(m.group(1)) if m else 0
         except Exception:
             return 0
@@ -379,6 +527,202 @@ def fill_content(page: Page, html: str) -> bool:
     return False
 
 
+def insert_content_fragment(page: Page, html: str, replace: bool = False) -> bool:
+    if not html:
+        return True
+
+    try:
+        ok = page.evaluate(
+            """(payload) => {
+                const html = payload.html;
+                const replace = payload.replace;
+                const candidates = Array.from(document.querySelectorAll('.ql-editor, .ProseMirror, [contenteditable="true"], div[role="textbox"], article[contenteditable="true"]'));
+                const editor = candidates.find(el => {
+                    const r = el.getBoundingClientRect();
+                    const s = window.getComputedStyle(el);
+                    return r.width > 5 && r.height > 5 && s.display !== 'none' && s.visibility !== 'hidden';
+                });
+                if (!editor) return false;
+                editor.focus();
+
+                if (replace) {
+                    try {
+                        if ('value' in editor) editor.value = '';
+                        else editor.innerHTML = '';
+                    } catch (_) {}
+                } else {
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+
+                const success = document.execCommand('insertHTML', false, html);
+                if (!success) {
+                    if (replace) editor.innerHTML = html;
+                    else editor.insertAdjacentHTML('beforeend', html);
+                }
+
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+                editor.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            }""",
+            {"html": html, "replace": replace},
+        )
+        if ok:
+            page.wait_for_timeout(500)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def fill_summary(page: Page, summary: str) -> bool:
+    selectors = [
+        'textarea[placeholder*="摘要"]',
+        ".editor-publish-drawer__textarea-main",
+    ]
+    found = first_visible_selector(page, selectors)
+    if not found:
+        return False
+
+    try:
+        loc = page.locator(found).first
+        loc.click(force=True)
+        loc.fill("")
+        loc.type(summary, delay=15)
+        return True
+    except Exception:
+        pass
+
+    try:
+        return bool(
+            page.evaluate(
+                """(payload) => {
+                    const value = payload.summary;
+                    const candidates = Array.from(document.querySelectorAll('textarea'));
+                    const el = candidates.find(node => {
+                        const ph = (node.getAttribute('placeholder') || '').toLowerCase();
+                        const cls = node.className || '';
+                        return ph.includes('摘要') || cls.includes('textarea-main');
+                    });
+                    if (!el) return false;
+                    el.focus();
+                    el.value = value;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    return true;
+                }""",
+                {"summary": summary},
+            )
+        )
+    except Exception:
+        return False
+
+
+def count_body_images(page: Page) -> int:
+    try:
+        return int(
+            page.evaluate(
+                """() => {
+                    const editor = document.querySelector('.ProseMirror, .ql-editor, [contenteditable="true"]');
+                    return editor ? editor.querySelectorAll('img').length : 0;
+                }"""
+            )
+        )
+    except Exception:
+        return 0
+
+
+def upload_body_image(page: Page, image_path: str, timeout_ms: int = 20000) -> bool:
+    if not os.path.exists(image_path):
+        print(f"⚠️ Body image not found: {image_path}")
+        return False
+
+    prev_count = count_body_images(page)
+    try:
+        page.evaluate(
+            """() => {
+                const editor = document.querySelector('.ProseMirror, .ql-editor, [contenteditable="true"]');
+                if (!editor) return;
+                editor.focus();
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }"""
+        )
+        page.wait_for_timeout(200)
+        page.locator("text=插入").first.click(force=True)
+        page.wait_for_timeout(300)
+        with page.expect_file_chooser(timeout=4000) as fc_info:
+            page.locator("li.cdc-tool-dropdown__item").filter(has_text="图片").first.click(force=True)
+        fc_info.value.set_files(image_path)
+    except Exception:
+        return False
+
+    deadline = time.time() + (timeout_ms / 1000)
+    while time.time() < deadline:
+        page.wait_for_timeout(500)
+        try:
+            state = page.evaluate(
+                """() => {
+                    const editor = document.querySelector('.ProseMirror, .ql-editor, [contenteditable="true"]');
+                    const html = editor ? editor.innerHTML : '';
+                    const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
+                    const imgCount = editor ? editor.querySelectorAll('img').length : 0;
+                    return {
+                        imgCount,
+                        hasBlob: html.includes('blob:'),
+                        loading: html.includes('图片载入中') || bodyText.includes('图片载入中'),
+                    };
+                }"""
+            )
+        except Exception:
+            continue
+
+        if state["imgCount"] > prev_count and not state["hasBlob"] and not state["loading"]:
+            return True
+
+    return False
+
+
+def fill_content_with_local_images(
+    page: Page,
+    content_text: str,
+    content_source_path: Optional[str],
+    title: str,
+    cover_image_path: Optional[str],
+) -> bool:
+    ops = build_content_ops(
+        content_text=content_text,
+        content_source_path=content_source_path,
+        body_title_to_skip=title,
+        skip_image_path=cover_image_path,
+    )
+    if not ops:
+        return False
+
+    inserted_any = False
+    for kind, payload in ops:
+        if kind == "html":
+            html = md_to_html(payload)
+            if not insert_content_fragment(page, html, replace=not inserted_any):
+                return False
+            inserted_any = True
+            continue
+        if kind == "image":
+            if not upload_body_image(page, payload):
+                return False
+            inserted_any = True
+
+    return inserted_any
+
+
 def upload_cover(page: Page, cover_path: str) -> bool:
     if not os.path.exists(cover_path):
         print(f"⚠️ Cover image not found: {cover_path}")
@@ -404,9 +748,38 @@ def upload_cover(page: Page, cover_path: str) -> bool:
     return False
 
 
+def wait_cover_upload_complete(page: Page, timeout_ms: int = 20000) -> bool:
+    deadline = time.time() + (timeout_ms / 1000)
+    saw_busy = False
+    while time.time() < deadline:
+        try:
+            text = page.evaluate(
+                """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
+            )
+        except Exception:
+            text = ""
+
+        if "正在上传封面中，请稍候" in (text or ""):
+            saw_busy = True
+            time.sleep(0.5)
+            continue
+
+        if saw_busy:
+            return True
+
+        # If no busy indicator ever appeared, treat the uploader as settled
+        # after a short grace period.
+        time.sleep(0.5)
+        if time.time() + 0.5 >= deadline:
+            break
+
+    return not saw_busy
+
+
 def publish_once(
     title: Optional[str],
     content_text: Optional[str],
+    content_source_path: Optional[str],
     cover_image_path: Optional[str],
     dry_run: bool,
     headless: bool,
@@ -468,7 +841,16 @@ def publish_once(
 
             if final_html:
                 print("📝 Filling content...")
-                if not fill_content(page, final_html):
+                used_structured = False
+                if not raw and content_source_path and "![" in (content_text or ""):
+                    used_structured = fill_content_with_local_images(
+                        page=page,
+                        content_text=content_text or "",
+                        content_source_path=content_source_path,
+                        title=resolved_title,
+                        cover_image_path=cover_image_path,
+                    )
+                if not used_structured and not fill_content(page, final_html):
                     print("⚠️ Could not confidently fill content editor")
                 page.wait_for_timeout(1200)
                 screenshot(page, debug_screenshots, "after_content")
@@ -486,8 +868,12 @@ def publish_once(
 
             ensure_source_selected(page)
             tag_ok = ensure_article_tag(page, tag_candidates)
-            print("✅ Tag selected" if tag_ok else "⚠️ Could not reliably select article tag")
-            if not tag_ok:
+            if tag_ok:
+                print("✅ Tag selected")
+            elif can_confirm_publish(page):
+                print("⚠️ Could not reliably select article tag, but publish is still enabled")
+            else:
+                print("⚠️ Could not reliably select article tag")
                 screenshot(page, debug_screenshots, "tag_missing")
                 return False
 
@@ -495,11 +881,21 @@ def publish_once(
                 print(f"🖼️ Uploading cover: {cover_image_path}")
                 ok = upload_cover(page, cover_image_path)
                 print("✅ Cover uploaded" if ok else "⚠️ Cover upload may have failed")
+                if ok:
+                    settled = wait_cover_upload_complete(page, timeout_ms=20000)
+                    print("✅ Cover upload settled" if settled else "⚠️ Cover upload may still be processing")
                 page.wait_for_timeout(1200)
                 screenshot(page, debug_screenshots, "after_cover")
             elif no_cover:
                 print("🖼️ Selecting no-cover mode (if available)...")
                 click_text_button(page, ["无封面", "不设置封面"], timeout_ms=2500)
+
+            summary_text = build_summary(resolved_title, content_text or "")
+            if summary_text:
+                print("🧾 Filling summary...")
+                ok = fill_summary(page, summary_text)
+                print("✅ Summary filled" if ok else "⚠️ Summary fill may have failed")
+                page.wait_for_timeout(800)
 
             page.wait_for_timeout(1200)
             print("🚀 Confirming publish...")
@@ -614,13 +1010,16 @@ def main() -> None:
     )
 
     content = args.content
+    content_source_path = None
     if content and os.path.exists(content):
+        content_source_path = content
         with open(content, "r", encoding="utf-8") as f:
             content = f.read()
 
     success = publish_once(
         title=args.title,
         content_text=content,
+        content_source_path=content_source_path,
         cover_image_path=args.cover,
         dry_run=args.dry_run,
         headless=headless,

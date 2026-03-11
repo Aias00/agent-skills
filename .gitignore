@@ -4,6 +4,8 @@
 .idea/
 .venv-wechat-format/
 .baoyu-skills/
+tencent-dev-community-publisher/.venv/
+tencent-dev-community-publisher/data/
 
 # Runtime/build artifacts
 __pycache__/

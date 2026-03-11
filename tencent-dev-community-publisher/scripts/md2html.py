@@ -18,7 +18,18 @@ def _strip_frontmatter(text):
 def _escape_and_format_inline(text):
     """Escape HTML and keep minimal Markdown inline formatting."""
     safe_text = html_lib.escape(text, quote=True)
-    return re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", safe_text)
+    safe_text = re.sub(r"\[(.*?)\]\((https?://[^\s)]+)\)", r'<a href="\2">\1</a>', safe_text)
+    safe_text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", safe_text)
+    safe_text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<i>\1</i>", safe_text)
+    return safe_text
+
+
+def _parse_image_markdown(line):
+    match = re.fullmatch(r"!\[(.*?)\]\((.*?)\)", line.strip())
+    if not match:
+        return None
+    alt, src = match.groups()
+    return alt.strip(), src.strip()
 
 
 def raw_text_to_html(text):
@@ -83,6 +94,26 @@ def convert(text):
                 level = 6
             content = _escape_and_format_inline(line[level:].strip())
             html.append(f"<h{level}>{content}</h{level}>")
+            continue
+
+        if stripped == "---":
+            html.append("<hr>")
+            continue
+
+        if stripped.startswith("> "):
+            content = _escape_and_format_inline(stripped[2:].strip())
+            html.append(f"<blockquote><p>{content}</p></blockquote>")
+            continue
+
+        image = _parse_image_markdown(stripped)
+        if image:
+            alt, src = image
+            if re.match(r"^https?://", src, re.IGNORECASE):
+                safe_src = html_lib.escape(src, quote=True)
+                safe_alt = html_lib.escape(alt or "image", quote=True)
+                html.append(f'<p><img src="{safe_src}" alt="{safe_alt}"></p>')
+            # Skip local image references. Tencent editor does not automatically upload
+            # local markdown images during HTML insertion, and showing raw markdown looks worse.
             continue
 
         # Lists ( * or - or 1.)
