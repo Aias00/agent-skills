@@ -31,6 +31,10 @@ _current_account: Optional[str] = None
 
 def get_chrome_path() -> str:
     """Find Chrome executable across macOS / Windows / PATH."""
+    override = os.environ.get("CHROME_EXECUTABLE") or os.environ.get("CHROME_PATH")
+    if override and os.path.isfile(override):
+        return override
+
     candidates = []
 
     if sys.platform == "darwin":
@@ -50,7 +54,14 @@ def get_chrome_path() -> str:
             return path
 
     import shutil
-    found = shutil.which("google-chrome") or shutil.which("chrome") or shutil.which("chrome.exe")
+    found = (
+        shutil.which("google-chrome")
+        or shutil.which("google-chrome-stable")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+        or shutil.which("chrome")
+        or shutil.which("chrome.exe")
+    )
     if found:
         return found
 

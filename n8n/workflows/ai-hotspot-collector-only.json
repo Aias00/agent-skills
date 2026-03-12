@@ -1,0 +1,121 @@
+{
+  "name": "AI Hotspot Collector to Docs (Docker)",
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"workspaceRoot\": \"/workspace/agent-skills\",\n  \"sources\": \"hn,engadget,fast-company\",\n  \"limitPerSource\": 3,\n  \"outputDir\": \"\",\n  \"existingPackageDir\": \"\",\n  \"rewriteProvider\": \"gemini\",\n  \"rewriteMode\": \"api\",\n  \"rewriteModel\": \"gemini-3-pro-preview\",\n  \"date\": \"\",\n  \"keepDuplicates\": false,\n  \"failFast\": false\n}",
+        "options": {}
+      },
+      "id": "workflow-config",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (() => {\n  const cfg = $json;\n  const q = (value) => JSON.stringify(String(value));\n  const workspaceRoot = cfg.workspaceRoot || '/workspace/agent-skills';\n  const requirements = `${workspaceRoot}/ai-hotspot-collector/requirements.txt`;\n  const targetOutput = cfg.outputDir || `${workspaceRoot}/content/ai-hotspot-digests`;\n  const script = [\n    'import importlib.util, pathlib, subprocess, sys',\n    `requirements = ${q(requirements)}`,\n    `target_output = ${q(targetOutput)}`,\n    'pathlib.Path(target_output).mkdir(parents=True, exist_ok=True)',\n    \"if importlib.util.find_spec('requests') is None:\",\n    '    cmd = [sys.executable, \"-m\", \"pip\", \"install\", \"-r\", requirements]',\n    '    subprocess.check_call(cmd)',\n    'print(\"bootstrap-ready\")'\n  ].join(\"\\\\n\");\n  return 'python3 -c ' + JSON.stringify(script);\n})() }}",
+        "options": {}
+      },
+      "id": "bootstrap-runtime",
+      "name": "Bootstrap Runtime",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (() => {\n  const cfg = $json;\n  const q = (value) => JSON.stringify(String(value));\n  const workspaceRoot = cfg.workspaceRoot || '/workspace/agent-skills';\n  const parts = [\n    'python3',\n    q(`${workspaceRoot}/scripts/n8n_hotspot_bridge.py`),\n    'prepare'\n  ];\n\n  if (cfg.existingPackageDir) {\n    parts.push('--existing-package-dir', q(cfg.existingPackageDir));\n  } else {\n    parts.push('--sources', q(cfg.sources || 'hn,engadget,fast-company'));\n    parts.push('--limit-per-source', String(cfg.limitPerSource || 3));\n    parts.push('--rewrite-mode', q(cfg.rewriteMode || 'auto'));\n    parts.push('--rewrite-provider', q(cfg.rewriteProvider || 'gemini'));\n    parts.push('--rewrite-model', q(cfg.rewriteModel || 'gemini-3-pro-preview'));\n    if (cfg.outputDir) parts.push('--output-dir', q(cfg.outputDir));\n    if (cfg.date) parts.push('--date', q(cfg.date));\n    if (cfg.keepDuplicates) parts.push('--keep-duplicates');\n    if (cfg.failFast) parts.push('--fail-fast');\n  }\n\n  return parts.join(' ');\n})() }}",
+        "options": {}
+      },
+      "id": "prepare-bundle",
+      "name": "Prepare Bundle",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.stdout || '').trim();\nif (!raw) {\n  throw new Error('Prepare command returned empty stdout');\n}\nconst data = JSON.parse(raw);\nif (!data.ok) {\n  throw new Error(`Prepare failed: ${data.error || data.stderr || raw}`);\n}\nreturn [{\n  json: {\n    ok: true,\n    stage: 'prepared',\n    packageDir: data.packageDir,\n    digestPath: data.bundle?.digestPath || '',\n    title: data.bundle?.title || '',\n    summary: data.bundle?.summary || '',\n    cover: data.bundle?.cover || '',\n    files: data.bundle?.files || {},\n    images: data.bundle?.images || [],\n    sections: data.bundle?.sections || [],\n    fetchExecuted: data.fetchExecuted,\n    message: 'Hotspots collected and article bundle generated. Review the files under packageDir.'\n  }\n}];"
+      },
+      "id": "parse-prepare-json",
+      "name": "Parse Prepare JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Config": {
+      "main": [
+        [
+          {
+            "node": "Bootstrap Runtime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bootstrap Runtime": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bundle": {
+      "main": [
+        [
+          {
+            "node": "Parse Prepare JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -4,6 +4,7 @@ Handles browser launching, stealth features, and common interactions
 """
 
 import json
+import os
 import time
 import random
 from typing import Optional, List
@@ -26,14 +27,22 @@ class BrowserFactory:
         and cookie workaround.
         """
         # Launch persistent context
+        launch_kwargs = {
+            "user_data_dir": user_data_dir,
+            "headless": headless,
+            "no_viewport": True,
+            "ignore_default_args": ["--enable-automation"],
+            "user_agent": USER_AGENT,
+            "args": BROWSER_ARGS,
+        }
+        executable_path = os.environ.get("CHROME_EXECUTABLE") or os.environ.get("CHROME_PATH")
+        if executable_path:
+            launch_kwargs["executable_path"] = executable_path
+        else:
+            launch_kwargs["channel"] = "chrome"
+
         context = playwright.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            channel="chrome",  # Use real Chrome
-            headless=headless,
-            no_viewport=True,
-            ignore_default_args=["--enable-automation"],
-            user_agent=USER_AGENT,
-            args=BROWSER_ARGS,
+            **launch_kwargs,
         )
 
         # Cookie Workaround for Playwright bug #36139

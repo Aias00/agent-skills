@@ -1,0 +1,210 @@
+{
+  "name": "AI Hotspot Review-First Publisher (Docker)",
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"workspaceRoot\": \"/workspace/agent-skills\",\n  \"sources\": \"hn,engadget,fast-company\",\n  \"limitPerSource\": 3,\n  \"outputDir\": \"\",\n  \"existingPackageDir\": \"\",\n  \"rewriteProvider\": \"gemini\",\n  \"rewriteMode\": \"api\",\n  \"rewriteModel\": \"gemini-3-pro-preview\",\n  \"date\": \"\",\n  \"keepDuplicates\": false,\n  \"failFast\": false,\n  \"autoPublish\": false,\n  \"dryRun\": false,\n  \"platforms\": \"wechat,xhs,toutiao\",\n  \"withTencent\": true,\n  \"headlessBrowser\": true,\n  \"tencentHeadless\": true,\n  \"wechatMethod\": \"auto\",\n  \"wechatAuthor\": \"银色超音速可乐\",\n  \"wechatSummary\": \"\",\n  \"wechatProfile\": \"/workspace/runtime/wechat-browser-profile\",\n  \"xhsMode\": \"image-text\",\n  \"xhsTemplate\": \"\",\n  \"xhsAccount\": \"default\",\n  \"coverOverride\": \"\",\n  \"titleOverride\": \"\"\n}",
+        "options": {}
+      },
+      "id": "workflow-config",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (() => {\n  const cfg = $json;\n  const q = (value) => JSON.stringify(String(value));\n  const workspaceRoot = cfg.workspaceRoot || '/workspace/agent-skills';\n  const parts = [\n    'python3',\n    q(`${workspaceRoot}/scripts/n8n_hotspot_bridge.py`),\n    'prepare'\n  ];\n\n  if (cfg.existingPackageDir) {\n    parts.push('--existing-package-dir', q(cfg.existingPackageDir));\n  } else {\n    parts.push('--sources', q(cfg.sources || 'hn,engadget,fast-company'));\n    parts.push('--limit-per-source', String(cfg.limitPerSource || 3));\n    parts.push('--rewrite-mode', q(cfg.rewriteMode || 'auto'));\n    parts.push('--rewrite-provider', q(cfg.rewriteProvider || 'gemini'));\n    parts.push('--rewrite-model', q(cfg.rewriteModel || 'gemini-3-pro-preview'));\n    if (cfg.outputDir) parts.push('--output-dir', q(cfg.outputDir));\n    if (cfg.date) parts.push('--date', q(cfg.date));\n    if (cfg.keepDuplicates) parts.push('--keep-duplicates');\n    if (cfg.failFast) parts.push('--fail-fast');\n  }\n\n  return parts.join(' ');\n})() }}",
+        "options": {}
+      },
+      "id": "prepare-bundle",
+      "name": "Prepare Bundle",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.stdout || '').trim();\nif (!raw) {\n  throw new Error('Prepare command returned empty stdout');\n}\nconst data = JSON.parse(raw);\nif (!data.ok) {\n  throw new Error(`Prepare failed: ${data.error || data.stderr || raw}`);\n}\nreturn [{ json: data }];"
+      },
+      "id": "parse-prepare-json",
+      "name": "Parse Prepare JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "auto-publish-condition",
+              "leftValue": "={{ $node[\"Workflow Config\"].json.autoPublish }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "should-auto-publish",
+      "name": "Should Auto Publish?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    ok: true,\n    stage: 'review',\n    message: 'Bundle prepared. Review the generated package, then rerun with autoPublish=true and existingPackageDir set to this package.',\n    packageDir: $json.packageDir,\n    title: $json.bundle?.title || '',\n    summary: $json.bundle?.summary || '',\n    cover: $json.bundle?.cover || '',\n    files: $json.bundle?.files || {},\n    images: $json.bundle?.images || []\n  }\n}];"
+      },
+      "id": "review-result",
+      "name": "Review Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (() => {\n  const cfg = $node[\"Workflow Config\"].json;\n  const q = (value) => JSON.stringify(String(value));\n  const workspaceRoot = cfg.workspaceRoot || '/workspace/agent-skills';\n  const parts = [\n    'python3',\n    q(`${workspaceRoot}/scripts/n8n_hotspot_bridge.py`),\n    'publish',\n    '--package-dir',\n    q($json.packageDir)\n  ];\n\n  if (cfg.platforms) parts.push('--platforms', q(cfg.platforms));\n  if (cfg.withTencent) parts.push('--with-tencent');\n  if (cfg.titleOverride) parts.push('--title', q(cfg.titleOverride));\n  if (cfg.coverOverride) parts.push('--cover', q(cfg.coverOverride));\n  if (cfg.wechatMethod) parts.push('--wechat-method', q(cfg.wechatMethod));\n  if (cfg.wechatAuthor) parts.push('--wechat-author', q(cfg.wechatAuthor));\n  if (cfg.wechatSummary) parts.push('--wechat-summary', q(cfg.wechatSummary));\n  if (cfg.wechatProfile) parts.push('--wechat-profile', q(cfg.wechatProfile));\n  if (cfg.xhsMode) parts.push('--xhs-mode', q(cfg.xhsMode));\n  if (cfg.xhsTemplate) parts.push('--xhs-template', q(cfg.xhsTemplate));\n  if (cfg.xhsAccount) parts.push('--xhs-account', q(cfg.xhsAccount));\n  if (cfg.headlessBrowser === false) parts.push('--no-headless-browser');\n  else parts.push('--headless-browser');\n  if (cfg.tencentHeadless === false) parts.push('--no-tencent-headless');\n  else parts.push('--tencent-headless');\n  if (cfg.dryRun) parts.push('--dry-run');\n\n  return parts.join(' ');\n})() }}",
+        "options": {}
+      },
+      "id": "publish-bundle",
+      "name": "Publish Bundle",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.stdout || '').trim();\nif (!raw) {\n  throw new Error('Publish command returned empty stdout');\n}\nconst data = JSON.parse(raw);\nif (!data.ok) {\n  throw new Error(`Publish failed: ${data.error || data.stderr || raw}`);\n}\nreturn [{ json: data }];"
+      },
+      "id": "parse-publish-json",
+      "name": "Parse Publish JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Config": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bundle": {
+      "main": [
+        [
+          {
+            "node": "Parse Prepare JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Prepare JSON": {
+      "main": [
+        [
+          {
+            "node": "Should Auto Publish?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Auto Publish?": {
+      "main": [
+        [
+          {
+            "node": "Publish Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Review Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Bundle": {
+      "main": [
+        [
+          {
+            "node": "Parse Publish JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

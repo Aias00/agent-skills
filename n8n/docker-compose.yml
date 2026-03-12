@@ -1,0 +1,38 @@
+services:
+  n8n:
+    build:
+      context: ..
+      dockerfile: n8n/docker/Dockerfile
+    image: ai-hotspot-n8n:local
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    env_file:
+      - .env
+    environment:
+      HOTSPOT_WORKSPACE: /workspace/agent-skills
+      HOTSPOT_RUNTIME_ROOT: /workspace/runtime
+      GENERIC_TIMEZONE: ${GENERIC_TIMEZONE:-Asia/Shanghai}
+      TZ: ${GENERIC_TIMEZONE:-Asia/Shanghai}
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL:-http://localhost:5678}
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:5678/}
+      N8N_SECURE_COOKIE: ${N8N_SECURE_COOKIE:-false}
+      N8N_DIAGNOSTICS_ENABLED: ${N8N_DIAGNOSTICS_ENABLED:-false}
+      WECHAT_BROWSER_CHROME_PATH: /usr/bin/google-chrome
+      CHROME_EXECUTABLE: /usr/bin/google-chrome
+      XHS_PROFILES_BASE: /workspace/runtime/xhs-profiles
+    working_dir: /workspace/agent-skills
+    shm_size: "1gb"
+    volumes:
+      - ..:/workspace/agent-skills
+      - ./runtime:/workspace/runtime
+      - n8n_data:/home/node/.n8n
+      - wechat_node_modules:/workspace/agent-skills/wechat-publisher/node_modules
+      - xhs_node_modules:/workspace/agent-skills/post-to-xhs/scripts/node_modules
+
+volumes:
+  n8n_data:
+  wechat_node_modules:
+  xhs_node_modules:

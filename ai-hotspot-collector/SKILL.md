@@ -1,13 +1,13 @@
 ---
 name: ai-hotspot-collector
-description: Aggregate AI-related candidates from multiple existing source skills (TechCrunch, Engadget, Fast Company, Hacker News, GitHub Trending, The Verge), save them into one review queue, and draft Chinese Markdown articles in a review-first workflow. Use when the user wants to 收集 AI 热点、做 AI 新闻选题池、批量看多个来源今天有什么 AI 内容、或基于多来源热点写中文稿。
+description: Aggregate AI-related candidates from multiple built-in source fetchers (TechCrunch, Engadget, Fast Company, Hacker News, GitHub Trending, The Verge), save them into one review queue, and draft Chinese Markdown articles in a review-first workflow. Use when the user wants to 收集 AI 热点、做 AI 新闻选题池、批量看多个来源今天有什么 AI 内容、或基于多来源热点写中文稿。
 ---
 
 # AI Hotspot Collector
 
 This skill is a **source aggregator**, not a site-specific scraper.
 
-It delegates collection to existing source skills, then builds one combined review queue for drafting and publishing.
+It now uses repo-local fetchers for the supported sources, then builds one combined review queue for drafting and publishing.
 
 ## What This Skill Delivers
 
@@ -42,16 +42,18 @@ content/{date}/
 └── fast-company/
 ```
 
-## Source Skills
+## Built-in Sources
 
-这个 skill 不再重复实现各平台抓取逻辑，而是直接调用这些现成 skill：
+当前 repo 内置支持这些来源：
 
-- [$techcrunch-writer](/Users/aias/.codex/skills/techcrunch-writer/SKILL.md)
-- [$the-verge-writer](/Users/aias/.codex/skills/the-verge-writer/SKILL.md)
-- [$hn-ai-writer](/Users/aias/.codex/skills/hn-ai-writer/SKILL.md)
-- [$github-trending-writer](/Users/aias/.codex/skills/github-trending-writer/SKILL.md)
-- [$engadget-writer](/Users/aias/.codex/skills/engadget-writer/SKILL.md)
-- [$fast-company-writer](/Users/aias/.codex/skills/fast-company-writer/SKILL.md)
+- `techcrunch`
+- `the-verge`
+- `hn`
+- `github-trending`
+- `engadget`
+- `fast-company`
+
+也就是说，它不再依赖 `~/.codex/skills/...` 下的来源 skill 才能运行。
 
 ## Workflow
 
@@ -215,7 +217,7 @@ python3 /Users/aias/Work/github/agent-skills/ai-hotspot-collector/scripts/run.py
 ## Quality Bar
 
 - 不要把聚合器当成单一来源
-- 不要重复维护站点抓取逻辑，来源细节归各 source skill
+- 来源抓取逻辑现在在 repo 内部维护，不再依赖外部 skill 路径
 - 不要把 RSS 摘要误写成完整报道
 - 对跨平台重复事件，优先挑信息最完整的一篇做主稿
 - 如果多篇只值得简述，改写成“速读合集”

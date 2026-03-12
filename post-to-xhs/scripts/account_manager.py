@@ -25,14 +25,21 @@ CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "con
 ACCOUNTS_FILE = os.path.join(CONFIG_DIR, "accounts.json")
 
 # Base directory for account profiles
-if sys.platform == "darwin":
+PROFILES_BASE_OVERRIDE = os.environ.get("XHS_PROFILES_BASE")
+if PROFILES_BASE_OVERRIDE:
+    PROFILES_BASE = PROFILES_BASE_OVERRIDE
+elif sys.platform == "darwin":
     PROFILES_BASE = os.path.join(
         os.path.expanduser("~/Library/Application Support"),
         "Google", "Chrome", "XiaohongshuProfiles"
     )
 else:
-    PROFILES_BASE = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
-                                  "Google", "Chrome", "XiaohongshuProfiles")
+    PROFILES_BASE = os.path.join(
+        os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+        "Google",
+        "Chrome",
+        "XiaohongshuProfiles",
+    )
 
 # Default account name (for backward compatibility)
 DEFAULT_PROFILE_NAME = "default"

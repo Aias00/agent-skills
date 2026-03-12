@@ -5,6 +5,7 @@ Automates title/content/cover fill and publish flow with resilient selectors.
 """
 
 import argparse
+import html as html_lib
 import os
 import re
 import sys
@@ -131,6 +132,72 @@ def screenshot(page: Page, enabled: bool, name: str) -> None:
         print(f"📸 Saved screenshot: {out}")
     except Exception as e:
         print(f"⚠️ Screenshot failed: {e}")
+
+
+def discover_articles_url(page: Page) -> Optional[str]:
+    try:
+        href = page.evaluate(
+            """() => {
+                const link = Array.from(document.querySelectorAll('a[href*="/developer/user/"]')).find(a => a.href);
+                if (!link) return '';
+                return link.href.replace(/\/$/, '') + '/articles';
+            }"""
+        )
+        return href or None
+    except Exception:
+        return None
+
+
+def fetch_article_ids_by_title(context, articles_url: str, title: str) -> list[str]:
+    page = context.new_page()
+    try:
+        page.goto(articles_url, wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(3000)
+        rows = page.evaluate(
+            """(wantedTitle) => {
+                return Array.from(document.querySelectorAll('.com-3-article-panel')).map(panel => {
+                    const h3 = panel.querySelector('.com-3-article-panel-title');
+                    const a = panel.querySelector('a[href*="/developer/article/"]');
+                    return {
+                        title: h3 ? (h3.innerText || '').trim() : '',
+                        href: a ? a.href : '',
+                    };
+                }).filter(item => item.title === wantedTitle && item.href);
+            }""",
+            title,
+        )
+        ids: list[str] = []
+        for row in rows or []:
+            href = row.get("href", "")
+            m = re.search(r"/developer/article/(\d+)", href)
+            if m:
+                ids.append(m.group(1))
+        return ids
+    except Exception:
+        return []
+    finally:
+        try:
+            page.close()
+        except Exception:
+            pass
+
+
+def wait_for_new_article_id(
+    context,
+    articles_url: str,
+    title: str,
+    before_ids: list[str],
+    timeout_ms: int = 60000,
+) -> Optional[str]:
+    deadline = time.time() + (timeout_ms / 1000)
+    before_set = set(before_ids)
+    while time.time() < deadline:
+        ids = fetch_article_ids_by_title(context, articles_url, title)
+        for article_id in ids:
+            if article_id not in before_set:
+                return article_id
+        time.sleep(2)
+    return None
 
 
 def wait_login(page: Page, timeout_seconds: int = 300) -> bool:
@@ -446,6 +513,7 @@ def fill_content(page: Page, html: str) -> bool:
             return 0
 
     selectors = [
+        ".public-DraftEditor-content",
         ".ql-editor",
         ".ProseMirror",
         "[contenteditable='true']",
@@ -467,6 +535,14 @@ def fill_content(page: Page, html: str) -> bool:
             loc.click(force=True)
             page.keyboard.press("ControlOrMeta+A")
             page.keyboard.press("Backspace")
+            if found == ".public-DraftEditor-content":
+                plain_text = _html_to_editor_text(html or "")
+                if not plain_text:
+                    return True
+                if not _type_text_into_editor(loc, plain_text):
+                    return False
+                page.wait_for_timeout(800)
+                return current_word_count() > 0
         except Exception:
             pass
 
@@ -518,7 +594,8 @@ def fill_content(page: Page, html: str) -> bool:
             page.keyboard.press("ControlOrMeta+A")
             page.keyboard.press("Backspace")
             plain_text = re.sub(r"<[^>]+>", "", html or "")
-            page.keyboard.insert_text(plain_text)
+            if not _type_text_into_editor(loc, plain_text):
+                return False
             page.wait_for_timeout(800)
             return current_word_count() > 0
     except Exception:
@@ -527,9 +604,156 @@ def fill_content(page: Page, html: str) -> bool:
     return False
 
 
+def _word_count_from_page(page: Page) -> int:
+    try:
+        text = page.evaluate(
+            """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
+        )
+        m = re.search(r"(?:正文)?字数\s*[:：]\s*(\d+)(?:\s*/\s*50000)?", text or "")
+        return int(m.group(1)) if m else 0
+    except Exception:
+        return 0
+
+
+def _html_to_editor_text(html: str) -> str:
+    text = html or ""
+    text = re.sub(r"<br\\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</(p|div|h[1-6]|li|blockquote|pre|ul|ol|section|article)>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<li[^>]*>", "- ", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html_lib.unescape(text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _type_text_into_editor(loc, text: str) -> bool:
+    if not text:
+        return True
+    try:
+        chunks = text.split("\n")
+        for idx, chunk in enumerate(chunks):
+            if chunk:
+                loc.type(chunk, delay=3)
+            if idx < len(chunks) - 1:
+                loc.page.keyboard.press("Enter")
+        return True
+    except Exception:
+        return False
+
+
+def _move_editor_caret_to_end(page: Page) -> bool:
+    try:
+        return bool(
+            page.evaluate(
+                """() => {
+                    const editor = document.querySelector('.public-DraftEditor-content, .ProseMirror, .ql-editor, [contenteditable="true"], div[role="textbox"], article[contenteditable="true"]');
+                    if (!editor) return false;
+                    editor.focus();
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    return true;
+                }"""
+            )
+        )
+    except Exception:
+        return False
+
+
+def insert_text_fragment(page: Page, markdown_text: str, replace: bool = False) -> bool:
+    plain_text = _html_to_editor_text(md_to_html(markdown_text or ""))
+    if not plain_text:
+        return True
+
+    selectors = [
+        ".public-DraftEditor-content",
+        ".ql-editor",
+        ".ProseMirror",
+        "[contenteditable='true']",
+        "div[role='textbox']",
+        "article[contenteditable='true']",
+    ]
+    found = first_visible_selector(page, selectors)
+    if not found:
+        return False
+
+    try:
+        loc = page.locator(found).first
+        loc.click(force=True)
+        if replace:
+            page.keyboard.press("ControlOrMeta+A")
+            page.keyboard.press("Backspace")
+        else:
+            _move_editor_caret_to_end(page)
+        return _type_text_into_editor(loc, plain_text)
+    except Exception:
+        return False
+
+
+def _paste_into_editor(page: Page, html: str, plain_text: str) -> bool:
+    try:
+        return bool(
+            page.evaluate(
+                """(payload) => {
+                    const candidates = Array.from(document.querySelectorAll('.ql-editor, .ProseMirror, [contenteditable="true"], div[role="textbox"], article[contenteditable="true"]'));
+                    const editor = candidates.find(el => {
+                        const r = el.getBoundingClientRect();
+                        const s = window.getComputedStyle(el);
+                        return r.width > 5 && r.height > 5 && s.display !== 'none' && s.visibility !== 'hidden';
+                    });
+                    if (!editor) return false;
+                    editor.focus();
+                    const dt = new DataTransfer();
+                    dt.setData('text/plain', payload.plainText || '');
+                    dt.setData('text/html', payload.html || '');
+                    const ev = new ClipboardEvent('paste', {
+                        clipboardData: dt,
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    return editor.dispatchEvent(ev);
+                }""",
+                {"html": html, "plainText": plain_text},
+            )
+        )
+    except Exception:
+        return False
+
+
 def insert_content_fragment(page: Page, html: str, replace: bool = False) -> bool:
     if not html:
         return True
+
+    before_count = _word_count_from_page(page)
+    plain_text = _html_to_editor_text(html)
+
+    try:
+        selectors = [
+            ".ql-editor",
+            ".ProseMirror",
+            "[contenteditable='true']",
+            "div[role='textbox']",
+            "article[contenteditable='true']",
+        ]
+        found = first_visible_selector(page, selectors)
+        if found:
+            loc = page.locator(found).first
+            loc.click(force=True)
+            if replace:
+                page.keyboard.press("ControlOrMeta+A")
+                page.keyboard.press("Backspace")
+            else:
+                page.keyboard.press("End")
+            if _paste_into_editor(page, html, plain_text):
+                page.wait_for_timeout(800)
+                after_count = _word_count_from_page(page)
+                if after_count > before_count or after_count > 0:
+                    return True
+    except Exception:
+        pass
 
     try:
         ok = page.evaluate(
@@ -573,9 +797,41 @@ def insert_content_fragment(page: Page, html: str, replace: bool = False) -> boo
         )
         if ok:
             page.wait_for_timeout(500)
-            return True
+            after_count = _word_count_from_page(page)
+            if after_count > before_count or after_count > 0:
+                return True
     except Exception:
         pass
+    if not plain_text:
+        return True
+
+    try:
+        selectors = [
+            ".ql-editor",
+            ".ProseMirror",
+            "[contenteditable='true']",
+            "div[role='textbox']",
+            "article[contenteditable='true']",
+        ]
+        found = first_visible_selector(page, selectors)
+        if not found:
+            return False
+
+        loc = page.locator(found).first
+        loc.click(force=True)
+        if replace:
+            page.keyboard.press("ControlOrMeta+A")
+            page.keyboard.press("Backspace")
+        else:
+            page.keyboard.press("End")
+        if not _type_text_into_editor(loc, plain_text):
+            return False
+        page.wait_for_timeout(800)
+        after_count = _word_count_from_page(page)
+        return after_count > before_count or after_count > 0
+    except Exception:
+        pass
+
     return False
 
 
@@ -642,6 +898,82 @@ def upload_body_image(page: Page, image_path: str, timeout_ms: int = 20000) -> b
         return False
 
     prev_count = count_body_images(page)
+    def uploaded_image_appeared(previous_count: int) -> bool:
+        try:
+            state = page.evaluate(
+                """() => {
+                    const editor = document.querySelector('.public-DraftEditor-content, .ProseMirror, .ql-editor, [contenteditable="true"]');
+                    const html = editor ? editor.innerHTML : '';
+                    const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
+                    const imgCount = editor ? editor.querySelectorAll('img').length : 0;
+                    const figureCount = editor ? editor.querySelectorAll('figure').length : 0;
+                    return {
+                        imgCount,
+                        figureCount,
+                        hasBlob: html.includes('blob:'),
+                        loading: html.includes('图片载入中') || bodyText.includes('图片载入中'),
+                        hasImageBlock: html.includes('image-block-wrapper') || html.includes('atomic-focusable image-block-wrapper'),
+                    };
+                }"""
+            )
+        except Exception:
+            return False
+
+        if state["imgCount"] > previous_count or state["figureCount"] > previous_count:
+            if not state["hasBlob"] and not state["loading"]:
+                return True
+            if state["hasImageBlock"]:
+                return True
+        return False
+
+    try:
+        page.evaluate(
+            """() => {
+                const editor = document.querySelector('.public-DraftEditor-content, .ProseMirror, .ql-editor, [contenteditable="true"]');
+                if (!editor) return;
+                editor.focus();
+                const sel = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }"""
+        )
+        page.wait_for_timeout(200)
+        pic_btn = page.locator("button.qa-r-editor-btn.select-file").first
+        if pic_btn.count() > 0:
+            with page.expect_file_chooser(timeout=3000) as fc_info:
+                pic_btn.click(force=True)
+            fc_info.value.set_files(image_path)
+            deadline = time.time() + (timeout_ms / 1000)
+            while time.time() < deadline:
+                page.wait_for_timeout(500)
+                if uploaded_image_appeared(prev_count):
+                    return True
+        page.wait_for_timeout(200)
+    except Exception:
+        pass
+
+    image_input_selectors = [
+        "input[type='file'][accept*='.png'][accept*='.jpg']",
+        "input[type='file'][accept*='image']",
+    ]
+
+    for selector in image_input_selectors:
+        try:
+            loc = page.locator(selector).first
+            if loc.count() == 0:
+                continue
+            loc.set_input_files(image_path)
+            deadline = time.time() + (timeout_ms / 1000)
+            while time.time() < deadline:
+                page.wait_for_timeout(500)
+                if uploaded_image_appeared(prev_count):
+                    return True
+        except Exception:
+            continue
+
     try:
         page.evaluate(
             """() => {
@@ -668,24 +1000,7 @@ def upload_body_image(page: Page, image_path: str, timeout_ms: int = 20000) -> b
     deadline = time.time() + (timeout_ms / 1000)
     while time.time() < deadline:
         page.wait_for_timeout(500)
-        try:
-            state = page.evaluate(
-                """() => {
-                    const editor = document.querySelector('.ProseMirror, .ql-editor, [contenteditable="true"]');
-                    const html = editor ? editor.innerHTML : '';
-                    const bodyText = (document.body && document.body.innerText) ? document.body.innerText : '';
-                    const imgCount = editor ? editor.querySelectorAll('img').length : 0;
-                    return {
-                        imgCount,
-                        hasBlob: html.includes('blob:'),
-                        loading: html.includes('图片载入中') || bodyText.includes('图片载入中'),
-                    };
-                }"""
-            )
-        except Exception:
-            continue
-
-        if state["imgCount"] > prev_count and not state["hasBlob"] and not state["loading"]:
+        if uploaded_image_appeared(prev_count):
             return True
 
     return False
@@ -707,26 +1022,77 @@ def fill_content_with_local_images(
     if not ops:
         return False
 
+    print(f"🧩 Structured content ops: {len(ops)}")
     inserted_any = False
-    for kind, payload in ops:
+    for idx, (kind, payload) in enumerate(ops, start=1):
         if kind == "html":
-            html = md_to_html(payload)
-            if not insert_content_fragment(page, html, replace=not inserted_any):
+            print(f"  • op {idx}: text segment")
+            if not insert_text_fragment(page, payload, replace=not inserted_any):
+                print(f"⚠️ Structured text insertion failed at op {idx}")
                 return False
             inserted_any = True
             continue
         if kind == "image":
+            print(f"  • op {idx}: image {payload}")
             if not upload_body_image(page, payload):
+                print(f"⚠️ Structured image upload failed at op {idx}: {payload}")
                 return False
             inserted_any = True
 
     return inserted_any
 
 
+def append_local_images_after_content(
+    page: Page,
+    content_text: str,
+    content_source_path: Optional[str],
+    title: str,
+    cover_image_path: Optional[str],
+) -> bool:
+    ops = build_content_ops(
+        content_text=content_text,
+        content_source_path=content_source_path,
+        body_title_to_skip=title,
+        skip_image_path=cover_image_path,
+    )
+    image_paths = [payload for kind, payload in ops if kind == "image"]
+    if not image_paths:
+        return True
+
+    print(f"🖼️ Appending {len(image_paths)} body images")
+    appended = 0
+    for idx, image_path in enumerate(image_paths, start=1):
+        print(f"  • image {idx}: {image_path}")
+        if upload_body_image(page, image_path):
+            appended += 1
+        else:
+            print(f"⚠️ Body image append failed: {image_path}")
+    return appended == len(image_paths)
+
+
 def upload_cover(page: Page, cover_path: str) -> bool:
     if not os.path.exists(cover_path):
         print(f"⚠️ Cover image not found: {cover_path}")
         return False
+
+    trigger_selectors = [
+        ".col-editor-upload-opts",
+        "#editor-upload-inner",
+        "text=上传图片",
+        "text=修改文章封面",
+    ]
+    for selector in trigger_selectors:
+        try:
+            loc = page.locator(selector).first
+            if loc.count() == 0 or not loc.is_visible():
+                continue
+            with page.expect_file_chooser(timeout=3000) as fc_info:
+                loc.click(force=True)
+            fc_info.value.set_files(cover_path)
+            page.wait_for_timeout(1200)
+            return True
+        except Exception:
+            continue
 
     selectors = [
         "input[name='article-cover-image']",
@@ -748,6 +1114,76 @@ def upload_cover(page: Page, cover_path: str) -> bool:
     return False
 
 
+def finalize_cover_selection(page: Page, timeout_ms: int = 15000) -> bool:
+    deadline = time.time() + (timeout_ms / 1000)
+    while time.time() < deadline:
+        try:
+            modal = page.locator(".article-cover-modal").first
+            dialog_visible = False
+            try:
+                dialog_visible = modal.count() > 0 and modal.is_visible(timeout=200)
+            except Exception:
+                dialog_visible = False
+
+            if not dialog_visible:
+                for locator in [
+                    page.get_by_text("选择文章封面"),
+                    page.locator(".c-modal-visible"),
+                ]:
+                    try:
+                        if locator.first.is_visible(timeout=200):
+                            dialog_visible = True
+                            break
+                    except Exception:
+                        continue
+
+            if not dialog_visible:
+                return True
+
+            # If nothing is selected yet, prefer the first visible thumbnail.
+            try:
+                selected = modal.locator("[class*='selected'], [class*='active']").filter(
+                    has=modal.locator("img")
+                )
+                if selected.count() == 0:
+                    thumbs = [
+                        ".article-cover-modal img",
+                        ".c-modal-visible img",
+                    ]
+                    for selector in thumbs:
+                        thumb = page.locator(selector).first
+                        if thumb.count() > 0 and thumb.is_visible():
+                            thumb.click(force=True)
+                            page.wait_for_timeout(300)
+                            break
+            except Exception:
+                pass
+
+            clicked = False
+            for locator in [
+                modal.locator(".c-dialog-ft .c-btn").first,
+                page.locator(".article-cover-modal .c-dialog-ft .c-btn").first,
+                page.locator(".c-modal-visible .c-dialog-ft .c-btn").first,
+                page.locator(".article-cover-modal button.c-btn").first,
+            ]:
+                try:
+                    if locator.count() > 0 and locator.is_visible(timeout=200):
+                        locator.click(force=True)
+                        clicked = True
+                        page.wait_for_timeout(700)
+                        break
+                except Exception:
+                    continue
+
+            if not clicked:
+                time.sleep(0.4)
+                continue
+        except Exception:
+            time.sleep(0.4)
+
+    return False
+
+
 def wait_cover_upload_complete(page: Page, timeout_ms: int = 20000) -> bool:
     deadline = time.time() + (timeout_ms / 1000)
     saw_busy = False
@@ -764,16 +1200,26 @@ def wait_cover_upload_complete(page: Page, timeout_ms: int = 20000) -> bool:
             time.sleep(0.5)
             continue
 
-        if saw_busy:
-            return True
+        try:
+            cover_ready = bool(
+                page.evaluate(
+                    """() => {
+                        const img = document.querySelector('.col-editor-upload-image');
+                        const inner = document.querySelector('.col-editor-upload-inner');
+                        const hasPreview = !!img && !!img.getAttribute('src') && img.getAttribute('src').startsWith('http');
+                        const text = inner ? (inner.innerText || '') : '';
+                        return hasPreview && text.includes('修改文章封面');
+                    }"""
+                )
+            )
+            if cover_ready:
+                return True
+        except Exception:
+            pass
 
-        # If no busy indicator ever appeared, treat the uploader as settled
-        # after a short grace period.
         time.sleep(0.5)
-        if time.time() + 0.5 >= deadline:
-            break
 
-    return not saw_busy
+    return False
 
 
 def publish_once(
@@ -809,6 +1255,8 @@ def publish_once(
         page = context.pages[0] if context.pages else context.new_page()
 
         try:
+            articles_url: Optional[str] = None
+            before_article_ids: list[str] = []
             print(f"🌐 Opening publish page: {PUBLISH_URL}")
             page.goto(PUBLISH_URL, timeout=60000, wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
@@ -831,6 +1279,10 @@ def publish_once(
                     page.wait_for_timeout(2500)
 
             print("✅ Publish editor loaded")
+            if resolved_title:
+                articles_url = discover_articles_url(page)
+                if articles_url:
+                    before_article_ids = fetch_article_ids_by_title(context, articles_url, resolved_title)
             screenshot(page, debug_screenshots, "loaded")
 
             if resolved_title:
@@ -839,19 +1291,36 @@ def publish_once(
                     print("⚠️ Could not confidently fill title field")
                 screenshot(page, debug_screenshots, "after_title")
 
-            if final_html:
+            structured_done = False
+            if (
+                content_text
+                and not raw
+                and content_source_path
+                and "![" in content_text
+            ):
+                print("📝 Filling content with inline image order...")
+                structured_done = fill_content_with_local_images(
+                    page=page,
+                    content_text=content_text,
+                    content_source_path=content_source_path,
+                    title=resolved_title,
+                    cover_image_path=cover_image_path,
+                )
+                if not structured_done:
+                    print("⚠️ Structured fill failed, falling back to plain content + appended images")
+
+            if final_html and not structured_done:
                 print("📝 Filling content...")
-                used_structured = False
-                if not raw and content_source_path and "![" in (content_text or ""):
-                    used_structured = fill_content_with_local_images(
+                if not fill_content(page, final_html):
+                    print("⚠️ Could not confidently fill content editor")
+                elif not raw and content_source_path and "![" in (content_text or ""):
+                    append_local_images_after_content(
                         page=page,
                         content_text=content_text or "",
                         content_source_path=content_source_path,
                         title=resolved_title,
                         cover_image_path=cover_image_path,
                     )
-                if not used_structured and not fill_content(page, final_html):
-                    print("⚠️ Could not confidently fill content editor")
                 page.wait_for_timeout(1200)
                 screenshot(page, debug_screenshots, "after_content")
 
@@ -882,6 +1351,8 @@ def publish_once(
                 ok = upload_cover(page, cover_image_path)
                 print("✅ Cover uploaded" if ok else "⚠️ Cover upload may have failed")
                 if ok:
+                    selection_done = finalize_cover_selection(page, timeout_ms=15000)
+                    print("✅ Cover selection confirmed" if selection_done else "⚠️ Cover selection dialog may still be open")
                     settled = wait_cover_upload_complete(page, timeout_ms=20000)
                     print("✅ Cover upload settled" if settled else "⚠️ Cover upload may still be processing")
                 page.wait_for_timeout(1200)
@@ -911,6 +1382,19 @@ def publish_once(
             for text in ["发布成功", "提交成功", "已发布", "审核中", "审核通过"]:
                 try:
                     if page.get_by_text(text).is_visible():
+                        if articles_url and resolved_title:
+                            new_article_id = wait_for_new_article_id(
+                                context=context,
+                                articles_url=articles_url,
+                                title=resolved_title,
+                                before_ids=before_article_ids,
+                                timeout_ms=60000,
+                            )
+                            if new_article_id:
+                                print(f"✨ Publish successful ({text}), article_id={new_article_id}")
+                                return True
+                            print("⚠️ Success text appeared, but no new article ID was detected in article list")
+                            return False
                         print(f"✨ Publish successful ({text})")
                         return True
                 except Exception:
@@ -918,6 +1402,19 @@ def publish_once(
 
             try:
                 if "cloud.tencent.com/developer/article/write" not in (page.url or ""):
+                    if articles_url and resolved_title:
+                        new_article_id = wait_for_new_article_id(
+                            context=context,
+                            articles_url=articles_url,
+                            title=resolved_title,
+                            before_ids=before_article_ids,
+                            timeout_ms=60000,
+                        )
+                        if new_article_id:
+                            print(f"✅ Publish submitted (redirected): {page.url}, article_id={new_article_id}")
+                            return True
+                        print("⚠️ Redirect detected, but no new article ID was detected in article list")
+                        return False
                     print(f"✅ Publish submitted (redirected): {page.url}")
                     return True
             except Exception:

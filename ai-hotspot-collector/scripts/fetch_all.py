@@ -18,6 +18,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import requests
+from source_fetchers import SOURCE_LABELS, save_source_candidates
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -28,34 +29,22 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 SOURCE_MAP = {
     "techcrunch": {
-        "run_script": "/Users/aias/.codex/skills/techcrunch-writer/scripts/run.py",
-        "label": "TechCrunch",
-        "default_args": [],
+        "label": SOURCE_LABELS["techcrunch"],
     },
     "the-verge": {
-        "run_script": "/Users/aias/.codex/skills/the-verge-writer/scripts/run.py",
-        "label": "The Verge",
-        "default_args": [],
+        "label": SOURCE_LABELS["the-verge"],
     },
     "hn": {
-        "run_script": "/Users/aias/.codex/skills/hn-ai-writer/scripts/run.py",
-        "label": "Hacker News",
-        "default_args": [],
+        "label": SOURCE_LABELS["hn"],
     },
     "github-trending": {
-        "run_script": "/Users/aias/.codex/skills/github-trending-writer/scripts/run.py",
-        "label": "GitHub Trending",
-        "default_args": [],
+        "label": SOURCE_LABELS["github-trending"],
     },
     "engadget": {
-        "run_script": "/Users/aias/.codex/skills/engadget-writer/scripts/run.py",
-        "label": "Engadget",
-        "default_args": [],
+        "label": SOURCE_LABELS["engadget"],
     },
     "fast-company": {
-        "run_script": "/Users/aias/.codex/skills/fast-company-writer/scripts/run.py",
-        "label": "Fast Company",
-        "default_args": [],
+        "label": SOURCE_LABELS["fast-company"],
     },
 }
 
@@ -841,28 +830,20 @@ def normalize_sources(source_csv: str | None) -> list[str]:
 def run_source_fetch(source: str, limit: int, output_dir: Path) -> dict:
     config = SOURCE_MAP[source]
     output_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [
-        "python3",
-        config["run_script"],
-        "fetch",
-        "--limit",
-        str(limit),
-        "--output-dir",
-        str(output_dir),
-        *config["default_args"],
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    cmd = ["internal-fetch", source, f"--limit={limit}", f"--output-dir={output_dir}"]
     manifest_path = output_dir / "manifest.json"
-    if result.returncode != 0:
+    try:
+        items = save_source_candidates(source, limit, output_dir)
+    except Exception as exc:
         return {
             "source": source,
             "label": config["label"],
             "ok": False,
             "command": cmd,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "error": "fetch command failed",
+            "returncode": 1,
+            "stdout": "",
+            "stderr": str(exc),
+            "error": "internal fetch failed",
         }
     if not manifest_path.exists():
         return {
@@ -870,12 +851,11 @@ def run_source_fetch(source: str, limit: int, output_dir: Path) -> dict:
             "label": config["label"],
             "ok": False,
             "command": cmd,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "",
             "error": f"manifest.json not found under {output_dir}",
         }
-    items = json.loads(manifest_path.read_text(encoding="utf-8"))
     return {
         "source": source,
         "label": config["label"],

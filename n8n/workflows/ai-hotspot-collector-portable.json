@@ -1,0 +1,96 @@
+{
+  "name": "AI Hotspot Collector to Docs (Portable)",
+  "active": false,
+  "settings": {},
+  "pinData": {},
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"outputRoot\": \"/tmp/ai-hotspot-digests\",\n  \"sources\": \"hn,engadget,fast-company,the-verge\",\n  \"limitPerSource\": 3,\n  \"date\": \"\",\n  \"rewriteMode\": \"api\",\n  \"rewriteProvider\": \"gemini\",\n  \"rewriteModel\": \"gemini-3-pro-preview\",\n  \"titlePrefix\": \"今日 AI 热点速读\",\n  \"language\": \"zh-CN\",\n  \"downloadImages\": true\n}",
+        "options": {}
+      },
+      "id": "workflow-config",
+      "name": "Workflow Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ (() => {\n  const cfg = $json;\n  const script = `\nconst fs = require('fs');\nconst path = require('path');\n\nconst cfg = ${JSON.stringify($json)};\nconst AI_KEYWORDS = [\n  'ai', 'artificial intelligence', 'llm', 'agent', 'agents', 'openai', 'anthropic',\n  'gemini', 'claude', 'gpt', 'copilot', 'model', 'inference', 'multimodal', 'reasoning'\n];\nconst DEFAULT_SOURCES = ['hn', 'engadget', 'fast-company', 'the-verge'];\n\nfunction slugify(value) {\n  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'default';\n}\n\nfunction ensureDir(dir) {\n  fs.mkdirSync(dir, { recursive: true });\n}\n\nfunction decodeHtml(value) {\n  return String(value || '')\n    .replace(/<!\\\\[CDATA\\\\[(.*?)\\\\]\\\\]>/gs, '$1')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#39;/g, \"'\")\n    .replace(/&#8217;/g, \"'\")\n    .replace(/&#8211;/g, '-')\n    .replace(/&#8220;/g, '\"')\n    .replace(/&#8221;/g, '\"')\n    .replace(/&#8230;/g, '...')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/\\\\s+/g, ' ')\n    .trim();\n}\n\nfunction containsAi(text) {\n  const normalized = String(text || '').toLowerCase();\n  return AI_KEYWORDS.some((keyword) => normalized.includes(keyword));\n}\n\nasync function fetchText(url) {\n  const res = await fetch(url, {\n    headers: {\n      'user-agent': 'Mozilla/5.0 (compatible; n8n-hotspot-collector/1.0)',\n      'accept': 'application/json, text/xml, application/xml, text/html;q=0.9, */*;q=0.8'\n    }\n  });\n  if (!res.ok) {\n    throw new Error('Fetch failed: ' + url + ' (' + res.status + ')');\n  }\n  return await res.text();\n}\n\nasync function fetchJson(url) {\n  const text = await fetchText(url);\n  return JSON.parse(text);\n}\n\nfunction parseRss(xml) {\n  const items = [];\n  const itemRegex = /<item\\\\b[\\\\s\\\\S]*?<\\\\/item>/gi;\n  let match;\n  while ((match = itemRegex.exec(xml)) !== null) {\n    items.push(match[0]);\n  }\n  return items;\n}\n\nfunction tagValue(block, tag) {\n  const regex = new RegExp('<' + tag + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + tag + '>', 'i');\n  const match = block.match(regex);\n  return match ? decodeHtml(match[1]) : '';\n}\n\nfunction imageFromItem(block) {\n  const patterns = [\n    /<media:content[^>]*url=[\"']([^\"']+)[\"']/i,\n    /<enclosure[^>]*url=[\"']([^\"']+)[\"']/i,\n    /<img[^>]*src=[\"']([^\"']+)[\"']/i\n  ];\n  for (const pattern of patterns) {\n    const match = block.match(pattern);\n    if (match) return match[1];\n  }\n  return '';\n}\n\nasync function collectHn(limit) {\n  const data = await fetchJson('https://hn.algolia.com/api/v1/search?tags=front_page');\n  const hits = Array.isArray(data.hits) ? data.hits : [];\n  return hits\n    .filter((hit) => containsAi(hit.title || '') || containsAi(hit.url || '') || containsAi(hit.story_text || ''))\n    .slice(0, limit)\n    .map((hit) => ({\n      source: 'hn',\n      title: decodeHtml(hit.title || ''),\n      url: hit.url || ('https://news.ycombinator.com/item?id=' + hit.objectID),\n      summary: decodeHtml(hit.story_text || hit.comment_text || ''),\n      image: ''\n    }));\n}\n\nasync function collectRss(source, url, limit, filterFn) {\n  const xml = await fetchText(url);\n  const items = parseRss(xml);\n  const out = [];\n  for (const item of items) {\n    const title = tagValue(item, 'title');\n    const link = tagValue(item, 'link');\n    const description = tagValue(item, 'description') || tagValue(item, 'content:encoded');\n    const image = imageFromItem(item);\n    if (!filterFn({ title, link, description, image })) continue;\n    out.push({ source, title, url: link, summary: description, image });\n    if (out.length >= limit) break;\n  }\n  return out;\n}\n\nfunction normalizeTitle(title) {\n  return String(title || '').toLowerCase().replace(/[^a-z0-9\\\\u4e00-\\\\u9fa5]+/g, ' ').replace(/\\\\s+/g, ' ').trim();\n}\n\nfunction dedupe(items) {\n  const seen = new Set();\n  const out = [];\n  for (const item of items) {\n    const key = normalizeTitle(item.title);\n    if (!key || seen.has(key)) continue;\n    seen.add(key);\n    out.push(item);\n  }\n  return out;\n}\n\nasync function downloadImage(url, targetPath) {\n  if (!url) return false;\n  try {\n    const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 (compatible; n8n-hotspot-collector/1.0)' } });\n    if (!res.ok) return false;\n    const buffer = Buffer.from(await res.arrayBuffer());\n    fs.writeFileSync(targetPath, buffer);\n    return true;\n  } catch {\n    return false;\n  }\n}\n\nfunction fallbackDigest(items, dateStr) {\n  const title = (cfg.titlePrefix || '今日 AI 热点速读') + '（' + dateStr + '）';\n  const intro = '今天我们从多个公开科技来源里筛选出最值得关注的 AI 动态，整理成一份可快速审阅的热点速读。';\n  const lines = ['# ' + title, '', intro, ''];\n  if (items.length) {\n    lines.push('## 今日概览', '');\n    for (const item of items) {\n      lines.push('- ' + item.title);\n    }\n    lines.push('');\n  }\n  items.forEach((item, index) => {\n    lines.push('## ' + (index + 1) + '. ' + item.title, '');\n    if (item.localImage) {\n      lines.push('![' + item.title + '](' + item.localImage + ')', '');\n    }\n    lines.push((item.summary || '暂无摘要，可进入原文查看详情。').trim(), '');\n    lines.push('原文：' + item.url, '');\n  });\n  return lines.join('\\n').trim() + '\\n';\n}\n\nasync function rewriteWithGemini(items, dateStr) {\n  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;\n  if (!apiKey || cfg.rewriteMode === 'off') return null;\n  const model = cfg.rewriteModel || 'gemini-3-pro-preview';\n  const prompt = [\n    '你是中文科技媒体编辑。请基于下面的热点条目，写一篇可读性较强的中文 Markdown 速读稿。',\n    '要求：',\n    '1. 保留一级标题，格式为：# ' + (cfg.titlePrefix || '今日 AI 热点速读') + '（' + dateStr + '）',\n    '2. 先写 1 段导语，再写“今日概览”小节。',\n    '3. 每条新闻用二级标题，写成自然中文，不要只堆字段。',\n    '4. 每条保留原文链接一行：原文：<url>',\n    '5. 不要编造事实，信息不足时保守表述。',\n    '6. 输出纯 Markdown，不要代码块。',\n    '',\n    JSON.stringify(items.map(({ source, title, url, summary, localImage }) => ({ source, title, url, summary, localImage })), null, 2)\n  ].join('\\n');\n\n  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey, {\n    method: 'POST',\n    headers: { 'content-type': 'application/json' },\n    body: JSON.stringify({\n      contents: [{ role: 'user', parts: [{ text: prompt }] }],\n      generationConfig: { temperature: 0.6 }\n    })\n  });\n\n  if (!response.ok) return null;\n  const data = await response.json();\n  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('').trim();\n  return text || null;\n}\n\nasync function main() {\n  const dateStr = cfg.date || new Date().toISOString().slice(0, 10);\n  const outputRoot = cfg.outputRoot || '/tmp/ai-hotspot-digests';\n  const packageDir = path.join(outputRoot, dateStr, slugify(cfg.rewriteModel || cfg.rewriteProvider || 'portable'));\n  const imagesDir = path.join(packageDir, 'images');\n  ensureDir(imagesDir);\n\n  const sourceList = String(cfg.sources || DEFAULT_SOURCES.join(',')).split(',').map((s) => s.trim()).filter(Boolean);\n  const limit = Number(cfg.limitPerSource || 3);\n  let items = [];\n\n  if (sourceList.includes('hn')) {\n    items = items.concat(await collectHn(limit));\n  }\n  if (sourceList.includes('engadget')) {\n    items = items.concat(await collectRss('engadget', 'https://www.engadget.com/rss.xml', limit, (item) => item.link.includes('/ai/') || containsAi(item.title) || containsAi(item.description)));\n  }\n  if (sourceList.includes('fast-company')) {\n    items = items.concat(await collectRss('fast-company', 'https://www.fastcompany.com/section/artificial-intelligence/rss', limit, (item) => containsAi(item.title) || containsAi(item.description)));\n  }\n  if (sourceList.includes('the-verge')) {\n    items = items.concat(await collectRss('the-verge', 'https://www.theverge.com/rss/index.xml', limit, (item) => item.link.includes('/ai') || containsAi(item.title) || containsAi(item.description)));\n  }\n\n  items = dedupe(items).slice(0, 6);\n\n  const downloadedImages = [];\n  if (cfg.downloadImages !== false) {\n    for (let index = 0; index < items.length; index++) {\n      const item = items[index];\n      if (!item.image) continue;\n      const ext = path.extname(new URL(item.image).pathname) || '.jpg';\n      const localName = String(index + 1).padStart(2, '0') + ext;\n      const localPath = path.join(imagesDir, localName);\n      const ok = await downloadImage(item.image, localPath);\n      if (ok) {\n        item.localImage = 'images/' + localName;\n        downloadedImages.push(localPath);\n      }\n    }\n  }\n\n  if (downloadedImages.length) {\n    const coverTarget = path.join(imagesDir, 'cover' + path.extname(downloadedImages[0]));\n    if (!fs.existsSync(coverTarget)) {\n      fs.copyFileSync(downloadedImages[0], coverTarget);\n    }\n  }\n\n  const markdown = (cfg.rewriteProvider === 'gemini' || cfg.rewriteProvider === 'auto') ? (await rewriteWithGemini(items, dateStr)) || fallbackDigest(items, dateStr) : fallbackDigest(items, dateStr);\n  const digestPath = path.join(packageDir, '00-今日AI热点速读.md');\n  const manifestPath = path.join(packageDir, 'manifest.json');\n  const summaryPath = path.join(packageDir, 'summary.json');\n  const sourceItemsPath = path.join(packageDir, 'source-items.json');\n\n  fs.writeFileSync(digestPath, markdown, 'utf8');\n  fs.writeFileSync(sourceItemsPath, JSON.stringify(items, null, 2), 'utf8');\n  fs.writeFileSync(manifestPath, JSON.stringify({\n    date: dateStr,\n    packageDir,\n    digestPath,\n    sources: sourceList,\n    itemCount: items.length,\n    items: items.map(({ source, title, url, localImage }) => ({ source, title, url, localImage: localImage || '' }))\n  }, null, 2), 'utf8');\n  fs.writeFileSync(summaryPath, JSON.stringify({\n    rewriteProvider: cfg.rewriteProvider,\n    rewriteModel: cfg.rewriteModel,\n    outputRoot,\n    packageDir,\n    generatedAt: new Date().toISOString()\n  }, null, 2), 'utf8');\n\n  process.stdout.write(JSON.stringify({\n    ok: true,\n    stage: 'prepared',\n    packageDir,\n    digestPath,\n    manifestPath,\n    summaryPath,\n    sourceItemsPath,\n    imageCount: downloadedImages.length,\n    itemCount: items.length\n  }, null, 2));\n}\n\nmain().catch((error) => {\n  process.stdout.write(JSON.stringify({ ok: false, error: String(error && error.stack || error) }, null, 2));\n  process.exit(1);\n});\n`;\n  return 'node -e ' + JSON.stringify(script);\n})() }}",
+        "options": {}
+      },
+      "id": "collect-and-build-docs",
+      "name": "Collect and Build Docs",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json.stdout || '').trim();\nif (!raw) {\n  throw new Error('Collector command returned empty stdout');\n}\nconst data = JSON.parse(raw);\nif (!data.ok) {\n  throw new Error(`Portable collector failed: ${data.error || raw}`);\n}\nreturn [{ json: data }];"
+      },
+      "id": "parse-output",
+      "name": "Parse Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Workflow Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Config": {
+      "main": [
+        [
+          {
+            "node": "Collect and Build Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect and Build Docs": {
+      "main": [
+        [
+          {
+            "node": "Parse Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
