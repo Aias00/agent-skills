@@ -18,6 +18,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from PIL import Image
 
 
 REPO_ROOT = Path(os.environ.get("HOTSPOT_WORKSPACE", Path(__file__).resolve().parent.parent))
@@ -165,6 +166,69 @@ def collect_body_images(package_dir: Path) -> list[Path]:
         for path in sorted(images_dir.iterdir())
         if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     ]
+
+
+def convert_images_to_compatible_format(package_dir: Path) -> int:
+    """
+    将 images/ 目录中的图片转换为微信平台兼容的格式。
+
+    转换规则：
+    - WebP → JPEG (微信不支持 WebP)
+    - PNG → JPEG (微信对 PNG 支持有限，建议转换为 JPEG)
+    - JPEG → JPEG (保持不变)
+
+    返回转换的图片数量。
+    """
+    images_dir = package_dir / "images"
+    if not images_dir.exists():
+        return 0
+
+    converted_count = 0
+
+    for path in sorted(images_dir.iterdir()):
+        if not path.is_file():
+            continue
+
+        # 跳过已经是 JPEG 的图片
+        if path.suffix.lower() == ".jpg" or path.suffix.lower() == ".jpeg":
+            continue
+
+        # 转换 WebP 和 PNG 为 JPEG
+        if path.suffix.lower() in {".webp", ".png"}:
+            try:
+                # 打开图片
+                img = Image.open(path)
+
+                # 创建新的 JPEG 文件名
+                target_path = path.with_suffix(".jpg")
+
+                # 转换 RGB (如果是 RGBA 或其他模式)
+                if img.mode in ("RGBA", "LA", "P"):
+                    # 创建白色背景
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    if img.mode == "P":
+                        img = img.convert("RGBA")
+                    if img.mode in ("RGBA", "LA"):
+                        background.paste(img, mask=img.split()[-1])
+                        img = background
+                    else:
+                        img = img.convert("RGB")
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+
+                # 保存为 JPEG (质量 85)
+                img.save(target_path, "JPEG", quality=85)
+
+                # 删除原始文件
+                path.unlink()
+
+                converted_count += 1
+                print(f"[image-convert] Converted {path.name} → {target_path.name}")
+
+            except Exception as e:
+                print(f"[image-convert] Failed to convert {path.name}: {e}")
+
+    return converted_count
 
 
 def parse_digest_sections(markdown_text: str) -> list[dict]:
@@ -473,6 +537,12 @@ def prepare_bundle(args: argparse.Namespace) -> int:
             return fetch_result["returncode"] or 1
 
     bundle = build_publish_bundle(package_dir)
+
+    # 图片格式转换：WebP/PNG → JPEG（微信兼容）
+    converted_count = convert_images_to_compatible_format(package_dir)
+    if converted_count > 0:
+        print(f"[image-convert] Converted {converted_count} image(s) to JPEG format for WeChat compatibility")
+
     payload = {
         "ok": True,
         "stage": "prepare",
@@ -480,6 +550,7 @@ def prepare_bundle(args: argparse.Namespace) -> int:
         "fetchExecuted": not bool(args.existing_package_dir),
         "fetch": fetch_result,
         "bundle": bundle,
+        "imagesConverted": converted_count,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0
