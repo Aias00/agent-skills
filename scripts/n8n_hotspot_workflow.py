@@ -226,6 +226,15 @@ def build_xhs_body(title: str, sections: list[dict]) -> str:
 
 
 def summarize_article_item(item: dict) -> str:
+    # 优先使用 LLM 生成的中文摘要
+    ai_summary = item.get("ai_summary", "")
+    if ai_summary and ai_summary != "与 AI 无关":
+        text = ai_summary.strip()
+        text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", text)
+        text = re.sub(r"\s+", " ", text).strip(" -")
+        return text[:200] if text else (item.get("title", "")[:120])
+    
+    # 降级：使用原始描述/预览
     text = (item.get("preview") or item.get("description") or item.get("title") or "").strip()
     text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", text)
     text = re.sub(r"\s+", " ", text).strip(" -")
@@ -245,7 +254,13 @@ def build_single_article_markdown(item: dict, image_name: str = "") -> str:
         lines.append(f"**发布时间**：{item['published_time']}")
     if item.get("related_sources") and len(item["related_sources"]) > 1:
         lines.append(f"**补充来源**：{', '.join(item['related_sources'])}")
-    lines.extend(["", "## 摘要", "", item.get("description") or item.get("preview") or "暂无摘要。", ""])
+    
+    # 优先使用 LLM 生成的中文摘要
+    summary = item.get("ai_summary", "")
+    if not summary or summary == "与 AI 无关":
+        summary = item.get("description") or item.get("preview") or "暂无摘要。"
+    
+    lines.extend(["", "## 摘要", "", summary, ""])
     if image_name:
         lines.extend([f"![Image](./{image_name})", ""])
     return "\n".join(lines).strip() + "\n"
@@ -592,7 +607,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     prepare = subparsers.add_parser("prepare", help="Collect hotspots and build publish bundle")
-    prepare.add_argument("--sources", default="techcrunch,the-verge,hn,github-trending", help="Comma-separated hotspot sources (default: AI-relevant sources)")
+    prepare.add_argument("--sources", default="techcrunch,the-verge,hn,twitter,github-trending", help="Comma-separated hotspot sources (default: AI-relevant sources)")
     prepare.add_argument("--limit-per-source", type=int, default=3)
     prepare.add_argument("--output-dir", help="Explicit output package dir")
     prepare.add_argument("--existing-package-dir", help="Skip fetch and rebuild metadata for an existing package dir")
