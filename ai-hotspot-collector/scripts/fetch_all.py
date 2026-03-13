@@ -310,11 +310,41 @@ def score_ai_relevance(item: dict, provider: str = "gemini") -> float:
 描述：{description}
 
 评分标准：
-- 10分: 纯AI核心技术/大模型（如GPT、Claude、多模态、RLHF等）
-- 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗、机器人等）
-- 6-7分: AI公司重大动态（OpenAI、Anthropic、Google AI等重大新闻）
-- 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
-- 0-3分: 与AI无关（传统科技、娱乐、政治、其他领域）
+- 10分: 纯AI核心技术/大模型
+  • 大语言模型：GPT、Claude、Gemini、Llama、Mistral、Qwen、通义千问等
+  • 核心技术：Transformer、Diffusion、RLHF、MoE、Flash Attention等
+
+- 9分: AI Agent/智能体系统
+  • Agent框架：LangChain、CrewAI、AutoGPT、BabyAGI、OpenAI Assistants、Semantic Kernel等
+  • Agent工具：OpenClaw/Clawd、AutoGen、CrewRight等
+  • Agent应用：个人AI助手、自主Agent系统、Multi-Agent协作
+
+- 8分: AI重要应用/产品
+  • AI芯片：GPU、TPU、NPU、推理加速
+  • AI医疗、自动驾驶、机器人、AI科研
+  • AI基础设施：向量数据库、Embedding、RAG系统
+
+- 7分: AI公司重大动态
+  • OpenAI、Anthropic、Google AI、Microsoft AI、Meta AI、xAI等重大发布
+  • AI初创公司融资、收购、产品发布
+
+- 5-6分: AI开发工具/框架
+  • 开发工具、SDK、API、库、框架
+  • 数据处理、训练、部署工具（如Unsloth、vLLM）
+  • AI应用示例和小工具
+
+- 3-4分: AI相关但不重要
+  • 普通AI应用（如基础语音识别、图像识别）
+  • AI行业新闻、市场分析、AI伦理讨论
+
+- 0-2分: 与AI无关
+  • 传统科技（非AI）：前端、后端、DevOps、云服务
+  • 娱乐、政治、体育、其他领域
+
+特别注意：
+- 开源AI项目（即使描述不明显）应给予较高分数（7-9分）
+- AI Agent和框架类项目必须给予9分
+- 如果涉及OpenClaw/Clawd等Agent工具，必须给予9分
 
 只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
 
@@ -423,11 +453,41 @@ def generate_ai_summary(item: dict, provider: str = "gemini") -> str:
 描述：{description}
 
 评分标准：
-- 10分: 纯AI核心技术/大模型（如GPT、Claude、多模态、RLHF等）
-- 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗、机器人等）
-- 6-7分: AI公司重大动态（OpenAI、Anthropic、Google AI等重大新闻）
-- 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
-- 0-3分: 与AI无关（传统科技、娱乐、政治、其他领域）
+- 10分: 纯AI核心技术/大模型
+  • 大语言模型：GPT、Claude、Gemini、Llama、Mistral、Qwen、通义千问等
+  • 核心技术：Transformer、Diffusion、RLHF、MoE、Flash Attention等
+
+- 9分: AI Agent/智能体系统
+  • Agent框架：LangChain、CrewAI、AutoGPT、BabyAGI、OpenAI Assistants、Semantic Kernel等
+  • Agent工具：OpenClaw/Clawd、AutoGen、CrewRight等
+  • Agent应用：个人AI助手、自主Agent系统、Multi-Agent协作
+
+- 8分: AI重要应用/产品
+  • AI芯片：GPU、TPU、NPU、推理加速
+  • AI医疗、自动驾驶、机器人、AI科研
+  • AI基础设施：向量数据库、Embedding、RAG系统
+
+- 7分: AI公司重大动态
+  • OpenAI、Anthropic、Google AI、Microsoft AI、Meta AI、xAI等重大发布
+  • AI初创公司融资、收购、产品发布
+
+- 5-6分: AI开发工具/框架
+  • 开发工具、SDK、API、库、框架
+  • 数据处理、训练、部署工具（如Unsloth、vLLM）
+  • AI应用示例和小工具
+
+- 3-4分: AI相关但不重要
+  • 普通AI应用（如基础语音识别、图像识别）
+  • AI行业新闻、市场分析、AI伦理讨论
+
+- 0-2分: 与AI无关
+  • 传统科技（非AI）：前端、后端、DevOps、云服务
+  • 娱乐、政治、体育、其他领域
+
+特别注意：
+- 开源AI项目（即使描述不明显）应给予较高分数（7-9分）
+- AI Agent和框架类项目必须给予9分
+- 如果涉及OpenClaw/Clawd等Agent工具，必须给予9分
 
 只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
 
