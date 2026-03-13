@@ -61,13 +61,16 @@ ALIASES = {
 }
 
 SOURCE_PRIORITY = {
-    "techcrunch": 100,
-    "the-verge": 90,
-    "engadget": 85,
-    "fast-company": 80,
-    "hn": 70,
-    "github-trending": 60,
+    "techcrunch": 100,  # TechCrunch有专门的AI版块，AI相关性高
+    "the-verge": 95,    # The Verge有AI版块，AI相关性高
+    "hn": 80,           # Hacker News有很多AI/ML讨论
+    "github-trending": 70,  # GitHub Trending AI项目
+    "engadget": 40,     # 综合科技媒体，AI相关内容少
+    "fast-company": 35,  # 商业媒体，AI相关内容少
 }
+
+# 默认新闻源配置（优先使用AI相关性高的源）
+DEFAULT_SOURCES = ["techcrunch", "the-verge", "hn", "github-trending"]
 
 STOPWORDS = {
     "a",
@@ -282,6 +285,219 @@ def has_llm_config(provider: str = "auto") -> bool:
     return has_gemini_config() or has_openai_config()
 
 
+def score_ai_relevance(item: dict, provider: str = "gemini") -> float:
+    """
+    使用LLM给新闻的AI相关性打分（0-10分）
+
+    评分标准：
+    - 10分: 纯AI核心技术（如GPT、Transformer、Diffusion等）
+    - 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗等）
+    - 6-7分: AI公司重大动态（OpenAI、Anthropic等重大新闻）
+    - 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
+    - 0-3分: 与AI无关（传统科技、其他领域）
+    """
+    title = item.get("title", "")
+    description = item.get("description", "")
+    preview = item.get("preview", "")
+
+    # 如果没有内容，给最低分
+    if not title and not description:
+        return 0.0
+
+    prompt = f"""请给以下新闻的AI相关性打分（0-10分）：
+
+标题：{title}
+描述：{description}
+
+评分标准：
+- 10分: 纯AI核心技术/大模型（如GPT、Claude、多模态、RLHF等）
+- 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗、机器人等）
+- 6-7分: AI公司重大动态（OpenAI、Anthropic、Google AI等重大新闻）
+- 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
+- 0-3分: 与AI无关（传统科技、娱乐、政治、其他领域）
+
+只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
+
+    try:
+        if provider == "openai":
+            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
+        elif provider == "gemini":
+            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
+        else:
+            # auto 模式，优先使用 Gemini
+            if has_gemini_config():
+                response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
+            elif has_openai_config():
+                response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
+            else:
+                return 5.0  # 默认中等分数
+
+        # 提取数字
+        import re
+        match = re.search(r'(\d+\.?\d*)', response)
+        if match:
+            score = float(match.group(1))
+            # 限制在0-10之间
+            return max(0.0, min(10.0, score))
+        return 5.0  # 默认中等分数
+    except Exception as e:
+        print(f"[warning] Failed to score AI relevance for '{title[:50]}': {e}")
+        return 5.0
+
+
+def generate_ai_summary(item: dict, provider: str = "gemini") -> str:
+    """
+    使用LLM生成高质量的AI新闻摘要
+
+    生成2-3句话的中文摘要，突出：
+    - 核心事件/技术
+    - 重要性/影响
+    - 具体细节（公司名称、技术名称等）
+    """
+    title = item.get("title", "")
+    description = item.get("description", "")
+    preview = item.get("preview", "")
+
+    if not title and not description:
+        return "暂无摘要"
+
+    prompt = f"""请为以下新闻生成一个高质量的中文摘要（2-3句话，80-150字）：
+
+标题：{title}
+描述：{description}
+
+要求：
+1. 突出核心事件或技术点
+2. 说明其重要性或影响
+3. 提及具体的公司、技术或产品名称
+4. 用简洁的中文表述，专业但不晦涩
+5. 只返回摘要内容，不要其他文字
+
+注意：如果这条新闻与AI无关，请直接返回"与AI无关"。"""
+
+    try:
+        if provider == "openai":
+            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
+        elif provider == "gemini":
+            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
+        else:
+            # auto 模式，优先使用 Gemini
+            if has_gemini_config():
+                response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
+            elif has_openai_config():
+                response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
+            else:
+                return preview[:150] if preview else ""
+
+        summary = response.strip()
+
+        # 如果LLM说与AI无关，返回标记
+        if "与ai无关" in summary.lower() or "不相关" in summary or "无关" in summary:
+            return "与AI无关"
+
+        return summary
+    except Exception as e:
+        print(f"[warning] Failed to generate summary for '{title[:50]}': {e}")
+        return preview[:150] if preview else ""
+    """
+    使用LLM给新闻的AI相关性打分（0-10分）
+
+    评分标准：
+    - 10分: 纯AI核心技术（如GPT、Transformer、Diffusion等）
+    - 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗等）
+    - 6-7分: AI公司重大动态（OpenAI、Anthropic等重大新闻）
+    - 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
+    - 0-3分: 与AI无关（传统科技、其他领域）
+    """
+    title = item.get("title", "")
+    description = item.get("description", "")
+    preview = item.get("preview", "")
+
+    # 如果没有内容，给最低分
+    if not title and not description:
+        return 0.0
+
+    prompt = f"""请给以下新闻的AI相关性打分（0-10分）：
+
+标题：{title}
+描述：{description}
+
+评分标准：
+- 10分: 纯AI核心技术/大模型（如GPT、Claude、多模态、RLHF等）
+- 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗、机器人等）
+- 6-7分: AI公司重大动态（OpenAI、Anthropic、Google AI等重大新闻）
+- 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
+- 0-3分: 与AI无关（传统科技、娱乐、政治、其他领域）
+
+只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
+
+    try:
+        if provider == "openai" or (provider == "auto" and has_openai_config()):
+            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
+        else:
+            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
+
+        # 提取数字
+        import re
+        match = re.search(r'(\d+\.?\d*)', response)
+        if match:
+            score = float(match.group(1))
+            # 限制在0-10之间
+            return max(0.0, min(10.0, score))
+        return 5.0  # 默认中等分数
+    except Exception as e:
+        print(f"[warning] Failed to score AI relevance for '{title[:50]}': {e}")
+        return 5.0
+
+
+def generate_ai_summary(item: dict, provider: str = "auto") -> str:
+    """
+    使用LLM生成高质量的AI新闻摘要
+
+    生成2-3句话的中文摘要，突出：
+    - 核心事件/技术
+    - 重要性/影响
+    - 具体细节（公司名称、技术名称等）
+    """
+    title = item.get("title", "")
+    description = item.get("description", "")
+    preview = item.get("preview", "")
+
+    if not title and not description:
+        return "暂无摘要"
+
+    prompt = f"""请为以下新闻生成一个高质量的中文摘要（2-3句话，80-150字）：
+
+标题：{title}
+描述：{description}
+
+要求：
+1. 突出核心事件或技术点
+2. 说明其重要性或影响
+3. 提及具体的公司、技术或产品名称
+4. 用简洁的中文表述，专业但不晦涩
+5. 只返回摘要内容，不要其他文字
+
+注意：如果这条新闻与AI无关，请直接返回"与AI无关"。"""
+
+    try:
+        if provider == "openai" or (provider == "auto" and has_openai_config()):
+            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
+        else:
+            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
+
+        summary = response.strip()
+
+        # 如果LLM说与AI无关，返回标记
+        if "与ai无关" in summary.lower() or "不相关" in summary or "无关" in summary:
+            return "与AI无关"
+
+        return summary
+    except Exception as e:
+        print(f"[warning] Failed to generate summary for '{title[:50]}': {e}")
+        return preview[:150] if preview else ""
+
+
 def call_openai_llm(messages: list[dict], model: str | None = None, temperature: float = 0.4) -> str:
     if not has_openai_config():
         raise RuntimeError("OPENAI_API_KEY is not configured")
@@ -409,7 +625,7 @@ def is_same_event(left: dict, right: dict) -> bool:
     return False
 
 
-def enrich_item(item: dict) -> dict:
+def enrich_item(item: dict, enable_llm: bool = True, llm_provider: str = "gemini") -> dict:
     preview = read_candidate_preview(item.get("content_md", ""))
     combined = " ".join(
         part for part in [item.get("title", ""), item.get("description", ""), preview] if part
@@ -420,12 +636,47 @@ def enrich_item(item: dict) -> dict:
     enriched["normalized_preview"] = normalize_text(preview)
     enriched["tokens"] = tokenize(combined)
     enriched["signature_tokens"] = signature_tokens(combined)
-    enriched["quality_score"] = candidate_quality({"source": item.get("source", ""), "description": item.get("description", ""), "preview": preview})
+
+    # 基础质量分数
+    base_quality = candidate_quality({
+        "source": item.get("source", ""),
+        "description": item.get("description", ""),
+        "preview": preview
+    })
+
+    # 如果启用LLM，添加AI相关性和摘要
+    if enable_llm and has_llm_config(llm_provider):
+        print(f"[llm] Scoring and summarizing: {item.get('title', '')[:50]}...")
+        ai_score = score_ai_relevance(item, provider=llm_provider)
+        ai_summary = generate_ai_summary(item, provider=llm_provider)
+
+        enriched["ai_relevance_score"] = ai_score
+        enriched["ai_summary"] = ai_summary
+
+        print(f"[llm]   - AI score: {ai_score:.1f}/10")
+        print(f"[llm]   - Summary: {ai_summary[:80]}...")
+
+        # 如果摘要说与AI无关，降低AI相关性分数
+        if ai_summary == "与AI无关":
+            enriched["ai_relevance_score"] = 0.0
+            print(f"[llm]   - Marked as not AI-related")
+
+        # 调整总质量分数：AI相关性占70%，基础质量占30%
+        # 这样可以优先选择AI相关且内容质量高的新闻
+        enriched["quality_score"] = (ai_score * 10 * 0.7) + (base_quality * 0.3)
+        print(f"[llm]   - Quality score: {enriched['quality_score']:.2f}")
+    else:
+        print(f"[skip] Skipping LLM for: {item.get('title', '')[:50]}...")
+        enriched["ai_relevance_score"] = 5.0  # 默认中等分数
+        enriched["ai_summary"] = preview[:150] if preview else ""
+        enriched["quality_score"] = base_quality
+
     return enriched
 
 
-def cluster_events(items: list[dict]) -> tuple[list[dict], list[dict]]:
-    enriched = [enrich_item(item) for item in items]
+def cluster_events(items: list[dict], enable_llm: bool = True, llm_provider: str = "gemini") -> tuple[list[dict], list[dict]]:
+    print(f"[enrich] Processing {len(items)} candidates with LLM={enable_llm}...")
+    enriched = [enrich_item(item, enable_llm=enable_llm, llm_provider=llm_provider) for item in items]
     clusters: list[list[dict]] = []
     for item in enriched:
         matched_cluster: list[dict] | None = None
@@ -481,6 +732,9 @@ def cluster_events(items: list[dict]) -> tuple[list[dict], list[dict]]:
                     "content_md": item["content_md"],
                     "duplicate_count": len(cluster) - 1,
                     "related_sources": [member["source_label"] for member in cluster],
+                    "ai_relevance_score": item.get("ai_relevance_score"),
+                    "ai_summary": item.get("ai_summary"),
+                    "quality_score": item.get("quality_score"),
                 }
             )
         unique_manifest.append(
@@ -500,6 +754,9 @@ def cluster_events(items: list[dict]) -> tuple[list[dict], list[dict]]:
                 "related_candidates": related_candidates,
                 "duplicate_count": len(cluster) - 1,
                 "related_sources": sorted({member["source_label"] for member in cluster}),
+                "ai_relevance_score": primary.get("ai_relevance_score"),
+                "ai_summary": primary.get("ai_summary"),
+                "quality_score": primary.get("quality_score"),
             }
         )
 
@@ -732,8 +989,15 @@ def rewrite_digest_with_llm(
 
 def build_item_story(item: dict, translation_cache: dict[str, str]) -> list[str]:
     title_zh = translate_text(item["title"], translation_cache) or item["title"]
-    summary_text = item.get("description") or item.get("preview") or item["title"]
-    summary_zh = translate_text(first_sentence(summary_text), translation_cache) or strip_markdown(summary_text)
+
+    # 优先使用AI生成的摘要
+    ai_summary = item.get("ai_summary", "")
+    if ai_summary and ai_summary != "与AI无关":
+        summary_zh = ai_summary
+    else:
+        summary_text = item.get("description") or item.get("preview") or item["title"]
+        summary_zh = translate_text(first_sentence(summary_text), translation_cache) or strip_markdown(summary_text)
+
     lead = f"这条消息来自 {item['source_label']}。{summary_zh}"
     theme = derive_theme(item)
     source_hint = ""
@@ -811,7 +1075,7 @@ def generate_daily_digest(
 
 def normalize_sources(source_csv: str | None) -> list[str]:
     if not source_csv:
-        return list(SOURCE_MAP.keys())
+        return DEFAULT_SOURCES  # 使用默认的高AI相关性源
     names = []
     for raw in source_csv.split(","):
         key = raw.strip().lower()
@@ -941,7 +1205,19 @@ def main() -> None:
     parser.add_argument("--rewrite-provider", choices=["auto", "openai", "gemini"], default="auto", help="Which provider to use for daily digest rewrite. auto prefers Gemini when configured, then OpenAI.")
     parser.add_argument("--rewrite-model", help="Override the rewrite model for the daily digest.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on the first source failure.")
+
+    # 新增参数：AI相关性过滤和LLM增强
+    parser.add_argument("--enable-llm", action="store_true", default=True, help="Enable LLM for AI relevance scoring and summary generation (default: True).")
+    parser.add_argument("--disable-llm", action="store_true", help="Disable LLM for faster processing.")
+    parser.add_argument("--llm-provider", choices=["auto", "openai", "gemini"], default="gemini", help="Which LLM provider to use for AI scoring and summary.")
+    parser.add_argument("--ai-relevance-threshold", type=float, default=4.0, help="Minimum AI relevance score (0-10) to include in results (default: 4.0). Set to 0 to include all.")
+    parser.add_argument("--max-candidates", type=int, default=20, help="Maximum number of candidates to keep after AI filtering (default: 20).")
+
     args = parser.parse_args()
+
+    # 如果用户明确禁用LLM
+    if args.disable_llm:
+        args.enable_llm = False
 
     try:
         sources = normalize_sources(args.sources)
@@ -962,7 +1238,51 @@ def main() -> None:
             sys.exit(1)
 
     raw_manifest = build_raw_manifest(source_results)
-    all_candidates, deduped_manifest = cluster_events(raw_manifest)
+    all_candidates, deduped_manifest = cluster_events(
+        raw_manifest,
+        enable_llm=args.enable_llm,
+        llm_provider=args.llm_provider
+    )
+    raw_manifest = raw_manifest
+    deduped_manifest = deduped_manifest
+
+    # AI相关性过滤
+    if args.enable_llm and args.ai_relevance_threshold > 0:
+        print(f"\n[filter] Applying AI relevance filter (threshold: {args.ai_relevance_threshold}/10)...")
+        before_count = len(deduped_manifest)
+        filtered_manifest = [
+            item for item in deduped_manifest
+            if item.get("ai_relevance_score", 0.0) >= args.ai_relevance_threshold
+        ]
+        after_count = len(filtered_manifest)
+        removed_count = before_count - after_count
+
+        print(f"[filter] Kept {after_count} candidates (removed {removed_count} low-AI-relevance items)")
+
+        # 显示被过滤掉的低分项目
+        if removed_count > 0:
+            low_score_items = [
+                item for item in deduped_manifest
+                if item.get("ai_relevance_score", 0.0) < args.ai_relevance_threshold
+            ]
+            print(f"[filter] Top 5 removed items (AI score < {args.ai_relevance_threshold}):")
+            for item in low_score_items[:5]:
+                title = item.get("title", "")[:60]
+                ai_score = item.get("ai_relevance_score", 0.0)
+                print(f"  - [{ai_score:.1f}/10] {title}...")
+
+        deduped_manifest = filtered_manifest
+
+        # 限制最大数量
+        if args.max_candidates and len(deduped_manifest) > args.max_candidates:
+            # 按质量分数排序并保留前N个
+            deduped_manifest = sorted(
+                deduped_manifest,
+                key=lambda x: x.get("quality_score", 0),
+                reverse=True
+            )[:args.max_candidates]
+            print(f"[filter] Limited to top {args.max_candidates} candidates by quality score")
+
     manifest = raw_manifest if args.keep_duplicates else deduped_manifest
     (output_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (output_dir / "all_candidates.json").write_text(json.dumps(all_candidates, ensure_ascii=False, indent=2), encoding="utf-8")
