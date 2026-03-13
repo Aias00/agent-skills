@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import mimetypes
 import re
+import subprocess
 from datetime import datetime
 from html import unescape
 from pathlib import Path
@@ -52,6 +53,53 @@ AI_KEYWORDS = {
     "open source ai",
 }
 
+TWITTER_SEARCH_KEYWORDS = [
+    "AI",
+    "LLM",
+    "GPT",
+    "Claude",
+    "agent",
+    "agents",
+    "langchain",
+    "AutoGPT",
+    "OpenAI",
+    "Anthropic",
+    "CrewAI",
+]
+
+GITHUB_AI_KEYWORD_WEIGHTS = {
+    "artificial intelligence": 5,
+    "open source ai": 5,
+    "multi-agent": 5,
+    "agent-framework": 5,
+    "langchain": 5,
+    "transformers": 5,
+    "diffusion": 5,
+    "anthropic": 4,
+    "autogpt": 4,
+    "claude": 4,
+    "crewai": 4,
+    "embedding": 4,
+    "embeddings": 4,
+    "gemini": 4,
+    "gpt": 4,
+    "llm": 4,
+    "llms": 4,
+    "ollama": 4,
+    "openai": 4,
+    "rag": 4,
+    "vector": 4,
+    "vectors": 4,
+    "xai": 4,
+    "agent": 3,
+    "agents": 3,
+    "copilot": 3,
+    "generative ai": 3,
+    "inference": 3,
+    "multimodal": 3,
+    "reasoning": 3,
+}
+
 RSS_NAMESPACES = {
     "content": "http://purl.org/rss/1.0/modules/content/",
     "dc": "http://purl.org/dc/elements/1.1/",
@@ -63,6 +111,7 @@ SOURCE_LABELS = {
     "techcrunch": "TechCrunch",
     "the-verge": "The Verge",
     "hn": "Hacker News",
+    "twitter": "Twitter/X",
     "github-trending": "GitHub Trending",
     "engadget": "Engadget",
     "fast-company": "Fast Company",
@@ -92,6 +141,19 @@ def html_to_text(value: str) -> str:
 def contains_ai(text: str) -> bool:
     normalized = (text or "").lower()
     return any(keyword in normalized for keyword in AI_KEYWORDS)
+
+
+def github_ai_relevance_score(*parts: str) -> int:
+    normalized = " ".join(part for part in parts if part).lower()
+    score = 0
+    matched = 0
+    for keyword, weight in GITHUB_AI_KEYWORD_WEIGHTS.items():
+        if keyword in normalized:
+            score += weight
+            matched += 1
+    if matched >= 2:
+        score += min(matched, 4)
+    return score
 
 
 def safe_get(url: str, timeout: int = 25) -> requests.Response:
@@ -261,6 +323,150 @@ def fetch_hn_items(limit: int) -> list[dict]:
     return items
 
 
+def extract_twitter_search_items(payload) -> list[dict]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if not isinstance(payload, dict):
+        return []
+    candidates = [
+        payload.get("tweets"),
+        payload.get("data"),
+        payload.get("results"),
+        payload.get("items"),
+        payload.get("statuses"),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, list):
+            return [item for item in candidate if isinstance(item, dict)]
+        if isinstance(candidate, dict):
+            nested = extract_twitter_search_items(candidate)
+            if nested:
+                return nested
+    return []
+
+
+def parse_twitter_item(tweet: dict) -> dict | None:
+    tweet_id = tweet.get("id") or tweet.get("tweet_id") or tweet.get("rest_id") or tweet.get("id_str")
+    user = tweet.get("user") if isinstance(tweet.get("user"), dict) else {}
+    author = tweet.get("author") or tweet.get("username") or tweet.get("screen_name") or user.get("screen_name") or user.get("name") or ""
+    author = html_to_text(str(author)).lstrip("@")
+
+    url = tweet.get("url") or tweet.get("tweet_url") or tweet.get("permalink") or ""
+    if not url and tweet_id and author:
+        url = f"https://x.com/{author}/status/{tweet_id}"
+    if not url or not tweet_id:
+        return None
+
+    title = html_to_text(
+        str(
+            tweet.get("title")
+            or tweet.get("full_text")
+            or tweet.get("text")
+            or tweet.get("content")
+            or ""
+        )
+    )
+    if not title:
+        return None
+
+    description = html_to_text(
+        str(
+            tweet.get("description")
+            or tweet.get("full_text")
+            or tweet.get("text")
+            or tweet.get("content")
+            or ""
+        )
+    )
+
+    image_url = ""
+    media_candidates = tweet.get("media") or tweet.get("photos") or tweet.get("images") or []
+    if isinstance(media_candidates, list):
+        for media in media_candidates:
+            if not isinstance(media, dict):
+                continue
+            image_url = (
+                media.get("media_url_https")
+                or media.get("media_url")
+                or media.get("url")
+                or media.get("image")
+                or ""
+            )
+            if image_url:
+                break
+    elif isinstance(media_candidates, dict):
+        image_url = (
+            media_candidates.get("media_url_https")
+            or media_candidates.get("media_url")
+            or media_candidates.get("url")
+            or media_candidates.get("image")
+            or ""
+        )
+
+    published_time = html_to_text(
+        str(
+            tweet.get("published_time")
+            or tweet.get("created_at")
+            or tweet.get("timestamp")
+            or tweet.get("date")
+            or ""
+        )
+    )
+
+    return {
+        "title": title[:280],
+        "url": url,
+        "description": description[:600],
+        "author": author,
+        "published_time": published_time,
+        "image_url": image_url,
+        "raw_html": json.dumps(tweet, ensure_ascii=False, indent=2),
+    }
+
+
+def fetch_twitter_items(limit: int) -> list[dict]:
+    if limit <= 0:
+        return []
+    items = []
+    seen_urls = set()
+    for keyword in TWITTER_SEARCH_KEYWORDS:
+        try:
+            result = subprocess.run(
+                [
+                    "xreach",
+                    "twitter",
+                    "search",
+                    "--query",
+                    f"{keyword} -is:retweet",
+                    "--count",
+                    "5",
+                    "--format",
+                    "json",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (FileNotFoundError, subprocess.SubprocessError):
+            return []
+
+        try:
+            payload = json.loads(result.stdout or "[]")
+        except json.JSONDecodeError:
+            continue
+
+        for tweet in extract_twitter_search_items(payload):
+            parsed = parse_twitter_item(tweet)
+            if not parsed or parsed["url"] in seen_urls:
+                continue
+            seen_urls.add(parsed["url"])
+            items.append(parsed)
+            if len(items) >= limit:
+                return items
+
+    return items[:limit]
+
+
 def fetch_rss_source(source: str, url: str, limit: int, item_filter) -> list[dict]:
     items = []
     for item in parse_feed_items(fetch_text(url)):
@@ -281,7 +487,7 @@ def fetch_rss_source(source: str, url: str, limit: int, item_filter) -> list[dic
 def fetch_github_trending(limit: int) -> list[dict]:
     html = fetch_text("https://github.com/trending")
     articles = re.findall(r"<article\b[^>]*class=\"Box-row\"[\s\S]*?</article>", html, flags=re.I)
-    items = []
+    scored_items = []
     for article in articles:
         repo_match = re.search(r'<h2\b[^>]*>[\s\S]*?<a\b[^>]*href=\"([^\"]+)\"', article, flags=re.I)
         if not repo_match:
@@ -291,9 +497,11 @@ def fetch_github_trending(limit: int) -> list[dict]:
         repo_name = html_to_text(repo_path.strip("/"))
         desc_match = re.search(r'<p\b[^>]*>([\s\S]*?)</p>', article, flags=re.I)
         description = html_to_text(desc_match.group(1)) if desc_match else ""
-        if not contains_ai(" ".join([repo_name, description])):
+        article_text = html_to_text(article)
+        relevance_score = github_ai_relevance_score(repo_name, description, repo_path, article_text)
+        if relevance_score <= 0:
             continue
-        items.append(
+        scored_items.append(
             {
                 "title": repo_name,
                 "url": repo_url,
@@ -302,16 +510,18 @@ def fetch_github_trending(limit: int) -> list[dict]:
                 "published_time": datetime.utcnow().strftime("%Y-%m-%d"),
                 "image_url": "",
                 "raw_html": article,
+                "ai_relevance_score": relevance_score,
             }
         )
-        if len(items) >= limit:
-            break
-    return items
+    scored_items.sort(key=lambda item: (item.get("ai_relevance_score", 0), len(item.get("description", ""))), reverse=True)
+    return scored_items[:limit]
 
 
 def source_candidates(source: str, limit: int) -> list[dict]:
     if source == "hn":
         return fetch_hn_items(limit)
+    if source == "twitter":
+        return fetch_twitter_items(limit)
     if source == "engadget":
         return fetch_rss_source(
             source,

@@ -37,6 +37,9 @@ SOURCE_MAP = {
     "hn": {
         "label": SOURCE_LABELS["hn"],
     },
+    "twitter": {
+        "label": SOURCE_LABELS["twitter"],
+    },
     "github-trending": {
         "label": SOURCE_LABELS["github-trending"],
     },
@@ -54,6 +57,8 @@ ALIASES = {
     "theverge": "the-verge",
     "verge": "the-verge",
     "hackernews": "hn",
+    "x": "twitter",
+    "twitter-x": "twitter",
     "github": "github-trending",
     "gh": "github-trending",
     "eng": "engadget",
@@ -64,13 +69,14 @@ SOURCE_PRIORITY = {
     "techcrunch": 100,  # TechCrunch有专门的AI版块，AI相关性高
     "the-verge": 95,    # The Verge有AI版块，AI相关性高
     "hn": 80,           # Hacker News有很多AI/ML讨论
+    "twitter": 75,      # Twitter/X 有大量 AI 一手动态与讨论
     "github-trending": 70,  # GitHub Trending AI项目
     "engadget": 40,     # 综合科技媒体，AI相关内容少
     "fast-company": 35,  # 商业媒体，AI相关内容少
 }
 
 # 默认新闻源配置（优先使用AI相关性高的源）
-DEFAULT_SOURCES = ["techcrunch", "the-verge", "hn", "github-trending"]
+DEFAULT_SOURCES = ["techcrunch", "the-verge", "hn", "twitter", "github-trending"]
 
 STOPWORDS = {
     "a",
@@ -1256,7 +1262,7 @@ def write_readme(output_dir: Path, manifest: list[dict], summary: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Aggregate AI hotspot candidates from multiple source skills.")
-    parser.add_argument("--sources", help="Comma-separated sources: techcrunch,the-verge,hn,github-trending,engadget,fast-company")
+    parser.add_argument("--sources", help="Comma-separated sources: techcrunch,the-verge,hn,twitter,github-trending,engadget,fast-company")
     parser.add_argument("--limit-per-source", type=int, default=3, help="How many candidates to fetch per source.")
     parser.add_argument("--output-dir", default=str(default_output_dir()), help="Where to store the aggregated review queue.")
     parser.add_argument("--keep-duplicates", action="store_true", help="Skip automatic same-event deduplication.")
