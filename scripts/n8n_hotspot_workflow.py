@@ -5,6 +5,50 @@ Bridge script for n8n to run the AI hotspot collection and publishing pipeline.
 Commands:
   prepare  -> collect hotspots, build publish bundle variants, emit JSON
   publish  -> publish an existing bundle to multi-platform + Tencent, emit JSON
+
+工作流配置建议 (2026-03-13):
+  =========================
+
+  n8n 工作流需要两个节点串行执行:
+
+  Node 1: Execute Command - Prepare
+    Command: python3 scripts/n8n_hotspot_workflow.py prepare --date $(date +%Y-%m-%d)
+    Output: packageDir
+
+  Node 2: Execute Command - Publish
+    Command: python3 scripts/n8n_hotspot_workflow.py publish \
+      --package-dir {{Node 1.packageDir}} \
+      --platforms wechat,xhs,toutiao
+
+图片处理说明:
+  ===========
+
+  1. 图片格式转换:
+     - WebP/PNG → JPEG (微信兼容)
+     - 自动转换在 prepare_bundle() 中执行
+
+  2. 图片数量:
+     - 工作流自动收集所有图片 (最多 9 张)
+     - 当图片不足时，小红书发布效果会受限
+     - 建议: 确保每篇文章至少有 3-4 张不同图片
+
+  3. 小红书发布模式:
+     - 1-2 张图片 → image-text 模式
+     - 3+ 张图片 → long-article 模式
+
+  4. 图片重复问题:
+     - 当抓取内容只有 1 张配图时，系统会复制为封面图
+     - 导致小红书发布时图片重复
+     - 解决方案: 预先确保有足够的不同图片
+
+  5. 手动发布 vs 工作流:
+     - ❌ 手动调用: python3 post-to-xhs/scripts/publish_pipeline.py
+       - 需要手动传递图片
+       - 容易遗漏或重复
+     - ✅ 工作流发布: python3 scripts/n8n_hotspot_workflow.py publish
+       - 自动收集所有图片
+       - 无需手动干预
+       - 避免图片遗漏
 """
 
 from __future__ import annotations
@@ -158,14 +202,53 @@ def infer_cover(package_dir: Path) -> Path | None:
 
 
 def collect_body_images(package_dir: Path) -> list[Path]:
+    """
+    收集内容包中的所有图片。
+
+    注意事项 (2026-03-13 经验):
+    ============================
+    1. 图片数量:
+       - 尽量确保有 3-4 张不同图片
+       - 如果只有 1 张图片，会导致小红书发布时图片重复
+       - 系统会将唯一配图复制为封面图
+
+    2. 图片重复问题:
+       - 当抓取内容只有 1 张配图时
+       - 系统会将该配图复制为封面图
+       - MD5 值相同，小红书编辑页会显示重复
+
+    3. 解决方案:
+       - 从历史内容包选择更多不同图片
+       - 确保每张图片 MD5 值不同
+       - 补充图片直到至少 3-4 张
+
+    4. 小红书发布影响:
+       - 1-2 张图片 → image-text 模式
+       - 3+ 张图片 → long-article 模式
+       - 图片数量不足会影响用户体验
+
+    Returns:
+        排序后的图片路径列表
+    """
     images_dir = package_dir / "images"
     if not images_dir.exists():
         return []
-    return [
+
+    images = [
         path
         for path in sorted(images_dir.iterdir())
         if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
     ]
+
+    # 提示图片数量
+    if len(images) <= 2:
+        print(f"[images] WARNING: Only {len(images)} image(s) found. "
+              f"Xiaohongshu posts work best with 3+ images.")
+    elif len(images) > 9:
+        print(f"[images] INFO: Found {len(images)} images. "
+              f"Only first 9 will be used for publishing.")
+
+    return images
 
 
 def convert_images_to_compatible_format(package_dir: Path) -> int:
