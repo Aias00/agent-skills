@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime
@@ -186,6 +187,127 @@ def build_xhs_body(title: str, sections: list[dict]) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
+def summarize_article_item(item: dict) -> str:
+    text = (item.get("preview") or item.get("description") or item.get("title") or "").strip()
+    text = re.sub(r"\[(.*?)\]\((.*?)\)", r"\1", text)
+    text = re.sub(r"\s+", " ", text).strip(" -")
+    return text[:120] if text else (item.get("title", "")[:120])
+
+
+def build_single_article_markdown(item: dict, image_name: str = "") -> str:
+    lines = [
+        f"# {item.get('title', '未命名热点')}",
+        "",
+        f"**来源**：{item.get('source_label', '')}",
+        f"**原文链接**：{item.get('source_url', '')}",
+    ]
+    if item.get("author"):
+        lines.append(f"**作者**：{item['author']}")
+    if item.get("published_time"):
+        lines.append(f"**发布时间**：{item['published_time']}")
+    if item.get("related_sources") and len(item["related_sources"]) > 1:
+        lines.append(f"**补充来源**：{', '.join(item['related_sources'])}")
+    lines.extend(["", "## 摘要", "", item.get("description") or item.get("preview") or "暂无摘要。", ""])
+    if image_name:
+        lines.extend([f"![Image](./{image_name})", ""])
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_single_xhs_body(item: dict) -> str:
+    title = re.sub(r"（.*?）", "", item.get("title", "")).strip() or "今日 AI 热点"
+    summary = summarize_article_item(item)
+    lines = [
+        f"# {title}",
+        "",
+        summary or "这条热点值得关注，先看关键信息。",
+        "",
+        f"来源：{item.get('source_label', '')}",
+    ]
+    if item.get("source_url"):
+        lines.append(f"原文：{item['source_url']}")
+    lines.extend(["", "#AI热点 #人工智能 #科技资讯"])
+    return "\n".join(lines).strip() + "\n"
+
+
+def materialize_individual_articles(package_dir: Path) -> list[dict]:
+    manifest_path = package_dir / "manifest.json"
+    if not manifest_path.exists():
+        return []
+
+    try:
+        manifest = json.loads(read_text(manifest_path))
+    except json.JSONDecodeError:
+        return []
+
+    articles_dir = package_dir / "articles"
+    articles_dir.mkdir(parents=True, exist_ok=True)
+    article_items: list[dict] = []
+
+    for item in manifest:
+        global_index = int(item.get("global_index") or len(article_items) + 1)
+        slug = slugify_model(item.get("title", ""))[:80]
+        article_dir = articles_dir / f"{global_index:02d}-{slug}"
+        article_dir.mkdir(parents=True, exist_ok=True)
+
+        source_content = Path(item.get("content_md", "")).expanduser()
+        source_dir = source_content.parent if source_content.exists() else Path(item.get("dir", "")).expanduser()
+
+        image_name = ""
+        if source_dir.exists():
+            for candidate in sorted(source_dir.iterdir()):
+                if candidate.is_file() and candidate.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+                    shutil.copy2(candidate, article_dir / candidate.name)
+                    image_name = candidate.name
+                    break
+
+        article_text = build_single_article_markdown(item, image_name=image_name)
+        preview_text = article_text
+        toutiao_text = normalize_links_for_publish(article_text)
+        tencent_text = normalize_links_for_publish(article_text)
+        xhs_text = build_single_xhs_body(item)
+
+        article_md = article_dir / "article.md"
+        preview_md = article_dir / "article-preview.md"
+        toutiao_md = article_dir / "article-toutiao.md"
+        tencent_md = article_dir / "article-tencent.md"
+        xhs_md = article_dir / "article-xhs.md"
+        metadata_json = article_dir / "metadata.json"
+
+        write_text(article_md, article_text)
+        write_text(preview_md, preview_text)
+        write_text(toutiao_md, toutiao_text)
+        write_text(tencent_md, tencent_text)
+        write_text(xhs_md, xhs_text)
+
+        payload = {
+            "eventId": item.get("event_id", ""),
+            "globalIndex": global_index,
+            "title": item.get("title", ""),
+            "summary": summarize_article_item(item),
+            "source": item.get("source", ""),
+            "sourceLabel": item.get("source_label", ""),
+            "sourceUrl": item.get("source_url", ""),
+            "author": item.get("author", ""),
+            "publishedTime": item.get("published_time", ""),
+            "cover": str(article_dir / image_name) if image_name else "",
+            "files": {
+                "article": str(article_md),
+                "preview": str(preview_md),
+                "xhs": str(xhs_md),
+                "toutiao": str(toutiao_md),
+                "tencent": str(tencent_md),
+            },
+            "relatedSources": item.get("related_sources", []),
+            "sourceContent": str(source_content) if source_content else "",
+            "sourceDir": str(source_dir) if source_dir else "",
+        }
+        write_text(metadata_json, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        payload["metadata"] = str(metadata_json)
+        article_items.append(payload)
+
+    return article_items
+
+
 def build_publish_bundle(package_dir: Path) -> dict:
     digest_path = package_dir / "00-今日AI热点速读.md"
     if not digest_path.exists():
@@ -195,6 +317,7 @@ def build_publish_bundle(package_dir: Path) -> dict:
     title = extract_title(digest_text)
     cover = infer_cover(package_dir)
     sections = parse_digest_sections(digest_text)
+    articles = materialize_individual_articles(package_dir)
 
     article_md = package_dir / "article.md"
     preview_md = package_dir / "article-preview.md"
@@ -246,6 +369,7 @@ def build_publish_bundle(package_dir: Path) -> dict:
         },
         "images": [str(path) for path in collect_body_images(package_dir)],
         "sections": sections,
+        "articles": articles,
     }
     write_text(metadata_json, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     return payload
@@ -277,11 +401,19 @@ def prepare_bundle(args: argparse.Namespace) -> int:
             args.rewrite_provider,
             "--rewrite-model",
             args.rewrite_model,
+            "--llm-provider",
+            args.llm_provider,
+            "--ai-relevance-threshold",
+            str(args.ai_relevance_threshold),
+            "--max-candidates",
+            str(args.max_candidates),
         ]
         if args.keep_duplicates:
             cmd.append("--keep-duplicates")
         if args.fail_fast:
             cmd.append("--fail-fast")
+        if args.disable_llm:
+            cmd.append("--disable-llm")
         fetch_result = run_cmd(cmd)
         if not fetch_result["ok"]:
             print(json.dumps({"ok": False, "stage": "fetch", **fetch_result}, ensure_ascii=False, indent=2))
@@ -422,7 +554,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     prepare = subparsers.add_parser("prepare", help="Collect hotspots and build publish bundle")
-    prepare.add_argument("--sources", default="hn,engadget,fast-company", help="Comma-separated hotspot sources")
+    prepare.add_argument("--sources", default="techcrunch,the-verge,hn,github-trending", help="Comma-separated hotspot sources (default: AI-relevant sources)")
     prepare.add_argument("--limit-per-source", type=int, default=3)
     prepare.add_argument("--output-dir", help="Explicit output package dir")
     prepare.add_argument("--existing-package-dir", help="Skip fetch and rebuild metadata for an existing package dir")
@@ -432,6 +564,11 @@ def main() -> None:
     prepare.add_argument("--date", help="Override package date (YYYY-MM-DD)")
     prepare.add_argument("--keep-duplicates", action="store_true")
     prepare.add_argument("--fail-fast", action="store_true")
+    # LLM-related arguments for AI relevance filtering
+    prepare.add_argument("--disable-llm", action="store_true", help="Disable LLM for AI relevance scoring and summary generation (default: enabled)")
+    prepare.add_argument("--llm-provider", choices=["auto", "openai", "gemini"], default="gemini", help="LLM provider for AI scoring (default: gemini)")
+    prepare.add_argument("--ai-relevance-threshold", type=float, default=4.0, help="Minimum AI relevance score (0-10) to include (default: 4.0)")
+    prepare.add_argument("--max-candidates", type=int, default=20, help="Maximum candidates to process (default: 20)")
 
     publish = subparsers.add_parser("publish", help="Publish an existing bundle")
     publish.add_argument("--package-dir", required=True)
