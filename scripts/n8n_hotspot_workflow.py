@@ -28,6 +28,44 @@ TOUTIAO_PUBLISH = Path(os.environ.get("TOUTIAO_PUBLISH_SCRIPT", REPO_ROOT / "tou
 TENCENT_PUBLISH = Path(os.environ.get("TENCENT_PUBLISH_SCRIPT", REPO_ROOT / "tencent-dev-community-publisher" / "scripts" / "publisher.py"))
 BUN_BIN = os.environ.get("BUN_BIN", "bun")
 
+# 自动加载 shell 环境变量（包括 GEMINI_API_KEY）
+# 这确保在 n8n 工作流中执行时也能正确获取环境变量
+def load_shell_env():
+    """自动加载 ~/.zshrc 或 ~/.bashrc 中的环境变量"""
+    import subprocess
+
+    home = Path.home()
+    shell_config_candidates = [
+        home / ".zshrc",
+        home / ".bash_profile",
+        home / ".bashrc",
+        home / ".profile",
+    ]
+
+    for config_file in shell_config_candidates:
+        if config_file.exists():
+            try:
+                # 使用对应的shell来加载配置
+                shell = "zsh" if config_file.name == ".zshrc" else "bash"
+                result = subprocess.run(
+                    [shell, "-c", f"source {config_file} && env"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    # 解析并设置环境变量
+                    for line in result.stdout.split('\n'):
+                        if '=' in line and not line.startswith('#'):
+                            key, value = line.split('=', 1)
+                            os.environ[key] = value
+                    print(f"[env] Loaded environment from {config_file.name}")
+                    return
+            except (subprocess.TimeoutExpired, Exception) as e:
+                print(f"[env] Warning: Failed to load {config_file.name}: {e}")
+
+load_shell_env()
+
 
 def slugify_model(value: str) -> str:
     text = (value or "").strip().lower()
