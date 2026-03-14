@@ -6,6 +6,7 @@ Aggregate candidates from multiple existing source skills into one review queue.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 import re
@@ -291,277 +292,21 @@ def has_llm_config(provider: str = "auto") -> bool:
     return has_gemini_config() or has_openai_config()
 
 
-def score_ai_relevance(item: dict, provider: str = "gemini") -> float:
-    """
-    使用LLM给新闻的AI相关性打分（0-10分）
-
-    评分标准：
-    - 10分: 纯AI核心技术（如GPT、Transformer、Diffusion等）
-    - 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗等）
-    - 6-7分: AI公司重大动态（OpenAI、Anthropic等重大新闻）
-    - 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
-    - 0-3分: 与AI无关（传统科技、其他领域）
-    """
-    title = item.get("title", "")
-    description = item.get("description", "")
-    preview = item.get("preview", "")
-
-    # 如果没有内容，给最低分
-    if not title and not description:
-        return 0.0
-
-    prompt = f"""请给以下新闻的AI相关性打分（0-10分）：
-
-标题：{title}
-描述：{description}
-
-评分标准：
-- 10分: 纯AI核心技术/大模型
-  • 大语言模型：GPT、Claude、Gemini、Llama、Mistral、Qwen、通义千问等
-  • 核心技术：Transformer、Diffusion、RLHF、MoE、Flash Attention等
-
-- 9分: AI Agent/智能体系统
-  • Agent框架：LangChain、CrewAI、AutoGPT、BabyAGI、OpenAI Assistants、Semantic Kernel等
-  • Agent工具：OpenClaw/Clawd、AutoGen、CrewRight等
-  • Agent应用：个人AI助手、自主Agent系统、Multi-Agent协作
-
-- 8分: AI重要应用/产品
-  • AI芯片：GPU、TPU、NPU、推理加速
-  • AI医疗、自动驾驶、机器人、AI科研
-  • AI基础设施：向量数据库、Embedding、RAG系统
-
-- 7分: AI公司重大动态
-  • OpenAI、Anthropic、Google AI、Microsoft AI、Meta AI、xAI等重大发布
-  • AI初创公司融资、收购、产品发布
-
-- 5-6分: AI开发工具/框架
-  • 开发工具、SDK、API、库、框架
-  • 数据处理、训练、部署工具（如Unsloth、vLLM）
-  • AI应用示例和小工具
-
-- 3-4分: AI相关但不重要
-  • 普通AI应用（如基础语音识别、图像识别）
-  • AI行业新闻、市场分析、AI伦理讨论
-
-- 0-2分: 与AI无关
-  • 传统科技（非AI）：前端、后端、DevOps、云服务
-  • 娱乐、政治、体育、其他领域
-
-特别注意：
-- 开源AI项目（即使描述不明显）应给予较高分数（7-9分）
-- AI Agent和框架类项目必须给予9分
-- 如果涉及OpenClaw/Clawd等Agent工具，必须给予9分
-
-只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
-
-    try:
-        if provider == "openai":
-            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
-        elif provider == "gemini":
-            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
-        else:
-            # auto 模式，优先使用 Gemini
-            if has_gemini_config():
-                response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
-            elif has_openai_config():
-                response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
-            else:
-                return 5.0  # 默认中等分数
-
-        # 提取数字
-        import re
-        match = re.search(r'(\d+\.?\d*)', response)
-        if match:
-            score = float(match.group(1))
-            # 限制在0-10之间
-            return max(0.0, min(10.0, score))
-        return 5.0  # 默认中等分数
-    except Exception as e:
-        print(f"[warning] Failed to score AI relevance for '{title[:50]}': {e}")
-        return 5.0
+def parse_ai_score(text: str, default: float = 5.0) -> float:
+    match = re.search(r"(\d+\.?\d*)", text or "")
+    if not match:
+        return default
+    score = float(match.group(1))
+    return max(0.0, min(10.0, score))
 
 
-def generate_ai_summary(item: dict, provider: str = "gemini") -> str:
-    """
-    使用LLM生成高质量的AI新闻摘要
-
-    生成2-3句话的中文摘要，突出：
-    - 核心事件/技术
-    - 重要性/影响
-    - 具体细节（公司名称、技术名称等）
-    """
-    title = item.get("title", "")
-    description = item.get("description", "")
-    preview = item.get("preview", "")
-
-    if not title and not description:
-        return "暂无摘要"
-
-    prompt = f"""请为以下新闻生成一个高质量的中文摘要（2-3句话，80-150字）：
-
-标题：{title}
-描述：{description}
-
-要求：
-1. 突出核心事件或技术点
-2. 说明其重要性或影响
-3. 提及具体的公司、技术或产品名称
-4. 用简洁的中文表述，专业但不晦涩
-5. 只返回摘要内容，不要其他文字
-
-注意：如果这条新闻与AI无关，请直接返回"与AI无关"。"""
-
-    try:
-        if provider == "openai":
-            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
-        elif provider == "gemini":
-            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
-        else:
-            # auto 模式，优先使用 Gemini
-            if has_gemini_config():
-                response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
-            elif has_openai_config():
-                response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
-            else:
-                return preview[:150] if preview else ""
-
-        summary = response.strip()
-
-        # 如果LLM说与AI无关，返回标记
-        if "与ai无关" in summary.lower() or "不相关" in summary or "无关" in summary:
-            return "与AI无关"
-
-        return summary
-    except Exception as e:
-        print(f"[warning] Failed to generate summary for '{title[:50]}': {e}")
-        return preview[:150] if preview else ""
-    """
-    使用LLM给新闻的AI相关性打分（0-10分）
-
-    评分标准：
-    - 10分: 纯AI核心技术（如GPT、Transformer、Diffusion等）
-    - 8-9分: AI重要应用/产品（如AI芯片、自动驾驶、AI医疗等）
-    - 6-7分: AI公司重大动态（OpenAI、Anthropic等重大新闻）
-    - 4-5分: AI相关但不重要（如AI辅助工具、小公司AI产品）
-    - 0-3分: 与AI无关（传统科技、其他领域）
-    """
-    title = item.get("title", "")
-    description = item.get("description", "")
-    preview = item.get("preview", "")
-
-    # 如果没有内容，给最低分
-    if not title and not description:
-        return 0.0
-
-    prompt = f"""请给以下新闻的AI相关性打分（0-10分）：
-
-标题：{title}
-描述：{description}
-
-评分标准：
-- 10分: 纯AI核心技术/大模型
-  • 大语言模型：GPT、Claude、Gemini、Llama、Mistral、Qwen、通义千问等
-  • 核心技术：Transformer、Diffusion、RLHF、MoE、Flash Attention等
-
-- 9分: AI Agent/智能体系统
-  • Agent框架：LangChain、CrewAI、AutoGPT、BabyAGI、OpenAI Assistants、Semantic Kernel等
-  • Agent工具：OpenClaw/Clawd、AutoGen、CrewRight等
-  • Agent应用：个人AI助手、自主Agent系统、Multi-Agent协作
-
-- 8分: AI重要应用/产品
-  • AI芯片：GPU、TPU、NPU、推理加速
-  • AI医疗、自动驾驶、机器人、AI科研
-  • AI基础设施：向量数据库、Embedding、RAG系统
-
-- 7分: AI公司重大动态
-  • OpenAI、Anthropic、Google AI、Microsoft AI、Meta AI、xAI等重大发布
-  • AI初创公司融资、收购、产品发布
-
-- 5-6分: AI开发工具/框架
-  • 开发工具、SDK、API、库、框架
-  • 数据处理、训练、部署工具（如Unsloth、vLLM）
-  • AI应用示例和小工具
-
-- 3-4分: AI相关但不重要
-  • 普通AI应用（如基础语音识别、图像识别）
-  • AI行业新闻、市场分析、AI伦理讨论
-
-- 0-2分: 与AI无关
-  • 传统科技（非AI）：前端、后端、DevOps、云服务
-  • 娱乐、政治、体育、其他领域
-
-特别注意：
-- 开源AI项目（即使描述不明显）应给予较高分数（7-9分）
-- AI Agent和框架类项目必须给予9分
-- 如果涉及OpenClaw/Clawd等Agent工具，必须给予9分
-
-只返回一个数字（0.0到10.0之间的分数），不要其他文字。"""
-
-    try:
-        if provider == "openai" or (provider == "auto" and has_openai_config()):
-            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.1)
-        else:
-            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.1)
-
-        # 提取数字
-        import re
-        match = re.search(r'(\d+\.?\d*)', response)
-        if match:
-            score = float(match.group(1))
-            # 限制在0-10之间
-            return max(0.0, min(10.0, score))
-        return 5.0  # 默认中等分数
-    except Exception as e:
-        print(f"[warning] Failed to score AI relevance for '{title[:50]}': {e}")
-        return 5.0
-
-
-def generate_ai_summary(item: dict, provider: str = "auto") -> str:
-    """
-    使用LLM生成高质量的AI新闻摘要
-
-    生成2-3句话的中文摘要，突出：
-    - 核心事件/技术
-    - 重要性/影响
-    - 具体细节（公司名称、技术名称等）
-    """
-    title = item.get("title", "")
-    description = item.get("description", "")
-    preview = item.get("preview", "")
-
-    if not title and not description:
-        return "暂无摘要"
-
-    prompt = f"""请为以下新闻生成一个高质量的中文摘要（2-3句话，80-150字）：
-
-标题：{title}
-描述：{description}
-
-要求：
-1. 突出核心事件或技术点
-2. 说明其重要性或影响
-3. 提及具体的公司、技术或产品名称
-4. 用简洁的中文表述，专业但不晦涩
-5. 只返回摘要内容，不要其他文字
-
-注意：如果这条新闻与AI无关，请直接返回"与AI无关"。"""
-
-    try:
-        if provider == "openai" or (provider == "auto" and has_openai_config()):
-            response = call_openai_llm([{"role": "user", "content": prompt}], temperature=0.5)
-        else:
-            response = call_gemini_llm([{"role": "user", "content": prompt}], temperature=0.5)
-
-        summary = response.strip()
-
-        # 如果LLM说与AI无关，返回标记
-        if "与ai无关" in summary.lower() or "不相关" in summary or "无关" in summary:
-            return "与AI无关"
-
-        return summary
-    except Exception as e:
-        print(f"[warning] Failed to generate summary for '{title[:50]}': {e}")
-        return preview[:150] if preview else ""
+def normalize_ai_summary(text: str, fallback: str = "") -> str:
+    summary = (text or "").strip()
+    if not summary:
+        return fallback
+    if "与ai无关" in summary.lower() or "不相关" in summary or "无关" in summary:
+        return "与AI无关"
+    return summary
 
 
 def call_openai_llm(messages: list[dict], model: str | None = None, temperature: float = 0.4) -> str:
@@ -653,6 +398,83 @@ def call_llm(messages: list[dict], model: str | None = None, temperature: float 
     return call_openai_llm(messages, model=model, temperature=temperature)
 
 
+def analyze_ai_item(item: dict, provider: str = "gemini") -> tuple[float, str]:
+    title = item.get("title", "")
+    description = item.get("description", "")
+    preview = item.get("preview", "")
+    fallback_summary = preview[:150] if preview else ""
+
+    if not title and not description:
+        return 0.0, "暂无摘要"
+
+    prompt = f"""请分析下面这条新闻，并严格返回 JSON：
+
+标题：{title}
+描述：{description}
+预览：{preview}
+
+评分标准：
+- 10分: 纯AI核心技术/大模型
+- 9分: AI Agent/智能体系统
+- 8分: AI重要应用/产品
+- 7分: AI公司重大动态
+- 5-6分: AI开发工具/框架
+- 3-4分: AI相关但不重要
+- 0-2分: 与AI无关
+
+要求：
+1. 返回格式必须是 JSON，对象包含 `score` 和 `summary`
+2. `score` 是 0 到 10 的数字
+3. `summary` 是 2-3 句中文摘要，80-150 字
+4. 如果与 AI 无关，`summary` 直接写 `与AI无关`
+5. 不要输出 JSON 以外的任何文字
+"""
+
+    response = call_llm(
+        [{"role": "user", "content": prompt}],
+        temperature=0.2,
+        provider=provider,
+    )
+    response = response.strip()
+    if response.startswith("```json"):
+        response = response[len("```json"):].strip()
+    elif response.startswith("```"):
+        response = response[3:].strip()
+    if response.endswith("```"):
+        response = response[:-3].strip()
+
+    try:
+        payload = json.loads(response)
+        score = parse_ai_score(str(payload.get("score", "")))
+        summary = normalize_ai_summary(str(payload.get("summary", "")), fallback=fallback_summary)
+        return score, summary
+    except Exception:
+        # Fallback for providers that occasionally return loose text.
+        score = parse_ai_score(response)
+        summary = normalize_ai_summary(response, fallback=fallback_summary)
+        return score, summary
+
+
+def score_ai_relevance(item: dict, provider: str = "gemini") -> float:
+    try:
+        score, _ = analyze_ai_item(item, provider=provider)
+        return score
+    except Exception as exc:
+        print(f"[warning] Failed to score AI relevance for '{item.get('title', '')[:50]}': {exc}")
+        return 5.0
+
+
+def generate_ai_summary(item: dict, provider: str = "auto") -> str:
+    preview = item.get("preview", "")
+    fallback_summary = preview[:150] if preview else ""
+    try:
+        _, summary = analyze_ai_item(item, provider=provider)
+        return summary
+    except Exception as exc:
+        print(f"[warning] Failed to generate summary for '{item.get('title', '')[:50]}': {exc}")
+        return fallback_summary
+
+
 def source_score(source: str) -> int:
     return SOURCE_PRIORITY.get(source, 50)
 
@@ -713,8 +535,12 @@ def enrich_item(item: dict, enable_llm: bool = True, llm_provider: str = "gemini
     # 如果启用LLM，添加AI相关性和摘要
     if enable_llm and has_llm_config(llm_provider):
         print(f"[llm] Scoring and summarizing: {item.get('title', '')[:50]}...")
-        ai_score = score_ai_relevance(item, provider=llm_provider)
-        ai_summary = generate_ai_summary(item, provider=llm_provider)
+        try:
+            ai_score, ai_summary = analyze_ai_item(item, provider=llm_provider)
+        except Exception as exc:
+            print(f"[warning] Failed to analyze '{item.get('title', '')[:50]}': {exc}")
+            ai_score = 5.0
+            ai_summary = preview[:150] if preview else ""
 
         enriched["ai_relevance_score"] = ai_score
         enriched["ai_summary"] = ai_summary
@@ -740,9 +566,44 @@ def enrich_item(item: dict, enable_llm: bool = True, llm_provider: str = "gemini
     return enriched
 
 
-def cluster_events(items: list[dict], enable_llm: bool = True, llm_provider: str = "gemini") -> tuple[list[dict], list[dict]]:
+def run_enrich_items(
+    items: list[dict],
+    enable_llm: bool = True,
+    llm_provider: str = "gemini",
+    max_workers: int = 4,
+) -> list[dict]:
+    if not items:
+        return []
+
+    max_workers = max(1, min(max_workers, len(items)))
+    if max_workers == 1:
+        return [enrich_item(item, enable_llm=enable_llm, llm_provider=llm_provider) for item in items]
+
+    enriched: list[dict | None] = [None] * len(items)
+    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="hotspot-llm") as executor:
+        future_map = {
+            executor.submit(enrich_item, item, enable_llm, llm_provider): index
+            for index, item in enumerate(items)
+        }
+        for future in as_completed(future_map):
+            index = future_map[future]
+            enriched[index] = future.result()
+    return [item for item in enriched if item is not None]
+
+
+def cluster_events(
+    items: list[dict],
+    enable_llm: bool = True,
+    llm_provider: str = "gemini",
+    max_llm_workers: int = 4,
+) -> tuple[list[dict], list[dict]]:
     print(f"[enrich] Processing {len(items)} candidates with LLM={enable_llm}...")
-    enriched = [enrich_item(item, enable_llm=enable_llm, llm_provider=llm_provider) for item in items]
+    enriched = run_enrich_items(
+        items,
+        enable_llm=enable_llm,
+        llm_provider=llm_provider,
+        max_workers=max_llm_workers if enable_llm else 1,
+    )
     clusters: list[list[dict]] = []
     for item in enriched:
         matched_cluster: list[dict] | None = None
@@ -1196,6 +1057,48 @@ def run_source_fetch(source: str, limit: int, output_dir: Path) -> dict:
         "dir": str(output_dir),
     }
 
+
+def run_source_fetches(
+    sources: list[str],
+    limit: int,
+    output_dir: Path,
+    max_workers: int,
+    fail_fast: bool,
+) -> list[dict]:
+    source_results: list[dict | None] = [None] * len(sources)
+    max_workers = max(1, min(max_workers, len(sources)))
+
+    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="hotspot-source") as executor:
+        future_map = {
+            executor.submit(run_source_fetch, source, limit, output_dir / source): (index, source)
+            for index, source in enumerate(sources)
+        }
+
+        for future in as_completed(future_map):
+            index, source = future_map[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                result = {
+                    "source": source,
+                    "label": SOURCE_MAP[source]["label"],
+                    "ok": False,
+                    "command": ["internal-fetch", source, f"--limit={limit}", f"--output-dir={output_dir / source}"],
+                    "returncode": 1,
+                    "stdout": "",
+                    "stderr": str(exc),
+                    "error": "parallel source fetch failed",
+                }
+            source_results[index] = result
+
+            if fail_fast and not result.get("ok"):
+                for pending in future_map:
+                    if not pending.done():
+                        pending.cancel()
+                break
+
+    return [result for result in source_results if result is not None]
+
 def build_raw_manifest(source_results: list[dict]) -> list[dict]:
     manifest = []
     global_index = 1
@@ -1264,6 +1167,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Aggregate AI hotspot candidates from multiple source skills.")
     parser.add_argument("--sources", help="Comma-separated sources: techcrunch,the-verge,hn,twitter,github-trending,engadget,fast-company")
     parser.add_argument("--limit-per-source", type=int, default=3, help="How many candidates to fetch per source.")
+    parser.add_argument("--max-source-workers", type=int, default=4, help="How many sources to fetch in parallel.")
     parser.add_argument("--output-dir", default=str(default_output_dir()), help="Where to store the aggregated review queue.")
     parser.add_argument("--keep-duplicates", action="store_true", help="Skip automatic same-event deduplication.")
     parser.add_argument("--skip-digest", action="store_true", help="Do not auto-generate the daily digest draft.")
@@ -1276,6 +1180,7 @@ def main() -> None:
     parser.add_argument("--enable-llm", action="store_true", default=True, help="Enable LLM for AI relevance scoring and summary generation (default: True).")
     parser.add_argument("--disable-llm", action="store_true", help="Disable LLM for faster processing.")
     parser.add_argument("--llm-provider", choices=["auto", "openai", "gemini"], default="gemini", help="Which LLM provider to use for AI scoring and summary.")
+    parser.add_argument("--max-llm-workers", type=int, default=4, help="How many candidates to analyze with LLM in parallel.")
     parser.add_argument("--ai-relevance-threshold", type=float, default=4.0, help="Minimum AI relevance score (0-10) to include in results (default: 4.0). Set to 0 to include all.")
     parser.add_argument("--max-candidates", type=int, default=20, help="Maximum number of candidates to keep after AI filtering (default: 20).")
 
@@ -1294,20 +1199,23 @@ def main() -> None:
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    source_results = []
-    for source in sources:
-        source_dir = output_dir / source
-        result = run_source_fetch(source, args.limit_per_source, source_dir)
-        source_results.append(result)
-        if args.fail_fast and not result.get("ok"):
-            print(json.dumps({"ok": False, "results": source_results}, ensure_ascii=False, indent=2))
-            sys.exit(1)
+    source_results = run_source_fetches(
+        sources=sources,
+        limit=args.limit_per_source,
+        output_dir=output_dir,
+        max_workers=args.max_source_workers,
+        fail_fast=args.fail_fast,
+    )
+    if args.fail_fast and any(not result.get("ok") for result in source_results):
+        print(json.dumps({"ok": False, "results": source_results}, ensure_ascii=False, indent=2))
+        sys.exit(1)
 
     raw_manifest = build_raw_manifest(source_results)
     all_candidates, deduped_manifest = cluster_events(
         raw_manifest,
         enable_llm=args.enable_llm,
-        llm_provider=args.llm_provider
+        llm_provider=args.llm_provider,
+        max_llm_workers=args.max_llm_workers,
     )
     raw_manifest = raw_manifest
     deduped_manifest = deduped_manifest

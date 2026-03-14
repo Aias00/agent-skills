@@ -67,7 +67,7 @@ function loadExtendConfig(): ExtendConfig {
   return config;
 }
 
-async function waitForLogin(session: ChromeSession, timeoutMs = 120_000): Promise<boolean> {
+async function waitForLogin(session: ChromeSession, timeoutMs = 600_000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const url = await evaluate<string>(session, 'window.location.href');

@@ -1,0 +1,58 @@
+# WeChat Publisher Preferences
+
+微信公众号发布配置
+
+---
+
+## Default Settings
+
+```yaml
+default_theme: default
+default_color: blue
+default_publish_method: api
+default_author: 银色超音速可乐
+need_open_comment: 1
+only_fans_can_comment: 0
+```
+
+---
+
+## Theme Options
+- `default` - 默认主题
+- `grace` - 优雅主题
+- `simple` - 简洁主题
+- `modern` - 现代主题
+
+## Color Presets
+- `blue` - 蓝色
+- `green` - 绿色
+- `vermilion` - 朱砂红
+- `yellow` - 黄色
+- `purple` - 紫色
+- `sky` - 天空蓝
+- `rose` - 玫瑰色
+- `olive` - 橄榄绿
+- `black` - 黑色
+- `gray` - 灰色
+- `pink` - 粉色
+- `red` - 红色
+- `orange` - 橙色
+
+## Publishing Method
+- `api` - 通过微信公众号 API 发布
+- `browser` - 通过浏览器自动化发布
+- `auto` - 自动选择最佳方式
+
+## Comment Settings
+- `need_open_comment: 1` - 开放评论
+- `only_fans_can_comment: 0` - 所有用户可评论（粉丝才能评论 = 1）
+
+---
+
+## Override Rules
+
+Value priority:
+1. CLI arguments (highest priority)
+2. Frontmatter in markdown/HTML files
+3. EXTEND.md (this file)
+4. Skill defaults (lowest priority)

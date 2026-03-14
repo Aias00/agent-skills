@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from patchright.sync_api import sync_playwright
 
+from auth_manager import AuthManager
 from browser_utils import BrowserFactory
 from config import PUBLISH_URL
 from md2html import convert as md_to_html, raw_text_to_html
@@ -203,6 +204,8 @@ def main():
         if cover_path:
             print(f"🖼️ Auto-resolved cover image: {cover_path}")
 
+    auth_manager = AuthManager()
+
     with sync_playwright() as p:
         context = BrowserFactory.launch_persistent_context(p, headless=False)
         page = context.pages[0] if context.pages else context.new_page()
@@ -211,9 +214,53 @@ def main():
 
         current_url = page.evaluate("window.location.href")
         if "login" in current_url.lower():
-            print("❌ Redirected to login page. Please re-auth first.")
-            context.close()
-            sys.exit(1)
+            print("⚠️ Redirected to login page.")
+            print("⏳ Waiting for user login (5 mins)...")
+            print("   Please complete login in the browser window.")
+
+            start_time = time.time()
+            logged_in = False
+            while time.time() - start_time < 300:
+                for candidate in context.pages:
+                    try:
+                        candidate_url = candidate.url
+                    except Exception:
+                        continue
+
+                    if (
+                        "auth/page/login" not in candidate_url
+                        and "mp.toutiao.com" in candidate_url
+                    ) or "profile_v4" in candidate_url:
+                        page = candidate
+                        logged_in = True
+                        break
+
+                if logged_in:
+                    break
+
+                time.sleep(1)
+
+            if not logged_in:
+                print("❌ Login timeout. Please re-auth first.")
+                context.close()
+                sys.exit(1)
+
+            print("✅ Detected login! Saving state...")
+            try:
+                auth_manager._save_browser_state(context)
+                auth_manager._save_auth_info()
+            except Exception as exc:
+                print(f"⚠️ Failed to persist login state: {exc}")
+
+            if PUBLISH_URL not in page.url:
+                page.goto(PUBLISH_URL, wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_timeout(5000)
+
+            current_url = page.evaluate("window.location.href")
+            if "login" in current_url.lower():
+                print("❌ Redirected to login page. Please re-auth first.")
+                context.close()
+                sys.exit(1)
 
         final_html, inline_image_urls = replace_local_images_with_uploaded_urls(page, final_html, content_path)
 

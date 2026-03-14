@@ -37,6 +37,7 @@ content/{date}/
 ├── techcrunch/
 ├── the-verge/
 ├── hn/
+├── twitter/
 ├── github-trending/
 ├── engadget/
 └── fast-company/
@@ -49,6 +50,7 @@ content/{date}/
 - `techcrunch`
 - `the-verge`
 - `hn`
+- `twitter`
 - `github-trending`
 - `engadget`
 - `fast-company`

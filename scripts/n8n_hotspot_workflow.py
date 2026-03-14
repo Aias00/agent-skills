@@ -350,6 +350,98 @@ def parse_digest_sections(markdown_text: str) -> list[dict]:
     return parsed
 
 
+def build_xhs_body_improved(title: str, sections: list[dict], images: list[str] = None) -> str:
+    """
+    改进版小红书 digest 生成
+
+    改进点：
+    1. 添加封面图
+    2. 表情符号增加氛围
+    3. 自然化语言表达
+    4. 避免重复的开头
+    5. 配图插入内容
+    """
+    title_clean = re.sub(r"（.*?）", "", title).strip()
+
+    lines = [
+        f"# 🔥 {title_clean}",
+        "",
+    ]
+
+    # 封面图
+    if images and len(images) > 0:
+        lines.append("![封面](images/cover.jpg)")
+        lines.append("")
+
+    # 开头更自然
+    lines.append("今天这波 AI 热点，核心就这几件事：")
+    lines.append("")
+
+    # 前4个热点（增加到4个）
+    image_idx = 0
+    for idx, section in enumerate(sections[:4], start=1):
+        heading = re.sub(r"^\d+\.\s*", "", section["title"]).strip()
+        summary = section["summary"]
+
+        # 去除 AI 味的开头
+        summary = re.sub(r"^这条消息来自 [^\s]+\s*", "", summary)
+        summary = re.sub(r"^这条新闻[^。]*。\s*", "", summary)
+
+        # 替换官方口吻为口语
+        summary = summary.replace("旨在", "用来")
+        summary = summary.replace("此举表明", "这说明")
+        summary = summary.replace("标志着", "意味着")
+        summary = summary.replace("亟需", "得")
+
+        if len(summary) > 150:
+            summary = summary[:148].rstrip() + "..."
+
+        lines.append(f"{idx}. {heading}")
+        if summary:
+            lines.append(summary)
+
+        # 插入配图（如果有的话）
+        if images and image_idx < len(images):
+            image_name = images[image_idx]
+            lines.append(f"![配图](images/{image_name})")
+            image_idx += 1
+
+        lines.append("")
+
+    # 更自然的结尾，加入表情
+    lines.append("这波趋势其实挺明显：AI正在从'能用'变成'好用'，从'演示'变成'日常'。")
+    lines.append("但问题是，太快了，安全跟不跟上？")
+    lines.append("")
+    lines.append("#AI #人工智能 #科技 #马斯克 #XAi #微软 #Copilot")
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def build_xhs_body(title: str, sections: list[dict]) -> str:
+    """
+    原始版本（已弃用，保留向后兼容）
+    """
+    lines = [f"# {re.sub(r'（.*?）', '', title).strip()}"]
+    if sections:
+        lines.append("")
+        lines.append("今天这波 AI 热点，核心就这几件事：")
+        lines.append("")
+        for idx, section in enumerate(sections[:3], start=1):
+            heading = re.sub(r"^\d+\.\s*", "", section["title"]).strip()
+            summary = section["summary"]
+            if len(summary) > 120:
+                summary = summary[:118].rstrip() + "..."
+            lines.append(f"{idx}. {heading}")
+            if summary:
+                lines.append(summary)
+            lines.append("")
+        lines.append("如果把今天这几条连起来看，行业主线还是很清楚：")
+        lines.append("AI 正在更深地进入浏览器、办公和自动执行场景。")
+        lines.append("")
+        lines.append("#AI热点 #人工智能 #科技资讯 #AIAgent #大模型")
+    return "\n".join(lines).strip() + "\n"
+
+
 def build_xhs_body(title: str, sections: list[dict]) -> str:
     lines = [f"# {re.sub(r'（.*?）', '', title).strip()}"]
     if sections:
@@ -530,7 +622,9 @@ def build_publish_bundle(package_dir: Path) -> dict:
     preview_text = article_text
     toutiao_text = normalize_links_for_publish(article_text)
     tencent_text = normalize_links_for_publish(article_text)
-    xhs_text = build_xhs_body(title, sections)
+    # 收集图片用于小红书版
+    images = collect_body_images(package_dir)
+    xhs_text = build_xhs_body_improved(title, sections, [img.name for img in images if img.name != "cover.jpg" and img.name != "01-cover.jpg"][:4])
 
     write_text(article_md, article_text)
     write_text(preview_md, preview_text)
@@ -593,6 +687,8 @@ def prepare_bundle(args: argparse.Namespace) -> int:
             args.sources,
             "--limit-per-source",
             str(args.limit_per_source),
+            "--max-source-workers",
+            str(args.max_source_workers),
             "--output-dir",
             str(package_dir),
             "--rewrite-mode",
@@ -603,6 +699,8 @@ def prepare_bundle(args: argparse.Namespace) -> int:
             args.rewrite_model,
             "--llm-provider",
             args.llm_provider,
+            "--max-llm-workers",
+            str(args.max_llm_workers),
             "--ai-relevance-threshold",
             str(args.ai_relevance_threshold),
             "--max-candidates",
@@ -643,7 +741,7 @@ def publish_bundle(args: argparse.Namespace) -> int:
     package_dir = Path(args.package_dir).expanduser().resolve()
     if not package_dir.exists():
         print(json.dumps({"ok": False, "error": f"Package dir not found: {package_dir}"}, ensure_ascii=False, indent=2))
-        return 1
+        return 0 if getattr(args, "soft_fail", False) else 1
 
     metadata_path = package_dir / "bundle-metadata.json"
     bundle = json.loads(read_text(metadata_path)) if metadata_path.exists() else build_publish_bundle(package_dir)
@@ -753,7 +851,7 @@ def publish_bundle(args: argparse.Namespace) -> int:
         "tencent": tencent_result,
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
-    return 0 if ok else 1
+    return 0 if (ok or getattr(args, "soft_fail", False)) else 1
 
 
 def main() -> None:
@@ -763,6 +861,7 @@ def main() -> None:
     prepare = subparsers.add_parser("prepare", help="Collect hotspots and build publish bundle")
     prepare.add_argument("--sources", default="techcrunch,the-verge,hn,twitter,github-trending", help="Comma-separated hotspot sources (default: AI-relevant sources)")
     prepare.add_argument("--limit-per-source", type=int, default=3)
+    prepare.add_argument("--max-source-workers", type=int, default=4)
     prepare.add_argument("--output-dir", help="Explicit output package dir")
     prepare.add_argument("--existing-package-dir", help="Skip fetch and rebuild metadata for an existing package dir")
     prepare.add_argument("--rewrite-mode", default="auto", choices=["auto", "off", "api"])
@@ -774,6 +873,7 @@ def main() -> None:
     # LLM-related arguments for AI relevance filtering
     prepare.add_argument("--disable-llm", action="store_true", help="Disable LLM for AI relevance scoring and summary generation (default: enabled)")
     prepare.add_argument("--llm-provider", choices=["auto", "openai", "gemini"], default="gemini", help="LLM provider for AI scoring (default: gemini)")
+    prepare.add_argument("--max-llm-workers", type=int, default=4)
     prepare.add_argument("--ai-relevance-threshold", type=float, default=4.0, help="Minimum AI relevance score (0-10) to include (default: 4.0)")
     prepare.add_argument("--max-candidates", type=int, default=20, help="Maximum candidates to process (default: 20)")
 
@@ -793,6 +893,7 @@ def main() -> None:
     publish.add_argument("--headless-browser", action=argparse.BooleanOptionalAction, default=True)
     publish.add_argument("--tencent-headless", action=argparse.BooleanOptionalAction, default=True)
     publish.add_argument("--dry-run", action="store_true")
+    publish.add_argument("--soft-fail", action="store_true", help="Always exit 0 and report per-platform status in JSON")
 
     args = parser.parse_args()
     if args.command == "prepare":
