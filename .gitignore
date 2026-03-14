@@ -20,3 +20,6 @@ content/
 tmp/
 toutiao-posts/
 ai-hotspot-collector/content/
+
+# Local deployment secrets
+scripts/deploy.conf

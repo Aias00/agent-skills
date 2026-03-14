@@ -1,0 +1,4 @@
+interface:
+  display_name: "Small-Capital Investing"
+  short_description: "Unified beginner investing workflow across funds, HK/US equities, and crypto"
+  default_prompt: "Use $small-capital-investing to build a beginner-friendly small-capital investing plan across mainland China funds, Hong Kong/U.S. equities, and optional crypto with lane-specific scorecards, screenshot review, and risk rules."

@@ -1,0 +1,24 @@
+# Sanitized bastion deployment example
+BASTION_HOST="bastion.example.com"
+BASTION_PORT=22
+BASTION_USER="deployuser"
+BASTION_PASS="change-me"
+BASTION_STAGING_DIR="/tmp/jar-staging"
+TARGET_HOP_MODE="relay"
+
+# Keep staged file for troubleshooting; set true to auto-clean.
+CLEAN_STAGING_AFTER_DEPLOY=true
+
+# format: jar_key|local_jar_path|remote_jar_name
+JARS=(
+  "example-service|/path/to/local/example-service.jar|example-service.jar"
+)
+
+# format: name|host|port|user|password|deploy_dir|runtime_copy_dir|service_name|post_cmd
+# deploy_dir=/root -> equals remote "~" for root user.
+# runtime_copy_dir=/data/app/example/lib -> equals your mv target.
+# service_name="-" -> no systemctl restart.
+# post_cmd="docker restart example-service" -> your final restart command.
+TARGETS=(
+  "example-prod|app-prod.example.internal|22|deployuser|target-password|/opt/apps/example|/data/app/example/lib|-|docker restart example-service"
+)

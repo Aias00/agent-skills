@@ -1,0 +1,39 @@
+# ==============================
+# Bastion (jump server) settings
+# ==============================
+BASTION_HOST="bastion.example.com"
+BASTION_PORT=22
+BASTION_USER="deployuser"
+BASTION_PASS="change-me"
+BASTION_STAGING_DIR="/tmp/jar-staging"
+# proxy: local -> target via bastion ProxyJump (default, requires bastion allowing tcp forwarding)
+# bastion: bastion executes ssh/scp to target (requires sshpass on bastion)
+# relay: local logs into bastion and runs bastion->target commands (no sshpass on bastion)
+TARGET_HOP_MODE="proxy"
+
+# true/false: remove staged jar on bastion after all targets are done
+CLEAN_STAGING_AFTER_DEPLOY=true
+
+# ==============================
+# Jar definitions (extensible)
+# format: jar_key|local_jar_path|remote_jar_name
+# - remote_jar_name can be "-" to use local file basename
+# ==============================
+JARS=(
+  "order-service|/path/to/local/order-service.jar|order-service.jar"
+  "payment-service|/path/to/local/payment-service.jar|-"
+)
+
+# ==============================
+# Target servers (extensible)
+# format:
+# name|host|port|user|password|deploy_dir|runtime_copy_dir|service_name|post_cmd
+# - runtime_copy_dir: use "-" to skip runtime copy
+# - service_name: use "-" to skip restart
+# - post_cmd: use "-" to skip custom post command
+# ==============================
+TARGETS=(
+  "prod-a|app-a.example.internal|22|appuser|target-password-a|/opt/apps/order|/data/apps/order|order-service|-"
+  "prod-b|app-b.example.internal|22|appuser|target-password-b|/opt/apps/order|/data/apps/order|order-service|-"
+  "staging-a|staging-a.example.internal|22|appuser|target-password-c|/opt/apps/order|-|-|docker restart example-service"
+)
