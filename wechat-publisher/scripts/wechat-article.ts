@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { launchChrome, tryConnectExisting, findExistingChromeDebugPort, getPageSession, waitForNewTab, clickElement, typeText, evaluate, sleep, type ChromeSession, type CdpConnection } from './cdp.ts';
+import { prepareWechatCoverPath } from './cover-utils.ts';
 
 const WECHAT_URL = 'https://mp.weixin.qq.com/';
 
@@ -67,7 +68,7 @@ function loadExtendConfig(): ExtendConfig {
   return config;
 }
 
-async function waitForLogin(session: ChromeSession, timeoutMs = 600_000): Promise<boolean> {
+async function waitForLogin(session: ChromeSession, timeoutMs = 120_000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const url = await evaluate<string>(session, 'window.location.href');
@@ -306,12 +307,43 @@ function loadFrontmatterFromMarkdown(markdownPath: string): Record<string, strin
   return parseFrontmatter(fs.readFileSync(markdownPath, 'utf-8'));
 }
 
+function stripHtmlToText(input: string): string {
+  return input
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isGenericHtmlTitle(title: string): boolean {
+  const normalized = title.trim().toLowerCase();
+  return !normalized ||
+    normalized === '微信公众号文章' ||
+    normalized === 'wechat article' ||
+    normalized === 'untitled';
+}
+
 function parseHtmlMeta(htmlPath: string): { title: string; author: string; summary: string; contentImages: ImageInfo[] } {
   const content = fs.readFileSync(htmlPath, 'utf-8');
+  const baseDir = path.dirname(htmlPath);
 
   let title = '';
   const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-  if (titleMatch) title = titleMatch[1]!;
+  if (titleMatch) title = stripHtmlToText(titleMatch[1]!);
+
+  if (isGenericHtmlTitle(title)) {
+    const headingMatch = content.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)
+      || content.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    if (headingMatch) {
+      const headingText = stripHtmlToText(headingMatch[1]!);
+      if (headingText) title = headingText;
+    }
+  }
 
   let author = '';
   const authorMatch = content.match(/<meta\s+name=["']author["']\s+content=["']([^"']+)["']/i)
@@ -324,11 +356,12 @@ function parseHtmlMeta(htmlPath: string): { title: string; author: string; summa
   if (descMatch) summary = descMatch[1]!;
 
   if (!summary) {
-    const firstPMatch = content.match(/<p[^>]*>([^<]+)<\/p>/i);
-    if (firstPMatch) {
-      const text = firstPMatch[1]!.replace(/<[^>]+>/g, '').trim();
+    const paragraphMatches = content.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi);
+    for (const match of paragraphMatches) {
+      const text = stripHtmlToText(match[1]!);
       if (text.length > 20) {
         summary = text.length > 120 ? text.slice(0, 117) + '...' : text;
+        break;
       }
     }
   }
@@ -360,15 +393,27 @@ function parseHtmlMeta(htmlPath: string): { title: string; author: string; summa
   const matches = [...content.matchAll(imgRegex)];
   for (const match of matches) {
     const [fullTag, src] = match;
-    if (!src || src.startsWith('http')) continue;
+    if (!src || src.startsWith('http') || src.startsWith('data:') || src.startsWith('blob:')) continue;
     const localPathMatch = fullTag.match(/data-local-path=["']([^"']+)["']/);
+    const localPath = localPathMatch?.[1]
+      ? path.resolve(localPathMatch[1]!)
+      : path.resolve(baseDir, src);
+    if (!fs.existsSync(localPath)) continue;
+
     if (localPathMatch) {
       contentImages.push({
         placeholder: src,
-        localPath: localPathMatch[1]!,
+        localPath,
         originalPath: src,
       });
+      continue;
     }
+
+    contentImages.push({
+      placeholder: src,
+      localPath,
+      originalPath: src,
+    });
   }
 
   return { title, author, summary, contentImages };
@@ -407,16 +452,23 @@ function resolveCoverPath(options: {
   candidates.push(resolveExistingPath(baseDir, frontmatter.featureImage));
   candidates.push(resolveExistingPath(baseDir, frontmatter.cover));
   candidates.push(resolveExistingPath(baseDir, frontmatter.image));
+  candidates.push(resolveExistingPath(baseDir, 'imgs/cover.svg'));
   candidates.push(resolveExistingPath(baseDir, 'imgs/cover.png'));
+  candidates.push(resolveExistingPath(baseDir, 'images/cover-wide.svg'));
   candidates.push(resolveExistingPath(baseDir, 'images/cover-wide.png'));
+  candidates.push(resolveExistingPath(baseDir, 'images/cover.svg'));
   candidates.push(resolveExistingPath(baseDir, 'images/cover.png'));
+  candidates.push(resolveExistingPath(baseDir, 'cover.svg'));
   candidates.push(resolveExistingPath(baseDir, 'cover.png'));
 
   if (contentImages.length > 0 && fs.existsSync(contentImages[0]!.localPath)) {
     candidates.push(contentImages[0]!.localPath);
   }
 
-  return candidates.find(Boolean);
+  return prepareWechatCoverPath(candidates.find(Boolean), {
+    size: '900x383',
+    logPrefix: '[wechat]',
+  });
 }
 
 async function setFileInputFiles(session: ChromeSession, selector: string, files: string[]): Promise<void> {
@@ -1266,7 +1318,7 @@ Options:
   --color <name|hex> Primary color (blue, green, vermilion, etc. or hex)
   --author <name>    Author name
   --summary <text>   Article summary
-  --cover <path>     Cover image path (optional; falls back to imgs/cover.png, images/cover-wide.png, or first content image)
+  --cover <path>     Cover image path (optional; accepts PNG/JPG/WEBP/SVG and falls back to imgs/cover.svg, imgs/cover.png, images/cover-wide.png, or first content image)
   --image <path>     Content image, can repeat (only with --content)
   --submit           Save as draft
   --profile <dir>    Chrome profile directory (defaults to wechat-publisher/EXTEND.md if set)
@@ -1275,6 +1327,7 @@ Options:
 Examples:
   npx -y bun wechat-article.ts --markdown article.md
   npx -y bun wechat-article.ts --markdown article.md --theme grace --submit
+  npx -y bun wechat-article.ts --markdown article.md --cover imgs/cover.svg --submit
   npx -y bun wechat-article.ts --title "标题" --content "内容" --image img.png
   npx -y bun wechat-article.ts --title "标题" --html article.html --submit
 

@@ -22,6 +22,7 @@ description: Posts content to WeChat Official Account (微信公众号) via API 
 | `scripts/md-to-wechat.ts` | Markdown → WeChat-ready HTML with image placeholders |
 | `scripts/check-permissions.ts` | Verify environment & permissions |
 | `scripts/generate-cover-image.py` | Generate topic-aligned cover image (`imgs/cover.png`) from markdown/title |
+| `scripts/render-svg-cover.py` | Render custom SVG cover layouts to WeChat-safe PNG via Chrome headless |
 
 ## Preferences (EXTEND.md)
 
@@ -126,6 +127,7 @@ Copy this checklist and check off items as you complete them:
 ```
 Publishing Progress:
 - [ ] Step 0: Load preferences (EXTEND.md)
+- [ ] Step 0.5: Prepare article package for submission
 - [ ] Step 1: Determine input type
 - [ ] Step 2: Select method and configure credentials
 - [ ] Step 3: Resolve theme/color and validate metadata
@@ -149,6 +151,66 @@ Resolve and store these defaults for later steps:
 
 The direct scripts also read `wechat-publisher/EXTEND.md`, so CLI runs stay aligned with these defaults even when the agent is not manually passing every field.
 
+### Step 0.5: Prepare Article Package For Submission
+
+For long technical articles, do NOT jump directly from markdown draft to WeChat publish.
+Run this prep flow first:
+
+1. **Review the article for technical publish readiness**
+   - For technical posts, review the markdown with `technical-article-review` before formatting/publishing.
+   - Focus on:
+     - fact vs inference separation
+     - whether time-sensitive numbers are caveated
+     - whether at least one mechanism and one reproducible path are present
+     - whether failure cases / boundaries are explicit
+   - If the article reads like a good commentary but lacks reproducibility, revise the markdown first.
+   - Unless the user explicitly asked for review-only, treat the review as a direct input to source revision in the same turn.
+
+2. **Revise the markdown draft before HTML conversion**
+   - Preferred fixes:
+     - replace unsupported exact numbers with dated approximate values unless you can verify them
+     - add a short “minimum prerequisites / how to run” section when the post discusses code or experiments
+     - turn slogan paragraphs into mechanism + condition statements
+     - reduce speculative wording around internal implementation details
+     - add one concrete “first run” or “minimum workflow” path when the article is recommendation-heavy
+
+3. **Confirm the review fixes landed in the source draft**
+   - Before touching HTML, verify that the markdown source actually reflects the review conclusions.
+   - Minimum check:
+     - top blocking findings were fixed in the source article
+     - newly added setup steps or commands are traceable to README, code, or docs
+     - no old HTML was patched as a shortcut while markdown stayed stale
+
+4. **Verify cover and inline images before publish**
+   - Ensure the article bundle has:
+     - one cover image at `imgs/cover.png` (or explicit `--cover`)
+     - all inline images present on disk and referenced from the final markdown / HTML
+   - Cover-specific checks:
+     - preferred cover size is `900x383`
+     - reserve a safe text area for title/subtitle; do not let chips or side cards overlap it
+     - assume Chinese technical titles may need two full lines
+   - For custom diagrams:
+     - keep text within a safe inner area; do not let long labels touch card edges
+     - prefer manual line breaks for long variable names such as `TIME_BUDGET`, `peak_vram_mb`, `evaluate_bpb`
+     - export SVG to PNG using a tool/path that preserves the original canvas ratio
+   - For custom SVG covers with Chinese text:
+     - prefer `render-svg-cover.py` so the browser engine renders local fonts correctly
+     - do not use thumbnail-style exporters or font-limited SVG renderers for the final publish cover
+   - **Do not rely on thumbnail-style SVG export paths** that silently turn 16:9 diagrams into cropped square PNGs.
+
+5. **Regenerate the final HTML from the revised markdown**
+   - If the source of truth is markdown, re-run the formatter after edits instead of patching old HTML by hand.
+   - Then re-apply project visual styling if you use a custom article theme outside the formatter defaults.
+
+6. **Do one final local verification pass**
+   - Confirm:
+     - title/summary/author metadata are correct
+     - images load
+     - lists and numbering render correctly
+     - theme/colors did not fall back to formatter defaults unexpectedly
+
+Only after this prep flow is complete should you proceed to Step 1 / Step 4 publishing.
+
 ### Step 1: Determine Input Type
 
 | Input Type | Detection | Action |
@@ -163,6 +225,7 @@ The direct scripts also read `wechat-publisher/EXTEND.md`, so CLI runs stay alig
 - `article-wechat.html` is the preferred file for manual copy/paste into the WeChat editor, not the first choice for browser automation.
 - `article-api.html` should be considered the API-safe variant when long URLs, lists, or WeChat line-breaking quirks need special handling.
 - For browser automation, the most reliable cover strategy is to keep the chosen cover image inside the article body as a real inline image, ideally near the top of `article-preview.md`.
+- For custom HTML input, the browser script now auto-detects local `<img src>` paths relative to the HTML file. `data-local-path` is still acceptable, but no longer required for normal local image bundles.
 - For markdown sources, standalone badge marker lines such as `[!AI] [!推荐]` are treated as source-side artifacts and stripped before rendering to WeChat HTML.
 
 **Plain Text Handling**:
@@ -264,7 +327,17 @@ python3 ${SKILL_DIR}/scripts/generate-cover-image.py \
   --bootstrap-pillow
 ```
 
-   6. If auto-generation fails, stop and request a manual cover image.
+   6. If the article package provides a custom SVG cover, prefer rendering that instead of generating a new generic PNG:
+
+```bash
+python3 ${SKILL_DIR}/scripts/render-svg-cover.py \
+  --svg <article_dir>/imgs/cover.svg \
+  --out <article_dir>/imgs/cover.png \
+  --size 900x383
+```
+
+   7. `wechat-api.ts` and `wechat-article.ts` now auto-detect `cover.svg` variants and render them to PNG before upload.
+   8. If auto-generation or SVG rendering fails, stop and request a manual cover image.
 
 **Browser-mode cover note**:
 - The current WeChat browser editor does not expose a stable plain file-input path for article covers.
@@ -292,6 +365,7 @@ Behavior:
 - It reads `default_publish_method` from `wechat-publisher/EXTEND.md` when present.
 - If no method is pinned, it prefers API when credentials exist, otherwise browser.
 - If API is blocked by WeChat IP whitelist, it may fall back to browser publishing automatically.
+- If the user explicitly asks for `api` or `browser`, obey that request even when EXTEND.md defaults differ.
 
 When an article bundle already provides `article-api.html`, prefer passing that file directly to the API script.
 
@@ -309,6 +383,10 @@ Recommended cleanup flow:
 - First run `--draft-list` or `--draft-delete-title ... --dry-run`
 - Verify which drafts would be kept vs deleted
 - Then rerun without `--dry-run`
+
+**API list rendering note**:
+- WeChat's `draft/add` rendering for native `<ul>/<ol>` is inconsistent and may produce empty bullets or broken numbering in the editor preview.
+- The API path should normalize article lists into paragraph-based bullet/number lines before publishing, instead of sending raw list tags when stable rendering matters.
 
 **CRITICAL**: Always include `--theme` parameter. Never omit it, even if using `default`. Only include `--color` if explicitly set by user or EXTEND.md.
 
@@ -339,6 +417,7 @@ If `--profile`, `--author`, `--theme`, or `--color` are omitted, the browser scr
 - The crop step must wait for a visible `确认` or `完成` button before clicking; hidden dialog buttons are not reliable in newer editor revisions.
 - If the cover image does not exist in body content, a separate local-cover upload may still be attempted, but it is less reliable than `从正文选择`.
 - If WeChat API publishing is blocked by IP whitelist or unavailable, prefer the browser method with `article-preview.md`.
+- For custom HTML bundles with relative local images, the browser script will now infer content images directly from `<img src>` and can reuse the first matching image as cover when `--cover` points to the same local file.
 
 ### Step 5: Completion Report
 
@@ -409,7 +488,7 @@ Files created:
 | Multiple images | ✓ (up to 9) | ✓ (inline) | ✓ (inline) |
 | Themes | ✗ | ✓ | ✓ |
 | Auto-generate metadata | ✗ | ✓ | ✓ |
-| Default cover fallback (`imgs/cover.png` / `images/cover-wide.png`) | ✗ | ✓ | ✓ |
+| Default cover fallback (`imgs/cover.svg`, `imgs/cover.png`, `images/cover-wide.png`) | ✗ | ✓ | ✓ |
 | Comment control (`need_open_comment`, `only_fans_can_comment`) | ✗ | ✓ | ✗ |
 | Requires Chrome | ✓ | ✗ | ✓ |
 | Requires API credentials | ✗ | ✓ | ✗ |
@@ -444,12 +523,17 @@ Files created:
 | Not logged in (browser) | First run opens browser - scan QR to log in |
 | Chrome not found | Set `WECHAT_BROWSER_CHROME_PATH` env var |
 | Title/summary missing | Use auto-generation or provide manually |
-| No cover image | Add frontmatter cover or place `imgs/cover.png` in article directory |
-| Cover style mismatched topic | Run `scripts/generate-cover-image.py --markdown <file> --bootstrap-pillow` to regenerate topic-aligned cover |
+| No cover image | Add frontmatter cover or place `imgs/cover.png` / `imgs/cover.svg` in the article directory |
+| Cover style mismatched topic | Run `scripts/generate-cover-image.py --markdown <file> --bootstrap-pillow` for a standard cover, or create `imgs/cover.svg` and render it with `scripts/render-svg-cover.py` |
 | Cover script missing Pillow | Re-run with `--bootstrap-pillow` to auto-create venv and install Pillow |
+| SVG cover looks cropped or squeezed | Re-render with `scripts/render-svg-cover.py`; do not use thumbnail-style exporters like `qlmanage -t` |
+| SVG cover shows missing Chinese glyphs | Use the Chrome-based SVG renderer; avoid font-limited renderers for CJK covers |
 | Wrong comment defaults | Check `EXTEND.md` keys `need_open_comment` and `only_fans_can_comment` |
 | Paste fails | Check system clipboard permissions |
 | API returns `invalid ip` | Switch to browser publishing or add the current egress IP to the WeChat API whitelist |
+| API article shows empty bullets or broken numbering | Normalize native `<ul>/<ol>` into paragraph-based list lines before `draft/add`; do not rely on raw list tags for final WeChat rendering |
+| Browser HTML input loses local images | Use the updated browser script that auto-detects local `<img src>` paths, or add `data-local-path` explicitly for non-standard bundles |
+| Inline diagram looks cropped or text is cut off | Re-export SVG to PNG with the original aspect ratio preserved; verify labels stay inside the card safe area before publishing |
 | Draft card shows a gray placeholder instead of a cover | Re-publish with `article-preview.md` and ensure the cover image also exists as an inline body image so the browser script can use `从正文选择` |
 | Browser draft has body images but no cover | Use the same local image as both `--cover` and the first inserted body image; current stable browser flow depends on selecting cover from body content |
 

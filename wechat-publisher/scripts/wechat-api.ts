@@ -3,6 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { prepareWechatCoverPath } from "./cover-utils.ts";
 
 interface WechatConfig {
   appId: string;
@@ -504,12 +505,19 @@ function resolveCoverPath(baseDir: string, explicitCover: string | undefined, fr
     resolveExistingPath(baseDir, frontmatter.featureImage),
     resolveExistingPath(baseDir, frontmatter.cover),
     resolveExistingPath(baseDir, frontmatter.image),
+    resolveExistingPath(baseDir, "imgs/cover.svg"),
     resolveExistingPath(baseDir, "imgs/cover.png"),
+    resolveExistingPath(baseDir, "images/cover-wide.svg"),
     resolveExistingPath(baseDir, "images/cover-wide.png"),
+    resolveExistingPath(baseDir, "images/cover.svg"),
     resolveExistingPath(baseDir, "images/cover.png"),
+    resolveExistingPath(baseDir, "cover.svg"),
     resolveExistingPath(baseDir, "cover.png"),
   ];
-  return candidates.find(Boolean);
+  return prepareWechatCoverPath(candidates.find(Boolean), {
+    size: "900x383",
+    logPrefix: "[wechat-api]",
+  });
 }
 
 function extractHtmlContent(htmlPath: string): string {
@@ -576,6 +584,27 @@ function replacePreBlocksForWeChatApi(html: string): string {
   });
 }
 
+function unwrapListItemParagraphs(html: string): string {
+  return html
+    .replace(/^<p[^>]*>/i, "")
+    .replace(/<\/p>$/i, "")
+    .trim();
+}
+
+function buildWeChatApiList(tag: string, inner: string): string {
+  const items = [...inner.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)]
+    .map((match) => unwrapListItemParagraphs(match[1] || ""))
+    .map((item) => item.replace(/^\s+|\s+$/g, ""))
+    .filter(Boolean);
+
+  if (items.length === 0) return "";
+
+  return items.map((item, index) => {
+    const marker = tag.toLowerCase() === "ol" ? `${index + 1}.` : "•";
+    return `<p style="margin: 0 0 14px 0; line-height: 1.9; padding-left: 1.6em; text-indent: -1.6em;">${marker}&nbsp;${item}</p>`;
+  }).join("");
+}
+
 function normalizeHtmlForWeChatApi(html: string): string {
   let normalized = replacePreBlocksForWeChatApi(html);
 
@@ -585,7 +614,7 @@ function normalizeHtmlForWeChatApi(html: string): string {
       .replace(/<li([^>]*)>\s*<\/li>/gi, "")
       .replace(/<li([^>]*)>\s+/gi, "<li$1>")
       .replace(/\s+<\/li>/gi, "</li>");
-    return `<${tag}${attrs}>${compactInner}</${tag}>`;
+    return buildWeChatApiList(tag, compactInner);
   });
 
   normalized = normalized.replace(/<p([^>]*)>\s*<\/p>/gi, "");
@@ -612,7 +641,7 @@ Options:
   --summary <text>    Article summary/digest (max 128 chars)
   --theme <name>      Theme name for markdown (default, grace, simple, modern). Default: EXTEND.md or default
   --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
-  --cover <path>      Cover image path (local or URL)
+  --cover <path>      Cover image path (local PNG/JPG/WEBP, SVG, or URL)
   --draft-list        List drafts (paged)
   --draft-delete <id> Delete one draft by media_id
   --draft-delete-title <title> Delete drafts whose title exactly matches
@@ -626,7 +655,7 @@ Frontmatter Fields (markdown):
   title               Article title
   author              Author name
   digest/summary      Article summary
-  coverImage/featureImage/cover/image   Cover image path
+  coverImage/featureImage/cover/image   Cover image path (cover.svg auto-renders to PNG)
 
 Comments:
   Comment defaults come from wechat-publisher/EXTEND.md, falling back to open for all users.
@@ -643,6 +672,7 @@ Config File Locations (in priority order):
 Example:
   npx -y bun wechat-api.ts article.md
   npx -y bun wechat-api.ts article.md --theme grace --cover cover.png
+  npx -y bun wechat-api.ts article.md --cover imgs/cover.svg
   npx -y bun wechat-api.ts article.md --author "Author Name" --summary "Brief intro"
   npx -y bun wechat-api.ts article.html --title "My Article"
   npx -y bun wechat-api.ts images/ --type newspic --title "Photo Album"

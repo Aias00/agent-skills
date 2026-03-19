@@ -25,7 +25,9 @@ If you only have one markdown source, keep the intended cover image inside the b
 
 ## Cover Generation (Recommended)
 
-When cover image is missing or mismatched with article topic, generate a new cover first:
+When cover image is missing or mismatched with article topic, choose one of these two flows:
+
+### 1. Standard auto cover
 
 ```bash
 python3 ./scripts/generate-cover-image.py \
@@ -34,7 +36,24 @@ python3 ./scripts/generate-cover-image.py \
   --bootstrap-pillow
 ```
 
-Then publish by API/browser flow. API flow can auto-pick frontmatter `coverImage` or default `imgs/cover.png`.
+### 2. Custom SVG cover
+
+```bash
+python3 ./scripts/render-svg-cover.py \
+  --svg ./imgs/cover.svg \
+  --out ./imgs/cover.png \
+  --size 900x383
+```
+
+Then publish by API/browser flow. API and browser scripts can now auto-pick:
+
+- frontmatter `coverImage` / `featureImage` / `cover` / `image`
+- `imgs/cover.svg`
+- `imgs/cover.png`
+- `images/cover-wide.png`
+- `images/cover.png`
+
+If the resolved cover is an SVG, the publish scripts render it to PNG automatically before upload.
 
 ## Browser cover behavior
 
@@ -44,6 +63,7 @@ Then publish by API/browser flow. API flow can auto-pick frontmatter `coverImage
   1. publish `article-preview.md`
   2. insert the cover image as the first real inline body image
   3. let the script open the cover chooser and confirm the crop dialog
+  4. if you use a custom SVG cover, render it to `imgs/cover.png` first so browser and API paths stay aligned
 
 ## Parameters
 
