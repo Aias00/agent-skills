@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Trending Writer"
+  short_description: "抓取 GitHub Trending 仓库并写中文稿后发布"
+  default_prompt: "Use $github-trending-writer to fetch GitHub Trending repositories, save strong candidates locally, draft a Chinese article for review, and publish it only after approval."

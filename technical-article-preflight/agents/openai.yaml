@@ -1,0 +1,4 @@
+interface:
+  display_name: "技术文章预检"
+  short_description: "发文前检查技术文章的事实、结构、配图与发布包完整性。"
+  default_prompt: "Use $technical-article-preflight to审阅这篇技术文章的发文前准备项，并输出可执行的修订与发布前检查结论。"

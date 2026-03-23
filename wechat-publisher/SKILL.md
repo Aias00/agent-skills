@@ -158,6 +158,7 @@ Run this prep flow first:
 
 1. **Review the article for technical publish readiness**
    - For technical posts, review the markdown with `technical-article-review` before formatting/publishing.
+   - This applies even if the article was drafted just now in the same turn.
    - Focus on:
      - fact vs inference separation
      - whether time-sensitive numbers are caveated
@@ -165,6 +166,7 @@ Run this prep flow first:
      - whether failure cases / boundaries are explicit
    - If the article reads like a good commentary but lacks reproducibility, revise the markdown first.
    - Unless the user explicitly asked for review-only, treat the review as a direct input to source revision in the same turn.
+   - Do not move a first draft directly into HTML or WeChat publish just because the user asked for a WeChat article.
 
 2. **Revise the markdown draft before HTML conversion**
    - Preferred fixes:
