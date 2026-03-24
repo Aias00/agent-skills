@@ -2,19 +2,19 @@
 
 这个文件不负责抓取方法，只负责提醒不同来源的编辑取向和用稿差异。
 
-## 来源与实际 skill 映射
+## 来源与实际写法映射
 
-- TechCrunch → [$techcrunch-writer](/Users/aias/.codex/skills/techcrunch-writer/SKILL.md)
-- The Verge → [$the-verge-writer](/Users/aias/.codex/skills/the-verge-writer/SKILL.md)
-- Hacker News → [$hn-ai-writer](/Users/aias/.codex/skills/hn-ai-writer/SKILL.md)
-- GitHub Trending → [$github-trending-writer](/Users/aias/.codex/skills/github-trending-writer/SKILL.md)
-- Engadget → [$engadget-writer](/Users/aias/.codex/skills/engadget-writer/SKILL.md)
-- Fast Company → [$fast-company-writer](/Users/aias/.codex/skills/fast-company-writer/SKILL.md)
+- TechCrunch：融资、产品发布、公司动作
+- The Verge：产品体验、行业争议、媒体评论色彩强的话题
+- Hacker News：社区热议、技术趋势、工具讨论、Show HN / Launch HN
+- GitHub Trending：项目发现、工具速览、趋势观察
+- Engadget：消费科技、平台策略、版权和法律争议
+- Fast Company：商业创新、管理议题、AI 社会影响
 
 ## TechCrunch
 
 - 更适合：融资、产品发布、公司动作
-- 写法重点：把“发生了什么”讲清楚，再补行业影响
+- 写法重点：先把“发生了什么”讲清楚，再补行业影响
 - 风险点：不要把记者分析写成公司官方结论
 
 ## The Verge

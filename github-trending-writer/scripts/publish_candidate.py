@@ -11,7 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-ARTICLE_MULTI_PUBLISHER = Path("/Users/aias/.codex/skills/article-multi-publisher/scripts/publish.py")
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ARTICLE_MULTI_PUBLISHER = REPO_ROOT / "article-multi-publisher" / "scripts" / "publish.py"
 DEFAULT_SOURCE_PRIORITY = [
     "article.md",
     "translation-draft.zh.md",
@@ -61,7 +62,7 @@ def resolve_source(base: Path, explicit_source: str | None) -> Path:
 
 
 def build_command(source: Path, args: argparse.Namespace) -> list[str]:
-    cmd = ["python3", str(ARTICLE_MULTI_PUBLISHER), str(source)]
+    cmd = [sys.executable, str(ARTICLE_MULTI_PUBLISHER), str(source)]
     if args.platforms:
         cmd += ["--platforms", args.platforms]
     if args.title:
@@ -105,6 +106,15 @@ def main() -> None:
     input_path = Path(args.path).expanduser().resolve()
     if not input_path.exists():
         print(json.dumps({"ok": False, "error": f"Path not found: {input_path}"}, ensure_ascii=False, indent=2))
+        sys.exit(1)
+    if not ARTICLE_MULTI_PUBLISHER.exists():
+        print(
+            json.dumps(
+                {"ok": False, "error": f"article-multi-publisher script not found: {ARTICLE_MULTI_PUBLISHER}"},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         sys.exit(1)
 
     try:

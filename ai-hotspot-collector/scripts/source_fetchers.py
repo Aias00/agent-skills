@@ -2,7 +2,7 @@
 """
 Repo-local source fetchers for ai-hotspot-collector.
 
-This module replaces the old dependency on ~/.codex source skills with
+This module replaces the old dependency on globally installed source skills with
 self-contained fetchers that save a consistent candidate layout:
 
 <source-output>/

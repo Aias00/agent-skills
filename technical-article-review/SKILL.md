@@ -17,6 +17,9 @@ Produce one of the following based on user intent:
 - `Review + rewrite`: full revised article + change rationale.
 - `Submission rescue`: targeted rewrite to address rejection reasons.
 
+Default behavior:
+- If the user asks to review an article and does not explicitly limit the task to `Review-only`, treat the review as the first phase of a direct revision workflow.
+
 ## Workflow
 
 ```text
@@ -26,7 +29,8 @@ Technical Article Review Flow:
 - [ ] Step 3: Audit technical correctness and evidence
 - [ ] Step 4: Audit structure and teaching clarity
 - [ ] Step 5: Polish language without diluting technical density
-- [ ] Step 6: Produce final deliverable (report or rewritten draft)
+- [ ] Step 6: Apply revisions when rewrite is requested or clearly implied
+- [ ] Step 7: Produce final deliverable (report or rewritten draft)
 ```
 
 ### Step 1: Determine mode and platform
@@ -93,7 +97,28 @@ Polish without lowering technical content density:
 If full rewrite is requested, load:
 [references/rewrite-playbook.md](references/rewrite-playbook.md)
 
-### Step 6: Final deliverable
+### Step 6: Apply Revisions
+
+If the user asks to "按审阅意见调整", "改一下", "修成可发版", or otherwise clearly wants more than a review report, edit the source draft directly.
+
+Also apply revisions by default after review unless the user explicitly asked for:
+- `Review-only`
+- `只审不改`
+- `先给意见，先别动稿`
+- another clear constraint that blocks direct edits
+
+Preferred revision order:
+- fix time-sensitive or weakly supported claims first
+- add missing prerequisites, commands, or minimum workflow paths
+- convert recommendation-heavy paragraphs into mechanism + applicability statements
+- remove repeated commentary that adds no new technical information
+
+When revising:
+- preserve the article's voice, but prefer verifiable wording over punchy wording
+- keep the delta focused on the findings; do not rewrite unrelated sections just for style
+- if the article has a downstream HTML publish artifact, treat markdown as the source of truth and let a later step regenerate HTML
+
+### Step 7: Final deliverable
 
 If user asks for review:
 
@@ -106,6 +131,12 @@ If user asks for rewrite:
 - produce publish-ready full draft
 - include a short `Change Log` section with top improvements
 - include a final `Pre-submission Checklist`
+
+If the user first asked for review and then asked to revise:
+
+- do not repeat the full review unless needed
+- return the revised draft or confirm the source file was updated
+- summarize only the changes that map to the original findings
 
 ## Output Templates
 

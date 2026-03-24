@@ -14,8 +14,8 @@ FETCH_SCRIPT = SCRIPT_DIR / "fetch_github_trending.py"
 PUBLISH_SCRIPT = SCRIPT_DIR / "publish_candidate.py"
 
 USAGE = """Usage:
-  python3 /Users/aias/.codex/skills/github-trending-writer/scripts/run.py fetch [fetch options]
-  python3 /Users/aias/.codex/skills/github-trending-writer/scripts/run.py publish <candidate-dir-or-root-or-file> [publish options]
+  python3 github-trending-writer/scripts/run.py fetch [fetch options]
+  python3 github-trending-writer/scripts/run.py publish <candidate-dir-or-root-or-file> [publish options]
 
 Commands:
   fetch    Fetch GitHub Trending candidates and save them locally
@@ -40,7 +40,7 @@ def main() -> None:
         print(USAGE, file=sys.stderr)
         sys.exit(1)
 
-    result = subprocess.run(["python3", str(target), *passthrough_args])
+    result = subprocess.run([sys.executable, str(target), *passthrough_args])
     if result.returncode != 0:
         sys.exit(result.returncode)
 

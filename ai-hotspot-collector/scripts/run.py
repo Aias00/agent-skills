@@ -14,8 +14,8 @@ FETCH_SCRIPT = SCRIPT_DIR / "fetch_all.py"
 PUBLISH_SCRIPT = SCRIPT_DIR / "publish_candidate.py"
 
 USAGE = """Usage:
-  python3 /Users/aias/Work/github/agent-skills/ai-hotspot-collector/scripts/run.py fetch [fetch options]
-  python3 /Users/aias/Work/github/agent-skills/ai-hotspot-collector/scripts/run.py publish <content-root-or-candidate-or-file> [publish options]
+  python3 ai-hotspot-collector/scripts/run.py fetch [fetch options]
+  python3 ai-hotspot-collector/scripts/run.py publish <content-root-or-candidate-or-file> [publish options]
 
 Commands:
   fetch    Aggregate candidates from multiple source skills
@@ -37,7 +37,7 @@ def main() -> None:
         print(f"Unsupported command: {command}", file=sys.stderr)
         print(USAGE, file=sys.stderr)
         sys.exit(1)
-    result = subprocess.run(["python3", str(target), *passthrough_args])
+    result = subprocess.run([sys.executable, str(target), *passthrough_args])
     if result.returncode != 0:
         sys.exit(result.returncode)
 

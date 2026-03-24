@@ -1,81 +1,144 @@
 # agent-skills
 
-A skill library for Chrome extension development and Chrome Web Store release workflows.
+Reusable skill library for two main workflows:
 
-## Skills in this repository
+- Chrome extension development and Chrome Web Store release
+- Content analysis → technical article review → WeChat-ready HTML → platform publishing
 
-- `chrome-extension-dev`: Manifest V3 development guidance, templates, and API references.
-- `chrome-extension-e2e-automation`: One-command integrated pipeline across dev checks and publish artifacts.
-- `chrome-extension-publish`: Release checklist, CWS form templates, and asset validation scripts.
-- `chrome-webstore-image-generator`: Generate and validate CWS listing images from source images.
-- `chrome-extension-social-promo`: Generate bilingual social media promotion copy for extension launches/updates.
+## Content Workflow Skills
 
-## End-to-end automation
+These repo-local skills now form a reusable article pipeline:
 
-From the `chrome-extension-publish` skill directory, run:
+- `github-trending-writer`: GitHub Trending 候选抓取、落盘、写稿入口
+- `ai-hotspot-collector`: 多来源 AI 热点聚合与总稿入口
+- `url-reader`: 读取网页 / README / 内容页并保存本地 Markdown
+- `technical-article-review`: 技术稿审阅与直接修稿
+- `technical-article-preflight`: 发文前预检
+- `wechat-article-formatter`: Markdown → 微信公众号 HTML
+- `wechat-publisher`: 微信公众号发布
+- `article-multi-publisher`: 多平台分发封装
 
-```bash
-python3 scripts/run_full_release_pipeline.py \
-  --root /abs/path/to/extension \
-  --icon-source /abs/path/to/icon.png \
-  --include-marquee
+Related platform skills that are already present in this repository and are reused by the article pipeline:
+
+- `post-to-xhs`
+- `toutiao-publisher`
+- `tencent-dev-community-publisher`
+
+## Recommended Article Pipeline
+
+For technical articles, use this order:
+
+```text
+source discovery / candidate fetch
+→ markdown draft
+→ technical-article-review
+→ technical-article-preflight
+→ wechat-article-formatter
+→ wechat-publisher
 ```
 
-If `--inputs` is omitted, screenshots are auto-captured first by default.
+Rules that now apply across the repo:
 
-This generates:
-- `release/chrome-webstore.zip`
-- `release/permission-audit.md`
-- `release/popup-ui-audit.md`
-- `release/store-assets/*`
-- `release/store-assets/screenshots/popup-preview-620x760.png`
-- `release/cws-listing.zh-en.md`
-- `release/full-release-summary.md`
+- First draft is not publish-ready by default.
+- Review comes before HTML generation and publishing.
+- Markdown is the source of truth for article revisions.
+- Review findings are applied directly unless the user explicitly requests `review-only` or `只审不改`.
 
-## Repository layout
+## What Is Vendored vs Environment-Specific
+
+Vendored into this repo:
+
+- formatter
+- URL reader
+- multi-publisher wrapper
+- WeChat publisher
+- technical review / preflight chain
+
+Still environment-specific:
+
+- WeChat API credentials and IP whitelist
+- Chrome / browser login state for browser automation
+- Playwright / Chromium runtime
+- Bun runtime for TypeScript-based publisher scripts
+- Platform-specific browser profiles or API tokens
+
+So this repository is now **repo-local reusable**, but not “zero-setup publish anywhere”:
+you still need platform credentials and browser/runtime prerequisites on the target machine.
+
+## Quick Start For The Article Chain
+
+### 1. Prepare Python/Bun runtimes
+
+```bash
+python3 --version
+bun --version
+```
+
+### 2. Install formatter dependencies
+
+```bash
+cd wechat-article-formatter
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+### 3. Generate WeChat HTML
+
+```bash
+wechat-article-formatter/.venv/bin/python \
+  wechat-article-formatter/scripts/markdown_to_html.py \
+  --input /abs/path/article.md \
+  --theme mist-blue \
+  --output /abs/path/article.html \
+  --preview
+```
+
+### 4. Publish to WeChat
+
+```bash
+npx -y bun wechat-publisher/scripts/wechat-publish.ts /abs/path/article.html
+```
+
+## Chrome Extension Skills
+
+The repository still includes the original Chrome extension workflow skills:
+
+- `chrome-extension-dev`
+- `chrome-extension-e2e-automation`
+- `chrome-extension-publish`
+- `chrome-extension-social-promo`
+- `chrome-webstore-image-generator`
+
+## Legacy Notice
+
+`wechat-article-generator` is kept only for maintaining older tar.gz-style article packages.
+For new work, prefer:
+
+```text
+technical-article-review
+→ technical-article-preflight
+→ wechat-article-formatter
+→ wechat-publisher
+```
+
+## Repository Layout
 
 ```text
 agent-skills/
+├── github-trending-writer/
+├── ai-hotspot-collector/
+├── technical-article-review/
+├── technical-article-preflight/
+├── url-reader/
+├── wechat-article-formatter/
+├── wechat-publisher/
+├── article-multi-publisher/
+├── post-to-xhs/
+├── toutiao-publisher/
+├── tencent-dev-community-publisher/
 ├── chrome-extension-dev/
-│   ├── SKILL.md
-│   ├── assets/templates/
-│   └── references/
 ├── chrome-extension-e2e-automation/
-│   ├── SKILL.md
-│   ├── scripts/
-│   └── references/
 ├── chrome-extension-publish/
-│   ├── SKILL.md
-│   ├── scripts/
-│   └── references/
 ├── chrome-extension-social-promo/
-│   ├── SKILL.md
-│   ├── scripts/
-│   └── references/
 └── chrome-webstore-image-generator/
-    ├── SKILL.md
-    ├── scripts/
-    └── references/
-```
-
-## Quick maintenance checks
-
-From the repository root:
-
-```bash
-python3 -m py_compile \
-  chrome-extension-dev/assets/templates/resize_icons.py \
-  chrome-extension-e2e-automation/scripts/run_e2e_extension_pipeline.py \
-  chrome-extension-publish/scripts/audit_permissions.py \
-  chrome-extension-publish/scripts/prepare_publish_basics.py \
-  chrome-extension-publish/scripts/generate_publish_docs.py \
-  chrome-extension-publish/scripts/run_full_release_pipeline.py \
-  chrome-extension-publish/scripts/submit_cws_playwright.py \
-  chrome-extension-publish/scripts/package_extension.py \
-  chrome-extension-publish/scripts/generate_store_assets.py \
-  chrome-extension-publish/scripts/validate_store_assets.py \
-  chrome-extension-social-promo/scripts/generate_social_promo.py \
-  chrome-webstore-image-generator/scripts/capture_extension_screenshots.py \
-  chrome-webstore-image-generator/scripts/generate_store_assets.py \
-  chrome-webstore-image-generator/scripts/validate_store_assets.py
 ```

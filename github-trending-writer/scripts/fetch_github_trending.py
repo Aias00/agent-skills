@@ -18,7 +18,9 @@ import requests
 from bs4 import BeautifulSoup
 
 GITHUB_BASE = "https://github.com"
-URL_READER_PATH = Path("/Users/aias/.codex/skills/url-reader/scripts/url_reader.py")
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = SCRIPT_DIR.parents[1]
+URL_READER_PATH = REPO_ROOT / "url-reader" / "scripts" / "url_reader.py"
 DEFAULT_LIMIT = 4
 BAD_CONTENT_PATTERNS = [
     "Page not found",
