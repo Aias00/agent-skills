@@ -39,7 +39,7 @@ Before using this skill on a freshly cloned machine, treat setup in three layers
 
 Reference: [references/reproducibility.md](references/reproducibility.md)
 
-**Recommended fresh-clone bootstrap**:
+**Fresh-clone bootstrap (execute this before anything else)**:
 
 ```bash
 cd wechat-publisher
@@ -158,9 +158,10 @@ chrome_profile_path: /path/to/chrome/profile
 3. EXTEND.md
 4. Skill defaults
 
-## Pre-flight Check (Optional)
+## Pre-flight Check
 
-Before first use, suggest running the environment check. User can skip if they prefer.
+On first use in a freshly cloned repo, run the environment check before attempting publish.
+Do not skip this unless the user explicitly tells you to bypass preflight.
 
 ```bash
 cd ${SKILL_DIR}
@@ -171,7 +172,7 @@ npx -y bun ${SKILL_DIR}/scripts/check-permissions.ts --project-root ..
 
 Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystroke, API credentials, Chrome conflicts.
 
-**If any check fails**, provide fix guidance per item:
+**If any check fails**, stop the publish attempt and report the blocking item with the fix:
 
 | Check | Fix |
 |-------|-----|
@@ -219,7 +220,7 @@ Check and load EXTEND.md settings (see Preferences section above).
 
 **CRITICAL**: If not found, complete first-time setup BEFORE any other steps or questions.
 
-For a freshly cloned repo, prefer the deterministic bootstrap path first:
+For a freshly cloned repo, run the deterministic bootstrap path first:
 
 ```bash
 cd ${SKILL_DIR}
@@ -228,7 +229,7 @@ bun scripts/bootstrap-local.ts --project-root ..
 bun scripts/check-permissions.ts --project-root ..
 ```
 
-Only if the user wants interactive setup instead of copying templates should you fall back to the guided first-time setup flow.
+Only if the user explicitly wants interactive setup instead of copying templates should you fall back to the guided first-time setup flow.
 
 Resolve and store these defaults for later steps:
 - `default_theme` (default `mist-blue`)
@@ -336,12 +337,18 @@ mkdir -p "$(pwd)/post-to-wechat/$(date +%Y-%m-%d)"
 
 ### Step 2: Select Publishing Method and Configure
 
-**Ask publishing method** (unless specified in EXTEND.md or CLI):
+**Resolve publishing method** (do not ask unless the user explicitly wants to choose):
 
 | Method | Speed | Requirements |
 |--------|-------|--------------|
-| `api` (Recommended) | Fast | API credentials |
+| `api` (Default if available) | Fast | API credentials |
 | `browser` | Slow | Chrome, login session |
+
+Use this order:
+1. obey explicit CLI / user request
+2. else use EXTEND.md `default_publish_method`
+3. else prefer `api` if credentials exist
+4. else use `browser`
 
 **If API Selected - Check Credentials**:
 

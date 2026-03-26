@@ -18,7 +18,7 @@ This makes the repo-local conversion/publish flow reproducible before you try AP
 
 ## Correct Process
 
-Use this order by default:
+If another Codex instance is following this repo, it should execute this order by default:
 
 ```bash
 cd wechat-publisher
@@ -33,6 +33,7 @@ Then:
 - use `scripts/wechat-publish.ts article.md` as the standard entry
 - let it route to API or browser
 - expect Markdown to be rendered through the repo-local preferred formatter with `mist-blue`
+- if `check-permissions.ts` fails, stop and fix that blocker before any real publish attempt
 
 ## Direct But Still Supported Paths
 
@@ -55,6 +56,13 @@ Do **not** treat these as the standard workflow:
   - this usually reproduces the old “formatter not installed / rendering path diverged” problem
 - reading a successful doctor check as proof that API/browser publish will work
   - actual publish still depends on credentials, whitelist IP, Chrome login, and desktop permissions
+
+For Codex specifically:
+
+- do not invent an alternate publish order
+- do not bypass `bootstrap-local.ts`
+- do not pick `md-to-wechat.ts` just because it sounds more direct
+- do not patch old HTML by hand when the markdown source is the source of truth
 
 Then use one of these:
 

@@ -44,6 +44,8 @@ Do not treat these as reproducible paths:
 - old theme names as active project defaults
 - skipping the formatter runtime bootstrap
 
+When another Codex instance is operating from this repo, it should treat the sequence above as an execution requirement, not as optional human guidance.
+
 ## Level 2: Machine-Local API Publishing
 
 API publishing is **not fully repo-reproducible** because it depends on machine/network state.
