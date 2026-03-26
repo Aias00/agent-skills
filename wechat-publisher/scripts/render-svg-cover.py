@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import functools
 import http.server
+import json
 import os
 import re
 import socketserver
@@ -22,9 +23,15 @@ import subprocess
 import sys
 import threading
 import time
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from urllib.parse import quote
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+SKILL_DIR = SCRIPT_DIR.parent
+RESVG_PKG = SKILL_DIR / "node_modules" / "@resvg" / "resvg-js"
 
 
 def parse_size(size: str) -> tuple[int, int]:
@@ -95,6 +102,25 @@ def resolve_chrome_path(explicit: str | None) -> str:
     )
 
 
+def resolve_js_runtime() -> str | None:
+    candidates = [
+        os.environ.get("WECHAT_JS_RUNTIME"),
+        "node",
+        "bun",
+    ]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        result = subprocess.run(
+            [candidate, "--version"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:  # pragma: no cover
         return
@@ -108,11 +134,83 @@ def start_http_server(directory: Path) -> tuple[socketserver.TCPServer, int]:
     return server, int(server.server_address[1])
 
 
+def render_svg_to_png_via_resvg(svg_path: Path, out_path: Path, width: int) -> bool:
+    if not RESVG_PKG.exists():
+        return False
+
+    runtime = resolve_js_runtime()
+    if not runtime:
+        return False
+
+    js = f"""
+const fs = require("node:fs");
+const {{ Resvg }} = require({json.dumps(str(RESVG_PKG))});
+const svg = fs.readFileSync({json.dumps(str(svg_path))}, "utf8");
+const resvg = new Resvg(svg, {{ fitTo: {{ mode: "width", value: {width} }} }});
+const pngData = resvg.render();
+fs.writeFileSync({json.dumps(str(out_path))}, pngData.asPng());
+"""
+
+    result = subprocess.run(
+        [runtime, "-e", js],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        stderr = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(f"resvg render failed: {stderr}")
+    if not out_path.exists():
+        raise RuntimeError(f"Rendered cover missing: {out_path}")
+    return True
+
+
+def build_wrapper_html(svg_name: str, width: int, height: int) -> str:
+    return f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html, body {{
+        margin: 0;
+        padding: 0;
+        width: {width}px;
+        height: {height}px;
+        overflow: hidden;
+        background: transparent;
+      }}
+      img {{
+        display: block;
+        width: {width}px;
+        height: {height}px;
+        object-fit: fill;
+      }}
+    </style>
+  </head>
+  <body>
+    <img src="{quote(svg_name)}" alt="cover" />
+  </body>
+</html>
+"""
+
+
 def render_svg_to_png(svg_path: Path, out_path: Path, width: int, height: int, chrome_path: str) -> None:
     server, port = start_http_server(svg_path.parent)
+    wrapper_path: Path | None = None
     try:
         time.sleep(0.15)
-        url = f"http://127.0.0.1:{port}/{quote(svg_path.name)}"
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".html",
+            prefix="svg-cover-",
+            dir=svg_path.parent,
+            encoding="utf-8",
+            delete=False,
+        ) as handle:
+            handle.write(build_wrapper_html(svg_path.name, width, height))
+            wrapper_path = Path(handle.name)
+
+        url = f"http://127.0.0.1:{port}/{quote(wrapper_path.name)}"
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         cmd = [
@@ -136,6 +234,8 @@ def render_svg_to_png(svg_path: Path, out_path: Path, width: int, height: int, c
         if not out_path.exists():
             raise RuntimeError(f"Output PNG not found: {out_path}")
     finally:
+        if wrapper_path and wrapper_path.exists():
+            wrapper_path.unlink(missing_ok=True)
         server.shutdown()
         server.server_close()
 
@@ -167,6 +267,12 @@ def main() -> int:
         width, height = detect_svg_size(svg_path) or (900, 383)
 
     try:
+        if render_svg_to_png_via_resvg(svg_path, out_path, width):
+            print("[OK] svg cover rendered via resvg")
+            print(f"[OUT] {out_path}")
+            print(f"[SIZE] {width}x{height}")
+            return 0
+
         chrome_path = resolve_chrome_path(args.chrome)
         render_svg_to_png(svg_path, out_path, width, height, chrome_path)
     except Exception as exc:

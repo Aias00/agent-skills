@@ -7,8 +7,7 @@
 ## Default Settings
 
 ```yaml
-default_theme: default
-default_color: blue
+default_theme: mist-blue
 default_publish_method: api
 default_author: 银色超音速可乐
 need_open_comment: 1
@@ -18,25 +17,13 @@ only_fans_can_comment: 0
 ---
 
 ## Theme Options
-- `default` - 默认主题
-- `grace` - 优雅主题
-- `simple` - 简洁主题
-- `modern` - 现代主题
+- `mist-blue` - 默认雾霾蓝技术编辑风
+- `ai-tech` - 偏强调的科技感主题
+- `default` / `grace` / `simple` / `modern` - 旧主题名；标准发布链路会自动收敛到 `mist-blue`
 
 ## Color Presets
-- `blue` - 蓝色
-- `green` - 绿色
-- `vermilion` - 朱砂红
-- `yellow` - 黄色
-- `purple` - 紫色
-- `sky` - 天空蓝
-- `rose` - 玫瑰色
-- `olive` - 橄榄绿
-- `black` - 黑色
-- `gray` - 灰色
-- `pink` - 粉色
-- `red` - 红色
-- `orange` - 橙色
+- `default_color` 只保留给旧内置渲染器兼容路径
+- 标准 repo-local formatter 路径会忽略这个字段
 
 ## Publishing Method
 - `api` - 通过微信公众号 API 发布

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@antv/infographic": "*",
     "fflate": "^0.8.2",
     "front-matter": "^4.0.2",
@@ -15,5 +16,9 @@
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
     "unified": "^11.0.5"
+  },
+  "scripts": {
+    "bootstrap-local": "bun scripts/bootstrap-local.ts",
+    "doctor": "bun scripts/check-permissions.ts"
   }
 }

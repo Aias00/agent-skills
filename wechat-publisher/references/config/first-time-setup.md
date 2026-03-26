@@ -9,6 +9,20 @@ description: First-time setup flow for wechat-publisher preferences
 
 When no EXTEND.md is found, guide user through preference setup.
 
+For a freshly cloned repository, prefer this deterministic bootstrap path before falling back to interactive setup:
+
+```bash
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+```
+
+Use the interactive flow below when:
+
+- the user wants to set preferences conversationally
+- or the template-based bootstrap was intentionally skipped
+
 **BLOCKING OPERATION**: This setup MUST complete before ANY other workflow steps. Do NOT:
 - Ask about content or files to publish
 - Ask about themes or publishing methods
@@ -153,14 +167,16 @@ options:
 ## EXTEND.md Template
 
 ```md
-default_theme: [default/grace/simple/modern]
-default_color: [preset name, hex, or empty for theme default]
+default_theme: [mist-blue/ai-tech]
+default_color: [legacy internal renderer only; usually leave empty]
 default_publish_method: [api/browser]
 default_author: [author name or empty]
 need_open_comment: [1/0]
 only_fans_can_comment: [1/0]
 chrome_profile_path:
 ```
+
+Legacy values `default` / `grace` / `simple` / `modern` are still accepted by the standard publish path, but they now auto-normalize to `mist-blue`.
 
 ## Modifying Preferences Later
 

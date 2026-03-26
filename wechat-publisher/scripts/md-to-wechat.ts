@@ -228,14 +228,19 @@ export async function convertMarkdown(markdownPath: string, options?: { title?: 
 }
 
 function printUsage(): never {
-  console.log(`Convert Markdown to WeChat-ready HTML with image placeholders
+  console.log(`Legacy internal Markdown renderer for WeChat placeholders
+
+Prefer the standard repo-local formatter path instead:
+  bun scripts/wechat-publish.ts article.md --dry-run
+  bun scripts/wechat-api.ts article.md --dry-run
+  bun scripts/wechat-article.ts --markdown article.md
 
 Usage:
   npx -y bun md-to-wechat.ts <markdown_file> [options]
 
 Options:
   --title <title>     Override title
-  --theme <name>      Theme name (default, grace, simple, modern)
+  --theme <name>      Legacy theme name (default, grace, simple, modern)
   --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
   --help              Show this help
 

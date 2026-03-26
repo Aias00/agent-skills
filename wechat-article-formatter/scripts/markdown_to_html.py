@@ -24,7 +24,7 @@ cssutils.log.setLevel(logging.CRITICAL)
 class WeChatHTMLConverter:
     """微信公众号HTML转换器"""
 
-    def __init__(self, theme: str = 'ai-tech'):
+    def __init__(self, theme: str = 'mist-blue'):
         self.theme = theme
         self.theme_css = self._load_theme_css()
 
@@ -326,10 +326,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 示例用法:
-  # 使用 AI 科技主题转换（默认）
+  # 使用雾霾蓝主题转换（默认）
   python markdown_to_html.py --input article.md
 
-  # 使用雾霾蓝主题转换
+  # 显式指定雾霾蓝主题
   python markdown_to_html.py --input article.md --theme mist-blue
 
   # 指定输出文件
@@ -339,8 +339,8 @@ def main():
   python markdown_to_html.py --input article.md --preview
 
 可用主题:
+  mist-blue - 雾霾蓝主题（默认，低饱和蓝灰编辑风，适合技术长文与公众号正文）
   ai-tech   - AI 科技主题（渐进式紫蓝绿配色，丰富组件，专为 AI 领域内容设计）
-  mist-blue - 雾霾蓝主题（低饱和蓝灰编辑风，适合技术长文与公众号正文）
 
 新增语法支持:
   信息框：::: info / success / warning / danger / tech
@@ -350,9 +350,9 @@ def main():
 
     parser.add_argument('-i', '--input', required=True, help='输入的Markdown文件路径')
     parser.add_argument('-o', '--output', help='输出的HTML文件路径（默认：与输入文件同名.html）')
-    parser.add_argument('-t', '--theme', default='ai-tech',
+    parser.add_argument('-t', '--theme', default='mist-blue',
                         choices=['ai-tech', 'mist-blue'],
-                        help='选择主题：ai-tech（默认）或 mist-blue（雾霾蓝）')
+                        help='选择主题：mist-blue（默认）或 ai-tech')
     parser.add_argument('-p', '--preview', action='store_true',
                         help='转换后在浏览器中打开预览')
 

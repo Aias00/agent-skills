@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { renderMarkdownWithPreferredFormatter } from "./preferred-markdown-render.ts";
 
 type PublishMethod = "api" | "browser";
 type SourceKind = "markdown" | "html";
@@ -26,6 +27,7 @@ interface CliOptions {
   theme?: string;
   color?: string;
   profile?: string;
+  legacyMarkdownRenderer?: boolean;
   dryRun: boolean;
 }
 
@@ -113,6 +115,23 @@ function chooseExisting(baseDir: string, names: string[]): string | undefined {
   return undefined;
 }
 
+function formatMarkdownWithPreferredFormatter(
+  source: ResolvedSource,
+  options: CliOptions,
+  extend: ExtendConfig,
+): ResolvedSource {
+  if (source.kind !== "markdown") return source;
+  if (options.legacyMarkdownRenderer) return source;
+
+  const theme = options.theme || extend.defaultTheme || "mist-blue";
+  const outputPath = renderMarkdownWithPreferredFormatter(source.path, {
+    theme,
+    outputPath: source.path.replace(/\.md$/i, ".wechat-publisher.html"),
+    logPrefix: "[wechat-publish]",
+  });
+  return { path: outputPath, kind: "html" };
+}
+
 function resolveSource(inputPath: string, method: PublishMethod): ResolvedSource {
   const resolved = path.resolve(inputPath);
   if (!fs.existsSync(resolved)) {
@@ -143,13 +162,14 @@ function buildApiCommand(source: ResolvedSource, options: CliOptions, extend: Ex
   const author = options.author || extend.defaultAuthor;
   const theme = options.theme || extend.defaultTheme;
   const color = options.color || extend.defaultColor;
+  const needsMarkdownRenderFlags = source.kind === "markdown";
 
   if (title) cmd.push("--title", title);
   if (summary) cmd.push("--summary", summary);
   if (author) cmd.push("--author", author);
   if (options.cover) cmd.push("--cover", path.resolve(options.cover));
-  if (theme) cmd.push("--theme", theme);
-  if (color) cmd.push("--color", color);
+  if (needsMarkdownRenderFlags && theme) cmd.push("--theme", theme);
+  if (needsMarkdownRenderFlags && color) cmd.push("--color", color);
   if (options.dryRun) cmd.push("--dry-run");
   return cmd;
 }
@@ -163,13 +183,14 @@ function buildBrowserCommand(source: ResolvedSource, options: CliOptions, extend
   const theme = options.theme || extend.defaultTheme;
   const color = options.color || extend.defaultColor;
   const profile = options.profile || extend.chromeProfilePath;
+  const needsMarkdownRenderFlags = source.kind === "markdown";
 
   if (options.title) cmd.push("--title", options.title);
   if (options.summary) cmd.push("--summary", options.summary);
   if (author) cmd.push("--author", author);
   if (options.cover) cmd.push("--cover", path.resolve(options.cover));
-  if (theme) cmd.push("--theme", theme);
-  if (color) cmd.push("--color", color);
+  if (needsMarkdownRenderFlags && theme) cmd.push("--theme", theme);
+  if (needsMarkdownRenderFlags && color) cmd.push("--color", color);
   if (profile) cmd.push("--profile", profile);
   cmd.push("--submit");
   return cmd;
@@ -211,15 +232,17 @@ Options:
   --summary <text>             Override article summary
   --author <name>              Override author
   --cover <path>               Override cover image path
-  --theme <name>               Override theme
-  --color <name|hex>           Override color
+  --theme <name>               Override markdown theme (mist-blue default, ai-tech optional)
+  --color <name|hex>           Legacy compatibility option; ignored by the preferred formatter path
   --profile <dir>              Override Chrome profile for browser mode
+  --legacy-markdown-renderer   Skip repo-local formatter and use legacy markdown publish path
   --dry-run                    Print resolved command without publishing
   -h, --help                   Show help
 
 Examples:
   npx -y bun wechat-publish.ts ./article-package
   npx -y bun wechat-publish.ts article.md --method browser
+  npx -y bun wechat-publish.ts article.md --legacy-markdown-renderer
   npx -y bun wechat-publish.ts article-api.html --title "My Title" --cover imgs/cover.png
 `);
   process.exit(0);
@@ -257,6 +280,7 @@ function parseArgs(argv: string[]): CliOptions {
     else if (arg === "--theme" && args[i + 1]) options.theme = args[++i];
     else if (arg === "--color" && args[i + 1]) options.color = args[++i];
     else if (arg === "--profile" && args[i + 1]) options.profile = args[++i];
+    else if (arg === "--legacy-markdown-renderer") options.legacyMarkdownRenderer = true;
     else if (arg === "--dry-run") options.dryRun = true;
     else {
       console.error(`Unknown argument: ${arg}`);
@@ -272,15 +296,16 @@ function main() {
   const extend = loadExtendConfig();
   const method = resolveMethod(options, extend);
   const source = resolveSource(options.source, method);
+  const publishSource = formatMarkdownWithPreferredFormatter(source, options, extend);
   const cmd = method === "api"
-    ? buildApiCommand(source, options, extend)
-    : buildBrowserCommand(source, options, extend);
+    ? buildApiCommand(publishSource, options, extend)
+    : buildBrowserCommand(publishSource, options, extend);
 
   if (options.dryRun) {
     console.log(JSON.stringify({
       ok: true,
       method,
-      source: source.path,
+      source: publishSource.path,
       command: cmd,
     }, null, 2));
     return;
@@ -292,7 +317,7 @@ function main() {
   const canFallback = options.method !== "api" && method === "api" && isWechatApiWhitelistError(result);
   if (canFallback) {
     console.error("[wechat-publish] API blocked by IP whitelist. Falling back to browser publishing...");
-    const browserSource = resolveSource(options.source, "browser");
+    const browserSource = formatMarkdownWithPreferredFormatter(resolveSource(options.source, "browser"), options, extend);
     const browserCmd = buildBrowserCommand(browserSource, options, extend);
     result = runCommand(browserCmd);
     echoResult(result);

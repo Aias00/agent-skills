@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { prepareWechatCoverPath } from "./cover-utils.ts";
+import { normalizePreferredFormatterTheme, renderMarkdownWithPreferredFormatter } from "./preferred-markdown-render.ts";
 
 interface WechatConfig {
   appId: string;
@@ -463,32 +462,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   return { frontmatter, body: match[2]! };
 }
 
-function renderMarkdownToHtml(markdownPath: string, theme: string = "default", color?: string): string {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const renderScript = path.join(__dirname, "md", "render.ts");
-  const baseDir = path.dirname(markdownPath);
-
-  const renderArgs = ["-y", "bun", renderScript, markdownPath, "--theme", theme];
-  if (color) renderArgs.push("--color", color);
-
-  console.error(`[wechat-api] Rendering markdown with theme: ${theme}${color ? `, color: ${color}` : ""}`);
-  const result = spawnSync("npx", renderArgs, {
-    stdio: ["inherit", "pipe", "pipe"],
-    cwd: baseDir,
+function renderMarkdownToHtml(markdownPath: string, theme: string = "mist-blue", _color?: string): string {
+  return renderMarkdownWithPreferredFormatter(markdownPath, {
+    theme: normalizePreferredFormatterTheme(theme, "[wechat-api]"),
+    outputPath: markdownPath.replace(/\.md$/i, ".wechat-publisher.html"),
+    logPrefix: "[wechat-api]",
   });
-
-  if (result.status !== 0) {
-    const stderr = result.stderr?.toString() || "";
-    throw new Error(`Render failed: ${stderr}`);
-  }
-
-  const htmlPath = markdownPath.replace(/\.md$/i, ".html");
-  if (!fs.existsSync(htmlPath)) {
-    throw new Error(`HTML file not generated: ${htmlPath}`);
-  }
-
-  return htmlPath;
 }
 
 function resolveExistingPath(baseDir: string, value?: string): string | undefined {
@@ -639,8 +618,8 @@ Options:
   --title <title>     Override title
   --author <name>     Author name (max 16 chars)
   --summary <text>    Article summary/digest (max 128 chars)
-  --theme <name>      Theme name for markdown (default, grace, simple, modern). Default: EXTEND.md or default
-  --color <name|hex>  Primary color (blue, green, vermilion, etc. or hex)
+  --theme <name>      Theme for markdown (mist-blue default, ai-tech optional; legacy names auto-normalize)
+  --color <name|hex>  Legacy compatibility option; ignored by the repo-local formatter path
   --cover <path>      Cover image path (local PNG/JPG/WEBP, SVG, or URL)
   --draft-list        List drafts (paged)
   --draft-delete <id> Delete one draft by media_id
@@ -671,7 +650,7 @@ Config File Locations (in priority order):
 
 Example:
   npx -y bun wechat-api.ts article.md
-  npx -y bun wechat-api.ts article.md --theme grace --cover cover.png
+  npx -y bun wechat-api.ts article.md --theme mist-blue --cover cover.png
   npx -y bun wechat-api.ts article.md --cover imgs/cover.svg
   npx -y bun wechat-api.ts article.md --author "Author Name" --summary "Brief intro"
   npx -y bun wechat-api.ts article.html --title "My Article"
@@ -795,7 +774,7 @@ function extractHtmlTitle(html: string): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const extendConfig = loadExtendConfig();
-  const resolvedTheme = args.theme || extendConfig.defaultTheme || "default";
+  const resolvedTheme = normalizePreferredFormatterTheme(args.theme || extendConfig.defaultTheme, "[wechat-api]");
   const resolvedColor = args.color || extendConfig.defaultColor;
   const needOpenComment = extendConfig.needOpenComment ?? true;
   const onlyFansCanComment = extendConfig.onlyFansCanComment ?? false;

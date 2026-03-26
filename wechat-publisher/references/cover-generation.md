@@ -11,7 +11,8 @@ There are now two supported cover paths:
 
 2. **Custom SVG cover**
    - Start from a hand-tuned SVG layout
-   - Render the SVG to PNG with Chrome headless
+   - Render the SVG to PNG with repo-local `resvg` when available
+   - Fallback to Chrome only when `resvg` is unavailable
    - Best when the article needs a custom editorial cover or multiple visual blocks
 
 ## Path A: Standard Auto Cover
@@ -50,11 +51,19 @@ python3 ./scripts/render-svg-cover.py \
   --size 900x383
 ```
 
-### Why Chrome-Based Rendering
+### Why The Preferred Path Uses `resvg`
 
-- Preserves the original SVG canvas ratio instead of silently cropping to a square
-- Uses the local browser engine, so Chinese text renders correctly
-- Matches the preview style more closely than thumbnail exporters
+- More deterministic across machines after `bun install`
+- Avoids thumbnail exporters that silently crop SVGs into squares
+- Avoids browser screenshot quirks when the viewport and SVG canvas disagree
+
+### Chrome Fallback
+
+Chrome fallback still exists for machines without local `resvg`, but it should be treated as a compatibility path, not the primary reproducible path.
+If Chrome fallback is used:
+
+- verify the generated PNG locally before publishing
+- do not assume identical output across machines
 
 ### Auto-Resolution In Publish Scripts
 
@@ -73,6 +82,7 @@ The publish scripts now understand these cover paths:
   - `cover.png`
 
 If the chosen cover is an SVG, `wechat-api.ts` and `wechat-article.ts` will now render it to a PNG automatically before upload.
+On a fresh clone, run `bun install` in `wechat-publisher/` first so the local `resvg` renderer is available.
 
 ## Cover Layout Rules
 
@@ -93,7 +103,7 @@ If the chosen cover is an SVG, `wechat-api.ts` and `wechat-article.ts` will now 
 python3 ./scripts/generate-cover-image.py --markdown ./article.md --bootstrap-pillow
 
 # 2) Publish
-npx -y bun ./scripts/wechat-api.ts ./article.md --theme default
+npx -y bun ./scripts/wechat-api.ts ./article.md --theme mist-blue
 ```
 
 ### Custom editorial flow
@@ -115,8 +125,13 @@ npx -y bun ./scripts/wechat-api.ts ./article.html --cover ./imgs/cover.svg
 - Cover looks cropped or square
   - do not use thumbnail-style exporters such as `qlmanage -t`; use `render-svg-cover.py`
 - Chinese text becomes boxes/tofu
-  - do not use font-limited SVG renderers for CJK covers; use the Chrome-based renderer
+  - first prefer the repo-local `resvg` path after `bun install`
+  - if you must fall back to Chrome, verify fonts locally before publishing
 - Font rendering or spacing still looks wrong
   - shorten title/subtitle or break the subtitle into two shorter lines
 - Cover still feels too crowded
   - reduce chip count, shrink the right-side info block, and widen the title safe area
+- Cover output differs across machines
+  - run `bun install` in `wechat-publisher/`
+  - confirm `@resvg/resvg-js` is installed
+  - rerender and compare before publishing

@@ -6,6 +6,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { launchChrome, tryConnectExisting, findExistingChromeDebugPort, getPageSession, waitForNewTab, clickElement, typeText, evaluate, sleep, type ChromeSession, type CdpConnection } from './cdp.ts';
 import { prepareWechatCoverPath } from './cover-utils.ts';
+import { normalizePreferredFormatterTheme, renderMarkdownWithPreferredFormatter } from './preferred-markdown-render.ts';
 
 const WECHAT_URL = 'https://mp.weixin.qq.com/';
 
@@ -264,24 +265,6 @@ async function pasteHtmlIntoEditorWithRetry(
     await sleep(1200);
   }
   return false;
-}
-
-async function parseMarkdownWithPlaceholders(markdownPath: string, theme?: string, color?: string): Promise<{ title: string; author: string; summary: string; htmlPath: string; contentImages: ImageInfo[] }> {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const mdToWechatScript = path.join(__dirname, 'md-to-wechat.ts');
-  const args = ['-y', 'bun', mdToWechatScript, markdownPath];
-  if (theme) args.push('--theme', theme);
-  if (color) args.push('--color', color);
-
-  const result = spawnSync('npx', args, { stdio: ['inherit', 'pipe', 'pipe'] });
-  if (result.status !== 0) {
-    const stderr = result.stderr?.toString() || '';
-    throw new Error(`Failed to parse markdown: ${stderr}`);
-  }
-
-  const output = result.stdout.toString();
-  return JSON.parse(output);
 }
 
 function parseFrontmatter(content: string): Record<string, string> {
@@ -1003,12 +986,17 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
 
   if (markdownFile) {
     console.log(`[wechat] Parsing markdown: ${markdownFile}`);
-    const parsed = await parseMarkdownWithPlaceholders(markdownFile, theme, color);
-    effectiveTitle = effectiveTitle || parsed.title;
-    effectiveAuthor = effectiveAuthor || parsed.author;
-    effectiveSummary = effectiveSummary || parsed.summary;
-    effectiveHtmlFile = parsed.htmlPath;
-    contentImages = parsed.contentImages;
+    const formattedHtmlPath = renderMarkdownWithPreferredFormatter(markdownFile, {
+      theme: normalizePreferredFormatterTheme(theme, '[wechat]'),
+      outputPath: markdownFile.replace(/\.md$/i, '.wechat-publisher.html'),
+      logPrefix: '[wechat]',
+    });
+    const meta = parseHtmlMeta(formattedHtmlPath);
+    effectiveTitle = effectiveTitle || meta.title;
+    effectiveAuthor = effectiveAuthor || meta.author;
+    effectiveSummary = effectiveSummary || meta.summary;
+    effectiveHtmlFile = formattedHtmlPath;
+    contentImages = meta.contentImages;
     console.log(`[wechat] Title: ${effectiveTitle || '(empty)'}`);
     console.log(`[wechat] Author: ${effectiveAuthor || '(empty)'}`);
     console.log(`[wechat] Summary: ${effectiveSummary || '(empty)'}`);
@@ -1313,9 +1301,9 @@ Options:
   --title <text>     Article title (auto-extracted from markdown)
   --content <text>   Article content (use with --image)
   --html <path>      HTML file to paste (alternative to --content)
-  --markdown <path>  Markdown file to convert and post (recommended)
-  --theme <name>     Theme for markdown (default, grace, simple, modern)
-  --color <name|hex> Primary color (blue, green, vermilion, etc. or hex)
+  --markdown <path>  Markdown file to convert and post (preferred path uses repo-local formatter)
+  --theme <name>     Theme for markdown (mist-blue default, ai-tech optional; legacy names auto-normalize)
+  --color <name|hex> Legacy compatibility option; ignored by the repo-local formatter path
   --author <name>    Author name
   --summary <text>   Article summary
   --cover <path>     Cover image path (optional; accepts PNG/JPG/WEBP/SVG and falls back to imgs/cover.svg, imgs/cover.png, images/cover-wide.png, or first content image)
@@ -1326,7 +1314,7 @@ Options:
 
 Examples:
   npx -y bun wechat-article.ts --markdown article.md
-  npx -y bun wechat-article.ts --markdown article.md --theme grace --submit
+  npx -y bun wechat-article.ts --markdown article.md --theme mist-blue --submit
   npx -y bun wechat-article.ts --markdown article.md --cover imgs/cover.svg --submit
   npx -y bun wechat-article.ts --title "标题" --content "内容" --image img.png
   npx -y bun wechat-article.ts --title "标题" --html article.html --submit

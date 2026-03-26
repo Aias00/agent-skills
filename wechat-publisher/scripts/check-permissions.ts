@@ -4,7 +4,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 import { findChromeExecutable, getDefaultProfileDir } from './cdp.ts';
+import { resolvePreferredFormatterPython } from './preferred-markdown-render.ts';
 
 interface CheckResult {
   name: string;
@@ -12,7 +14,40 @@ interface CheckResult {
   detail: string;
 }
 
+interface CliOptions {
+  projectRoot: string;
+}
+
 const results: CheckResult[] = [];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SKILL_DIR = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(SKILL_DIR, '..');
+const FORMATTER_DIR = path.join(REPO_ROOT, 'wechat-article-formatter');
+const FORMATTER_VENV_PYTHON = process.platform === 'win32'
+  ? path.join(FORMATTER_DIR, '.venv', 'Scripts', 'python.exe')
+  : path.join(FORMATTER_DIR, '.venv', 'bin', 'python');
+
+function parseArgs(argv: string[]): CliOptions {
+  const options: CliOptions = {
+    projectRoot: process.cwd(),
+  };
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if ((arg === '-h') || (arg === '--help')) {
+      console.log(`Usage: bun scripts/check-permissions.ts [--project-root <path>]`);
+      process.exit(0);
+    }
+    if (arg === '--project-root' && argv[i + 1]) {
+      options.projectRoot = path.resolve(argv[++i]);
+      continue;
+    }
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+
+  return options;
+}
 
 function log(label: string, ok: boolean, detail: string): void {
   results.push({ name: label, ok, detail });
@@ -185,9 +220,95 @@ async function checkBun(): Promise<void> {
   }
 }
 
-async function checkApiCredentials(): Promise<void> {
-  const cwd = process.cwd();
-  const projectEnv = path.join(cwd, '.baoyu-skills', '.env');
+async function checkRepoRuntimeDeps(): Promise<void> {
+  const nodeModulesDir = path.join(SKILL_DIR, 'node_modules');
+  const requiredPackages = [
+    'front-matter',
+    'highlight.js',
+    'marked',
+    '@resvg/resvg-js',
+  ];
+
+  if (!fs.existsSync(nodeModulesDir)) {
+    log('Repo runtime deps', false, `Missing ${nodeModulesDir}. Run: cd ${SKILL_DIR} && bun install`);
+    return;
+  }
+
+  const missing = requiredPackages.filter((pkg) => !fs.existsSync(path.join(nodeModulesDir, ...pkg.split('/'))));
+  if (missing.length > 0) {
+    log('Repo runtime deps', false, `Missing packages: ${missing.join(', ')}. Run: cd ${SKILL_DIR} && bun install`);
+    return;
+  }
+
+  log('Repo runtime deps', true, `Installed in ${nodeModulesDir}`);
+}
+
+async function checkPreferredFormatterRuntime(): Promise<void> {
+  const requirements = path.join(FORMATTER_DIR, 'requirements.txt');
+  if (!fs.existsSync(FORMATTER_DIR) || !fs.existsSync(requirements)) {
+    log('Preferred formatter runtime', false, `Missing repo-local formatter at ${FORMATTER_DIR}`);
+    return;
+  }
+
+  if (!fs.existsSync(FORMATTER_VENV_PYTHON)) {
+    log(
+      'Preferred formatter runtime',
+      false,
+      `Missing ${FORMATTER_VENV_PYTHON}. Run: cd ${SKILL_DIR} && bun scripts/bootstrap-local.ts --project-root ${path.dirname(SKILL_DIR)}`
+    );
+    return;
+  }
+
+  const usablePython = resolvePreferredFormatterPython();
+  if (!usablePython) {
+    log(
+      'Preferred formatter runtime',
+      false,
+      `Formatter Python exists but dependencies are missing. Run: ${FORMATTER_VENV_PYTHON} -m pip install -r ${requirements}`
+    );
+    return;
+  }
+
+  log('Preferred formatter runtime', true, `Using ${usablePython}`);
+}
+
+async function checkProjectBootstrap(projectRoot: string): Promise<void> {
+  const projectExtend = path.join(projectRoot, '.baoyu-skills', 'wechat-publisher', 'EXTEND.md');
+  const projectEnv = path.join(projectRoot, '.baoyu-skills', '.env');
+  const projectEnvExample = path.join(projectRoot, '.baoyu-skills', '.env.example');
+
+  if (fs.existsSync(projectExtend)) {
+    log('Project EXTEND', true, projectExtend);
+  } else {
+    warn('Project EXTEND', `Missing repo-local config. Recommended: (cd ${SKILL_DIR} && bun scripts/bootstrap-local.ts --project-root ${projectRoot})`);
+  }
+
+  if (fs.existsSync(projectEnv)) {
+    log('Project .env', true, projectEnv);
+  } else if (fs.existsSync(projectEnvExample)) {
+    warn('Project .env', `Found ${projectEnvExample} but no .env. Copy it and fill credentials if you want API publish.`);
+  } else {
+    warn('Project .env', 'No repo-local .env or .env.example found. API publish will depend on user-level env or shell env.');
+  }
+}
+
+async function checkCoverRenderer(): Promise<void> {
+  const resvgPkg = path.join(SKILL_DIR, 'node_modules', '@resvg', 'resvg-js');
+  if (fs.existsSync(resvgPkg)) {
+    log('SVG cover renderer', true, 'resvg available (preferred deterministic renderer)');
+    return;
+  }
+
+  const chromePath = findChromeExecutable();
+  if (chromePath) {
+    warn('SVG cover renderer', `Falling back to Chrome renderer (${chromePath}). Verify output locally before publishing.`);
+  } else {
+    log('SVG cover renderer', false, 'No resvg package and no Chrome found. Custom SVG cover rendering is unavailable.');
+  }
+}
+
+async function checkApiCredentials(projectRoot: string): Promise<void> {
+  const projectEnv = path.join(projectRoot, '.baoyu-skills', '.env');
   const userEnv = path.join(os.homedir(), '.baoyu-skills', '.env');
 
   let found = false;
@@ -221,15 +342,20 @@ async function checkRunningChromeConflict(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const options = parseArgs(process.argv.slice(2));
   console.log('=== wechat-publisher: Permission & Environment Check ===\n');
 
+  await checkRepoRuntimeDeps();
+  await checkPreferredFormatterRuntime();
+  await checkProjectBootstrap(options.projectRoot);
   await checkChrome();
+  await checkCoverRenderer();
   await checkProfileIsolation();
   await checkBun();
   await checkAccessibility();
   await checkClipboardCopy();
   await checkPasteKeystroke();
-  await checkApiCredentials();
+  await checkApiCredentials(options.projectRoot);
   await checkRunningChromeConflict();
 
   console.log('\n--- Summary ---');

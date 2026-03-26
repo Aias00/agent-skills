@@ -4,15 +4,69 @@ Post markdown articles to WeChat Official Account with full formatting support.
 
 ## Usage
 
+On a fresh clone, prepare the local runtime and project config first:
+
 ```bash
-# Post markdown article
-npx -y bun ./scripts/wechat-article.ts --markdown article.md
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+```
 
-# With theme
-npx -y bun ./scripts/wechat-article.ts --markdown article.md --theme grace
+This makes the repo-local conversion/publish flow reproducible before you try API or browser posting.
+`bootstrap-local.ts` now also prepares the repo-local `wechat-article-formatter/.venv`, so Markdown publishing will follow the same formatter path on another machine.
 
-# With explicit options
-npx -y bun ./scripts/wechat-article.ts --markdown article.md --author "作者名" --summary "摘要"
+## Correct Process
+
+Use this order by default:
+
+```bash
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+bun scripts/wechat-publish.ts article.md --dry-run
+```
+
+Then:
+
+- use `scripts/wechat-publish.ts article.md` as the standard entry
+- let it route to API or browser
+- expect Markdown to be rendered through the repo-local preferred formatter with `mist-blue`
+
+## Direct But Still Supported Paths
+
+Use these only when you intentionally need direct control:
+
+- `scripts/wechat-api.ts article.md --dry-run`
+- `scripts/wechat-article.ts --markdown article.md --submit`
+
+These are supported, but they are not the primary documented path for fresh clones.
+
+## Incorrect / Legacy Process
+
+Do **not** treat these as the standard workflow:
+
+- `scripts/md-to-wechat.ts article.md`
+  - legacy internal renderer only
+- using `default/grace/simple/modern` as if they were still the active project themes
+  - standard publish now normalizes them to `mist-blue`
+- skipping `bootstrap-local.ts` and going straight to markdown publish
+  - this usually reproduces the old “formatter not installed / rendering path diverged” problem
+- reading a successful doctor check as proof that API/browser publish will work
+  - actual publish still depends on credentials, whitelist IP, Chrome login, and desktop permissions
+
+Then use one of these:
+
+```bash
+# Standard entry: publish markdown through the preferred formatter path
+npx -y bun ./scripts/wechat-publish.ts article.md --dry-run
+
+# Direct API publish from markdown
+npx -y bun ./scripts/wechat-api.ts article.md --theme mist-blue --dry-run
+
+# Direct browser publish from markdown
+npx -y bun ./scripts/wechat-article.ts --markdown article.md --theme mist-blue --submit
 ```
 
 ## Recommended source files
@@ -22,6 +76,20 @@ npx -y bun ./scripts/wechat-article.ts --markdown article.md --author "作者名
 - API publishing on article bundles: prefer `article-api.html`
 
 If you only have one markdown source, keep the intended cover image inside the body image set and place it near the top.
+
+## Capability Boundary
+
+What is reproducible after clone + bootstrap:
+
+- markdown → WeChat HTML
+- cover path resolution
+- dry-run command resolution
+- repo-local config loading
+
+What still depends on machine/account state:
+
+- API publish: credentials + whitelist IP
+- browser publish: Chrome login + desktop automation permissions
 
 ## Cover Generation (Recommended)
 
@@ -70,7 +138,7 @@ If the resolved cover is an SVG, the publish scripts render it to PNG automatica
 | Parameter | Description |
 |-----------|-------------|
 | `--markdown <path>` | Markdown file to convert and post |
-| `--theme <name>` | Theme: default, grace, simple, modern |
+| `--theme <name>` | Theme: `mist-blue` (recommended) or `ai-tech`; legacy names auto-normalize to `mist-blue` |
 | `--title <text>` | Override title (auto-extracted from markdown) |
 | `--author <name>` | Author name |
 | `--summary <text>` | Article summary |
@@ -122,9 +190,11 @@ Regular paragraph with **bold** and *italic*.
 
 | Script | Purpose |
 |--------|---------|
-| `wechat-article.ts` | Main article publishing script |
-| `md-to-wechat.ts` | Markdown to HTML with placeholders |
-| `md/render.ts` | Markdown rendering with themes |
+| `wechat-publish.ts` | Standard unified entry; routes markdown through repo-local formatter first |
+| `wechat-article.ts` | Direct browser entry |
+| `wechat-api.ts` | Direct API entry |
+| `md-to-wechat.ts` | Legacy internal markdown renderer |
+| `md/render.ts` | Legacy internal theme renderer |
 
 ## Example Session
 

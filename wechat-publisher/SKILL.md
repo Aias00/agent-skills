@@ -19,10 +19,83 @@ description: Posts content to WeChat Official Account (微信公众号) via API 
 | `scripts/wechat-browser.ts` | Image-text posts (图文) |
 | `scripts/wechat-article.ts` | Article posting via browser (文章) |
 | `scripts/wechat-api.ts` | Article posting via API (文章) |
-| `scripts/md-to-wechat.ts` | Markdown → WeChat-ready HTML with image placeholders |
+| `scripts/md-to-wechat.ts` | Legacy internal markdown renderer (compatibility path only) |
 | `scripts/check-permissions.ts` | Verify environment & permissions |
 | `scripts/generate-cover-image.py` | Generate topic-aligned cover image (`imgs/cover.png`) from markdown/title |
-| `scripts/render-svg-cover.py` | Render custom SVG cover layouts to WeChat-safe PNG via Chrome headless |
+| `scripts/render-svg-cover.py` | Render custom SVG cover layouts to WeChat-safe PNG (prefer local resvg, fallback to Chrome) |
+
+## Reproducibility Boundary
+
+Before using this skill on a freshly cloned machine, treat setup in three layers:
+
+1. **Repo-local reproducible layer**
+   - install runtime deps
+   - bootstrap repo-local config files
+   - run doctor / environment checks
+2. **Machine-local API layer**
+   - requires real WeChat API credentials and current IP whitelist
+3. **Machine-local browser layer**
+   - requires Chrome login session and desktop automation permissions
+
+Reference: [references/reproducibility.md](references/reproducibility.md)
+
+**Recommended fresh-clone bootstrap**:
+
+```bash
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+```
+
+This bootstrap does **not** make API/browser publishing magically portable by itself.
+It only makes the repo-local part reproducible:
+
+- config file locations
+- preferred formatter Python runtime
+- runtime dependencies
+- cover renderer availability
+- dry-run / preflight checks
+
+## Canonical Path
+
+Treat this as the **only recommended article path** on a fresh clone:
+
+```bash
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+bun scripts/wechat-publish.ts /abs/path/article.md --dry-run
+```
+
+Then choose the real publish mode:
+
+- keep using `scripts/wechat-publish.ts` as the standard entry
+- let it delegate to API or browser based on config / current environment
+- expect Markdown input to be rendered through the repo-local `wechat-article-formatter` with `mist-blue`
+
+If you need direct control:
+
+- `scripts/wechat-api.ts <article.md>` is the direct API entry
+- `scripts/wechat-article.ts --markdown <article.md>` is the direct browser entry
+
+But these are still **secondary entries**. The canonical path is `scripts/wechat-publish.ts`.
+
+## Incorrect Or Legacy Paths
+
+Mark these as **non-standard** when helping users:
+
+- Running `scripts/md-to-wechat.ts` directly as the primary flow
+  - This is legacy compatibility only.
+- Assuming `default/grace/simple/modern` are the active project themes
+  - Standard repo-local publishing now normalizes these to `mist-blue`.
+- Running `check-permissions.ts` before `bootstrap-local.ts`
+  - You can get misleading results because the preferred formatter runtime may not exist yet.
+- Publishing Markdown from a fresh clone before the formatter venv exists
+  - This is the exact failure mode that previously caused “doctor passed but publish formatting still broke”.
+- Treating API/browser publishing as fully repo-reproducible
+  - Actual publish still depends on credentials, whitelist, login state, and desktop permissions.
 
 ## Preferences (EXTEND.md)
 
@@ -67,8 +140,7 @@ First-time setup: [references/config/first-time-setup.md](references/config/firs
 **Recommended EXTEND.md example**:
 
 ```md
-default_theme: default
-default_color: blue
+default_theme: mist-blue
 default_publish_method: api
 default_author: 宝玉
 need_open_comment: 1
@@ -76,9 +148,9 @@ only_fans_can_comment: 0
 chrome_profile_path: /path/to/chrome/profile
 ```
 
-**Theme options**: default, grace, simple, modern
+**Theme options**: `mist-blue` (recommended), `ai-tech` (alternate), legacy `default/grace/simple/modern` (auto-normalized to `mist-blue` in the standard path)
 
-**Color presets**: blue, green, vermilion, yellow, purple, sky, rose, olive, black, gray, pink, red, orange (or hex value)
+**Color presets**: only used by the legacy internal markdown renderer. The repo-local preferred formatter path ignores `default_color`.
 
 **Value priority**:
 1. CLI arguments
@@ -91,7 +163,10 @@ chrome_profile_path: /path/to/chrome/profile
 Before first use, suggest running the environment check. User can skip if they prefer.
 
 ```bash
-npx -y bun ${SKILL_DIR}/scripts/check-permissions.ts
+cd ${SKILL_DIR}
+bun install
+npx -y bun ${SKILL_DIR}/scripts/bootstrap-local.ts --project-root ..
+npx -y bun ${SKILL_DIR}/scripts/check-permissions.ts --project-root ..
 ```
 
 Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystroke, API credentials, Chrome conflicts.
@@ -108,6 +183,8 @@ Checks: Chrome, profile isolation, Bun, Accessibility, clipboard, paste keystrok
 | Paste keystroke (macOS) | Same as Accessibility fix above |
 | Paste keystroke (Linux) | Install `xdotool` (X11) or `ydotool` (Wayland) |
 | API credentials | Follow guided setup in Step 2, or manually set in `.baoyu-skills/.env` |
+| Repo runtime deps | Run `cd wechat-publisher && bun install` |
+| Project bootstrap files | Run `bun scripts/bootstrap-local.ts --project-root ..` from `wechat-publisher/` |
 
 ## Image-Text Posting (图文)
 
@@ -142,9 +219,20 @@ Check and load EXTEND.md settings (see Preferences section above).
 
 **CRITICAL**: If not found, complete first-time setup BEFORE any other steps or questions.
 
+For a freshly cloned repo, prefer the deterministic bootstrap path first:
+
+```bash
+cd ${SKILL_DIR}
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+```
+
+Only if the user wants interactive setup instead of copying templates should you fall back to the guided first-time setup flow.
+
 Resolve and store these defaults for later steps:
-- `default_theme` (default `default`)
-- `default_color` (omit if not set — theme default applies)
+- `default_theme` (default `mist-blue`)
+- `default_color` (legacy internal renderer only; omit if not set)
 - `default_author`
 - `need_open_comment` (default `1`)
 - `only_fans_can_comment` (default `0`)
@@ -292,12 +380,13 @@ WECHAT_APP_SECRET=<user_input>
 1. **Resolve theme** (first match wins, do NOT ask user if resolved):
    - CLI `--theme` argument
    - EXTEND.md `default_theme` (loaded in Step 0)
-   - Fallback: `default`
+   - Fallback: `mist-blue`
+   - If the resolved theme is `default` / `grace` / `simple` / `modern`, normalize it to `mist-blue` for the standard repo-local formatter path
 
 2. **Resolve color** (first match wins):
    - CLI `--color` argument
    - EXTEND.md `default_color` (loaded in Step 0)
-   - Omit if not set (theme default applies)
+   - Treat as legacy-compat only; the standard repo-local formatter path ignores it
 
 3. **Validate metadata** from frontmatter (markdown) or HTML meta tags (HTML input):
 

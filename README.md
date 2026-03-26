@@ -96,8 +96,20 @@ wechat-article-formatter/.venv/bin/python \
 ### 4. Publish to WeChat
 
 ```bash
-npx -y bun wechat-publisher/scripts/wechat-publish.ts /abs/path/article.html
+cd wechat-publisher
+bun install
+bun scripts/bootstrap-local.ts --project-root ..
+bun scripts/check-permissions.ts --project-root ..
+npx -y bun scripts/wechat-publish.ts /abs/path/article.md --dry-run
 ```
+
+`bootstrap-local.ts` now prepares the repo-local `wechat-article-formatter/.venv`, so Markdown publish on another machine follows the same `mist-blue` formatter path by default.
+
+Important boundary:
+
+- repo-local conversion and preflight are reproducible after the bootstrap above
+- actual API publish still depends on WeChat credentials + IP whitelist
+- actual browser publish still depends on Chrome login + desktop automation permissions
 
 ## Chrome Extension Skills
 
