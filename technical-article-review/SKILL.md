@@ -93,9 +93,22 @@ Polish without lowering technical content density:
 - keep code terms, config keys, and command names precise
 - prefer concrete verbs and measurable statements
 - preserve the author's technical intent and voice
+- flatten meta-analysis phrasing that makes the draft sound AI-written
 
 If full rewrite is requested, load:
 [references/rewrite-playbook.md](references/rewrite-playbook.md)
+
+During language polish, explicitly check for these patterns and rewrite them into flatter Chinese:
+
+- `不是……而是……` contrast sentences used to force a conclusion
+- `如果只把它当成……` / `如果只看……` / `如果想……` style lead-ins that sound like analysis scaffolding
+- headings or leads such as `拆开看` / `先看目录就能发现` / `下面按 X 个层面讲`
+- over-explanatory pivots such as `更准确一点说` / `也就是说` when the sentence can be stated directly
+- evaluation-heavy titles like `最值得看` / `真正聪明的地方` / `更像一个观察窗口`
+- soft evaluation phrases such as `更实操` / `最容易上手` / `更稳` / `更省事` / `更适合` when they can be replaced by direct description
+- analysis-heavy transitions such as `这一步很关键` / `这一步主要...` / `先抓一个最实用的区分`
+- vague opener lines like `这类项目放在一起看` / `最先要分清的一件事是`
+- avoid stiff translated compounds when simpler Chinese exists; for example prefer `编程 Agent` over `AI 编码代理` when context is already clear
 
 ### Step 6: Apply Revisions
 
@@ -117,6 +130,7 @@ When revising:
 - preserve the article's voice, but prefer verifiable wording over punchy wording
 - keep the delta focused on the findings; do not rewrite unrelated sections just for style
 - if the article has a downstream HTML publish artifact, treat markdown as the source of truth and let a later step regenerate HTML
+- prefer direct declarative phrasing over meta commentary about how the article is structured
 
 ### Step 7: Final deliverable
 
