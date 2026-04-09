@@ -109,6 +109,11 @@ During language polish, explicitly check for these patterns and rewrite them int
 - analysis-heavy transitions such as `这一步很关键` / `这一步主要...` / `先抓一个最实用的区分`
 - vague opener lines like `这类项目放在一起看` / `最先要分清的一件事是`
 - avoid stiff translated compounds when simpler Chinese exists; for example prefer `编程 Agent` over `AI 编码代理` when context is already clear
+- avoid meta-source narration in derived articles such as `原文里说` / `作者提到` / `这篇文章讲的是`; absorb the source content into the article instead of constantly pointing back to the source
+- when the article is based on one source and the main takeaway is clear, prefer front-loading the core conclusions near the beginning instead of saving all takeaways for the end
+- when the user asks to preserve the original article, keep the original section order and sentence logic as much as possible; prefer swapping tables / ASCII diagrams for images over rewriting the body
+- flatten awkward semi-literal translations such as `自动化成了一个完全不同的工作` / `从真实经验里长出来` / `把任务做通的`; rewrite them into natural Chinese
+- avoid forcing causal claims that are not established in the source, for example linking `模型本身够强` to `skill 是否好用` without evidence
 
 ### Step 6: Apply Revisions
 
