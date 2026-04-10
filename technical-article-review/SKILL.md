@@ -114,6 +114,10 @@ During language polish, explicitly check for these patterns and rewrite them int
 - when the user asks to preserve the original article, keep the original section order and sentence logic as much as possible; prefer swapping tables / ASCII diagrams for images over rewriting the body
 - flatten awkward semi-literal translations such as `自动化成了一个完全不同的工作` / `从真实经验里长出来` / `把任务做通的`; rewrite them into natural Chinese
 - avoid forcing causal claims that are not established in the source, for example linking `模型本身够强` to `skill 是否好用` without evidence
+- avoid headline-style commentary such as `最醒目的地方` / `真正讲清楚的是` / `最值得带走的一句话` / `这篇文章最后留下来的东西`
+- avoid contrasty framing around examples like `不只是让 agent 看代码，还要...`; prefer direct phrasing of what the system can do
+- replace vague motion metaphors such as `漂掉` with concrete engineering language like `变形` / `走样` / `失去边界`
+- replace weak translated summaries like `吞吐量没有掉，反而继续往上走` with precise engineering phrasing such as `整体交付吞吐量没有下降，还继续提高了`
 
 ### Step 6: Apply Revisions
 
