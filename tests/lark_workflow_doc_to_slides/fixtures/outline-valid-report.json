@@ -1,0 +1,24 @@
+{
+  "presentation": {
+    "title": "项目周报",
+    "source": {
+      "input_kind": "doc_url",
+      "resolved_kind": "doc_url",
+      "resolved_value": "https://example/docx/abc"
+    },
+    "target_mode": "new",
+    "content_mode": "report"
+  },
+  "slides": [
+    {
+      "no": 1,
+      "role": "cover",
+      "title": "项目周报",
+      "layout": "title-body",
+      "key_points": [
+        "本周工作进展",
+        "下周计划"
+      ]
+    }
+  ]
+}
