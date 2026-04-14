@@ -39,7 +39,7 @@ Without this workflow skill, the user must manually bridge a document-shaped art
 
 ## Goals
 
-- Accept a Feishu/Lark document or Wiki URL as input.
+- Accept a Feishu/Lark source document as input via URL, token, or document name.
 - Generate a structured slide outline before any deck mutation.
 - Support two authoring modes:
   - `faithful`: preserve original structure, compress for slides
@@ -204,7 +204,8 @@ Provides executable workflow helpers with real I/O and publish behavior.
 ### High-level flow
 
 ```text
-doc_url
+source input
+→ resolve source
 → fetch source doc
 → generate outline
 → user confirms outline
@@ -246,7 +247,12 @@ Recommended template shape:
   "presentation": {
     "title": "string",
     "subtitle": "string",
-    "source_doc_url": "string",
+    "source": {
+      "input_kind": "doc_name",
+      "resolved_kind": "doc_url",
+      "resolved_value": "string",
+      "title": "string"
+    },
     "target_mode": "new",
     "content_mode": "report",
     "audience": "string",
@@ -278,7 +284,10 @@ Recommended template shape:
 At minimum:
 
 - `presentation.title`
-- `presentation.source_doc_url`
+- `presentation.source`
+- `presentation.source.input_kind`
+- `presentation.source.resolved_kind`
+- `presentation.source.resolved_value`
 - `presentation.target_mode`
 - `presentation.content_mode`
 - `slides[]`
@@ -365,11 +374,50 @@ These rules should be enforced in references and partly by validation:
 Single script, multiple subcommands:
 
 ```text
+python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py resolve-source
 python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py fetch
 python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py validate-outline
 python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py render
 python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py publish
 ```
+
+### `resolve-source`
+
+Purpose:
+
+- normalize `doc_url`, `doc_token`, or `doc_name` into one concrete source target before fetch
+- make source ambiguity explicit before any outline generation or slide mutation
+
+Inputs:
+
+- exactly one of:
+  - `--doc-url`
+  - `--doc-token`
+  - `--doc-name`
+- `--run-dir`
+
+Behavior:
+
+- `doc_url`: persist as already resolved
+- `doc_token`: persist as already resolved
+- `doc_name`: search document-like sources first, restricted to source types that `lark-cli docs +fetch` can consume
+- when `doc_name` returns multiple plausible candidates:
+  - stop immediately
+  - emit a shortlist of candidates for user choice
+  - optional ranking may be included as advisory metadata, but never used for auto-selection
+
+Outputs:
+
+- `resolved-source.json`
+
+Suggested fields:
+
+- `input_kind`
+- `resolved_kind`
+- `resolved_value`
+- `title`
+- `search_candidates`
+- `needs_user_choice`
 
 ### `fetch`
 
@@ -381,7 +429,7 @@ Purpose:
 
 Inputs:
 
-- `--doc-url`
+- `--resolved-source`
 - `--run-dir`
 
 Outputs:
@@ -486,7 +534,7 @@ Supported final source targets should include:
 - wiki urls resolving to document content
 - document tokens supported by `lark-doc`
 
-When the original input is `doc_name`, the workflow must first search for candidate documents and stop for user confirmation if more than one plausible match exists.
+When the original input is `doc_name`, the workflow must first search for candidate documents and stop for user confirmation if more than one plausible match exists. The search stage must only return candidates that the later fetch stage can actually consume.
 
 ### Target slides
 
@@ -587,6 +635,9 @@ Implementation planning should cover three test layers.
 
 ### 1. Unit tests for script logic
 
+- source input normalization
+- mutually exclusive source argument validation
+- ambiguous `doc_name` candidate handling
 - outline validation
 - layout enum validation
 - role-to-layout rendering selection
@@ -616,6 +667,8 @@ The first implementation should prefer deterministic script tests over live netw
 
 The design is considered satisfied when implementation can demonstrate:
 
+- support for source inputs via `doc_url`, `doc_token`, and `doc_name`
+- explicit stop-and-choose behavior when `doc_name` resolves to multiple plausible candidates
 - outline-first workflow, with an explicit user approval stop
 - both `new` and `append` target modes
 - both `faithful` and `report` content modes, defaulting to `report`
