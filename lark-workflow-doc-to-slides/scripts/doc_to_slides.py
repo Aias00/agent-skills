@@ -401,13 +401,23 @@ def text_shape(x: int, y: int, width: int, height: int, text_type: str, inner_xm
     )
 
 
-def rect_shape(x: int, y: int, width: int, height: int, fill_color: str, text: str) -> str:
+def rect_shape(x: int, y: int, width: int, height: int, fill_color: str) -> str:
     return (
         f'<shape type="rect" topLeftX="{x}" topLeftY="{y}" width="{width}" height="{height}">'
         f'<fill><fillColor color="{fill_color}"/></fill>'
         f'<border color="rgb(203,213,225)" width="2"/>'
-        f'<text><content textType="body"><p>{escape(text)}</p></content></text>'
         "</shape>"
+    )
+
+
+def centered_text_shape(x: int, y: int, width: int, height: int, text: str, font_size: int = 18) -> str:
+    return text_shape(
+        x,
+        y,
+        width,
+        height,
+        "body",
+        f'<p textAlign="center"><span color="rgb(51,65,85)" fontSize="{font_size}">{escape(text)}</span></p>',
     )
 
 
@@ -486,7 +496,9 @@ def render_timeline_slide(slide: dict) -> str:
     items = []
     base_y = 170
     for index, point in enumerate(slide.get("key_points", [])):
-        items.append(rect_shape(100, base_y + index * 62, 760, 44, "rgb(226,232,240)", point))
+        y = base_y + index * 62
+        items.append(rect_shape(100, y, 760, 44, "rgb(226,232,240)"))
+        items.append(centered_text_shape(120, y + 8, 720, 28, point, font_size=16))
     data_xml = text_shape(80, 72, 800, 80, "title", title_paragraph(slide["title"])) + "".join(items)
     return wrap_slide(data_xml, slide.get("notes", ""))
 
@@ -498,7 +510,8 @@ def render_metrics_slide(slide: dict) -> str:
         col = index % 3
         x = 80 + col * 260
         y = 180 + row * 120
-        cards.append(rect_shape(x, y, 220, 88, "rgb(219,234,254)", point))
+        cards.append(rect_shape(x, y, 220, 88, "rgb(219,234,254)"))
+        cards.append(centered_text_shape(x + 10, y + 28, 200, 32, point, font_size=18))
     data_xml = text_shape(80, 72, 800, 80, "title", title_paragraph(slide["title"])) + "".join(cards)
     return wrap_slide(data_xml, slide.get("notes", ""))
 

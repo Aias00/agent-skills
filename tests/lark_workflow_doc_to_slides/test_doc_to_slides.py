@@ -311,6 +311,10 @@ class RenderTests(unittest.TestCase):
             self.assertTrue(all("<slide" in slide for slide in rendered["slides"]))
             for slide_xml in rendered["slides"]:
                 ET.fromstring(slide_xml)
+            self.assertIn("第 1 周", rendered["slides"][5])
+            self.assertIn('type="text"', rendered["slides"][5])
+            self.assertIn("10%", rendered["slides"][6])
+            self.assertIn('type="text"', rendered["slides"][6])
 
 
 class PublishNewDeckTests(unittest.TestCase):
