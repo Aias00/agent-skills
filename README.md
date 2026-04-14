@@ -1,9 +1,10 @@
 # agent-skills
 
-Reusable skill library for two main workflows:
+Reusable skill library for three main workflows:
 
 - Chrome extension development and Chrome Web Store release
 - Content analysis → technical article review → WeChat-ready HTML → platform publishing
+- Lark / Feishu document-to-slides workflow with outline review before publish
 
 ## Content Workflow Skills
 
@@ -43,6 +44,12 @@ Rules that now apply across the repo:
 - Review comes before HTML generation and publishing.
 - Markdown is the source of truth for article revisions.
 - Review findings are applied directly unless the user explicitly requests `review-only` or `只审不改`.
+
+## Lark Workflow Skills
+
+These repo-local skills cover document-to-slides orchestration on top of existing Lark capabilities:
+
+- `lark-workflow-doc-to-slides`: 用 `doc_url` / `doc_token` / `doc_name` 解析来源文档，先生成可审阅 outline，再新建 Slides 或追加到已有 `target_slides_url`
 
 ## What Is Vendored vs Environment-Specific
 
@@ -137,6 +144,7 @@ technical-article-review
 
 ```text
 agent-skills/
+├── lark-workflow-doc-to-slides/
 ├── github-trending-writer/
 ├── ai-hotspot-collector/
 ├── technical-article-review/
