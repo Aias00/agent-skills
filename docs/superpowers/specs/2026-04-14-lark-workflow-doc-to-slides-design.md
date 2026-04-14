@@ -266,6 +266,7 @@ Recommended template shape:
     {
       "no": 1,
       "role": "cover",
+      "section_divider": false,
       "title": "页面标题",
       "objective": "这一页要让观众理解什么",
       "layout": "title-body",
@@ -370,7 +371,7 @@ These rules should be enforced in references and partly by validation:
 - A single bullet should ideally stay within two visual lines.
 - If a slide exceeds the density budget, split it instead of shrinking the font.
 - If two or more consecutive slides are pure text, at least one should be considered for `comparison`, `timeline`, or `metrics` layout.
-- In append mode, do not generate a cover slide unless the user explicitly asks for a new section divider.
+- In append mode, do not generate a cover slide unless the outline explicitly marks it as a section divider via a boolean field such as `section_divider: true`.
 - In append mode, avoid re-creating a generic "目录" or "封面" if the target deck clearly already has one.
 
 ## Script design
