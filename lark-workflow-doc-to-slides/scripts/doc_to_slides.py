@@ -141,6 +141,15 @@ def extract_search_results(search_result: dict) -> list[dict]:
     return search_result.get("results") or search_result.get("res_units") or []
 
 
+def extract_fetch_payload(raw: dict) -> dict:
+    data = raw.get("data")
+    if isinstance(data, dict) and (
+        "markdown" in data or "title" in data or "has_more" in data or "next_offset" in data
+    ):
+        return data
+    return raw
+
+
 def extract_search_candidates(search_result: dict) -> list[dict]:
     candidates: list[dict] = []
     for item in extract_search_results(search_result):
@@ -294,7 +303,7 @@ def fetch_source(resolved: dict, run_dir: Path) -> dict:
     fetch_target, wiki_node = resolve_fetch_target(resolved)
 
     while True:
-        page = run_lark_cli(
+        raw_page = run_lark_cli(
             [
                 "lark-cli",
                 "docs",
@@ -311,7 +320,8 @@ def fetch_source(resolved: dict, run_dir: Path) -> dict:
                 str(limit),
             ]
         )
-        pages.append(page)
+        page = extract_fetch_payload(raw_page)
+        pages.append(raw_page)
         if page.get("title") and not title:
             title = page["title"]
         markdown = page.get("markdown", "")
@@ -319,7 +329,7 @@ def fetch_source(resolved: dict, run_dir: Path) -> dict:
             markdown_parts.append(markdown.rstrip())
         if not page.get("has_more"):
             break
-        offset += limit
+        offset = int(page.get("next_offset", offset + limit))
 
     result = {
         "title": title or (wiki_node.get("title") if wiki_node else ""),
@@ -638,8 +648,6 @@ def publish_new_deck(title: str, slides: list[str], run_dir: Path) -> dict:
             "user",
             "--title",
             title,
-            "--format",
-            "json",
         ]
     )
     payload = extract_create_payload(create_raw)

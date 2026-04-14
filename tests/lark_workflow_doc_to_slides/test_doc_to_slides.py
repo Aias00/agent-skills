@@ -151,6 +151,37 @@ class FetchTests(unittest.TestCase):
                 self.assertEqual(wiki_call[2:4], ["spaces", "get_node"])
                 self.assertIn("doccn_resolved_123", fetch_call)
 
+    def test_fetch_handles_lark_cli_enveloped_json_shape(self):
+        module = load_module()
+        enveloped_page_1 = {
+            "ok": True,
+            "identity": "user",
+            "data": {
+                "title": "E2E 文档转幻灯片测试 20260414",
+                "markdown": "# 第一段",
+                "has_more": True,
+                "next_offset": 200,
+            },
+        }
+        enveloped_page_2 = {
+            "ok": True,
+            "identity": "user",
+            "data": {
+                "markdown": "## 第二段",
+                "has_more": False,
+            },
+        }
+        with mock.patch.object(module, "run_lark_cli") as run_lark_cli:
+            run_lark_cli.side_effect = [enveloped_page_1, enveloped_page_2]
+            resolved = {"resolved_kind": "doc_url", "resolved_value": "https://example/docx/abc"}
+            with tempfile.TemporaryDirectory() as temp_dir:
+                run_dir = pathlib.Path(temp_dir)
+                result = module.fetch_source(resolved, run_dir)
+                self.assertEqual(result["title"], "E2E 文档转幻灯片测试 20260414")
+                self.assertIn("# 第一段", result["markdown"])
+                self.assertIn("## 第二段", result["markdown"])
+                self.assertEqual(result["pages"], 2)
+
     def test_fetch_fails_fast_for_unresolved_source_choice_state(self):
         module = load_module()
         unresolved = {
@@ -317,6 +348,7 @@ class PublishNewDeckTests(unittest.TestCase):
             self.assertEqual(result["target_mode"], "new")
             self.assertEqual(result["slides_added"], 2)
             self.assertEqual(calls[0][2], "+create")
+            self.assertNotIn("--format", calls[0])
             self.assertEqual(calls[1][2:4], ["xml_presentation.slide", "create"])
             self.assertTrue((run_dir / "publish-result.json").exists())
 
@@ -352,6 +384,7 @@ class PublishNewDeckTests(unittest.TestCase):
             self.assertEqual(result["xml_presentation_id"], "pres_abc123")
             self.assertEqual(len(result["slide_ids"]), 11)
             self.assertEqual(calls[0][2], "+create")
+            self.assertNotIn("--format", calls[0])
             self.assertEqual(calls[1][2:4], ["xml_presentation.slide", "create"])
 
     def test_publish_rejects_outline_and_render_mismatch(self):
