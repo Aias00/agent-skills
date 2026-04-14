@@ -13,6 +13,7 @@
     {
       "no": 1,
       "role": "cover",
+      "section_divider": false,
       "title": "项目周报",
       "layout": "poster",
       "key_points": []

@@ -1,0 +1,36 @@
+{
+  "presentation": {
+    "title": "项目周报",
+    "subtitle": "面向项目干系人的阶段汇报",
+    "source": {
+      "input_kind": "doc_name",
+      "resolved_kind": "doc_url",
+      "resolved_value": "https://example.feishu.cn/docx/doccn123",
+      "title": "项目周报原文"
+    },
+    "target_mode": "new",
+    "content_mode": "report",
+    "audience": "项目干系人",
+    "total_slides": 1
+  },
+  "slides": [
+    {
+      "no": 1,
+      "role": "cover",
+      "section_divider": false,
+      "title": "项目周报",
+      "objective": "说明本次汇报的主题与范围",
+      "layout": "title-body",
+      "key_points": [
+        "本周完成项",
+        "关键风险",
+        "下周计划"
+      ],
+      "source_sections": [
+        "项目周报"
+      ],
+      "visual_hint": "标准汇报封面",
+      "notes": "示例模板，可按实际内容改写。"
+    }
+  ]
+}

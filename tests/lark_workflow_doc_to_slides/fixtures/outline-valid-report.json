@@ -1,24 +1,51 @@
 {
   "presentation": {
     "title": "项目周报",
+    "subtitle": "研发与交付概览",
     "source": {
       "input_kind": "doc_url",
       "resolved_kind": "doc_url",
-      "resolved_value": "https://example/docx/abc"
+      "resolved_value": "https://example/docx/abc",
+      "title": "项目周报原文"
     },
     "target_mode": "new",
-    "content_mode": "report"
+    "content_mode": "report",
+    "audience": "项目干系人",
+    "total_slides": 2
   },
   "slides": [
     {
       "no": 1,
       "role": "cover",
+      "section_divider": false,
       "title": "项目周报",
+      "objective": "快速同步本周状态",
+      "layout": "title-only",
+      "key_points": [],
+      "source_sections": [
+        "封面"
+      ],
+      "visual_hint": "简洁封面",
+      "notes": "先讲总体判断。"
+    },
+    {
+      "no": 2,
+      "role": "content",
+      "section_divider": false,
+      "title": "背景",
+      "objective": "说明当前进展与风险",
       "layout": "title-body",
       "key_points": [
-        "本周工作进展",
-        "下周计划"
-      ]
+        "核心流程已打通",
+        "接口联调进入收尾",
+        "仍需跟进一项依赖风险"
+      ],
+      "source_sections": [
+        "本周进展",
+        "风险"
+      ],
+      "visual_hint": "标准正文页",
+      "notes": "强调风险处置节奏。"
     }
   ]
 }

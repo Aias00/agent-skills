@@ -1,0 +1,13 @@
+{
+  "data": {
+    "xml_presentation_id": "pres_abc123",
+    "title": "项目周报",
+    "url": "https://example.feishu.cn/slides/pres_abc123",
+    "revision_id": 1,
+    "slide_ids": [
+      "slide_batch_1",
+      "slide_batch_2"
+    ],
+    "slides_added": 2
+  }
+}

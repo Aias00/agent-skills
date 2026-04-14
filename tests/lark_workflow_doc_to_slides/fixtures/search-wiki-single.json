@@ -1,0 +1,13 @@
+{
+  "data": {
+    "results": [
+      {
+        "title": "知识库周报",
+        "entity_type": "WIKI",
+        "result_meta": {
+          "url": "https://example.feishu.cn/wiki/wikicn_doc"
+        }
+      }
+    ]
+  }
+}

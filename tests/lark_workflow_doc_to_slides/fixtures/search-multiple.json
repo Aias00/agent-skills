@@ -1,0 +1,20 @@
+{
+  "data": {
+    "results": [
+      {
+        "title": "项目周报",
+        "entity_type": "DOCX",
+        "result_meta": {
+          "url": "https://example.feishu.cn/docx/doccn123"
+        }
+      },
+      {
+        "title": "项目周报知识库",
+        "entity_type": "WIKI",
+        "result_meta": {
+          "url": "https://example.feishu.cn/wiki/wikicn123"
+        }
+      }
+    ]
+  }
+}
