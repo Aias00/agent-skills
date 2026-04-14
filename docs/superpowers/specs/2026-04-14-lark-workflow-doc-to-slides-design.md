@@ -67,10 +67,18 @@ Without this workflow skill, the user must manually bridge a document-shaped art
 The skill should be discoverable for prompts such as:
 
 - "把这篇文档转成 PPT"
-- "把这篇 Wiki 做成飞书幻灯片"
+- "把这个 Wiki 做成飞书幻灯片"
 - "帮我把周报文档变成汇报幻灯片"
+- "根据文档名称生成 PPT"
+- "把《项目周报》做成 Slides"
+- "把这篇文档追加到现有 Slides"
 - "doc to slides"
 - "document to slides"
+- "turn this doc into slides"
+- "append slides from a document"
+
+Prompts may refer to the source by URL, token, or document name.
+When the source is given by name and multiple candidates match, the workflow must stop and ask the user to choose.
 
 ### Input contract
 
