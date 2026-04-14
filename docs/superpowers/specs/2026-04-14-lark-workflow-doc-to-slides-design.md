@@ -74,9 +74,13 @@ The skill should be discoverable for prompts such as:
 
 ### Input contract
 
-Required:
+Primary source input is required, but it does not have to be a URL.
+
+Supported source forms:
 
 - `doc_url`
+- `doc_name`
+- `doc_token`
 
 Optional:
 
@@ -96,6 +100,16 @@ Resolved defaults:
 The workflow must always stop at the outline preview and wait for user confirmation before rendering slide XML or mutating any Slides presentation.
 
 This is a workflow invariant, not a recommendation.
+
+### Source resolution rules
+
+The workflow should normalize all accepted source inputs into one concrete document target before fetch:
+
+- `doc_url`: use directly
+- `doc_token`: resolve directly through `lark-doc` supported token handling
+- `doc_name`: search first, then require the user to choose one concrete result when ambiguity exists
+
+For `doc_name`, automatic guessing is explicitly disallowed in v1. If search returns multiple plausible results, the workflow must stop and ask the user to choose the source document before any fetch or outline generation continues.
 
 ## Skill structure
 
@@ -456,13 +470,15 @@ Result fields should include:
 
 ### Source document
 
-Source input is always `doc_url`.
+The workflow assumes source resolution can end at a document target compatible with `lark-cli docs +fetch`.
 
-The workflow assumes `lark-cli docs +fetch` can resolve:
+Supported final source targets should include:
 
 - docx urls
 - wiki urls resolving to document content
 - document tokens supported by `lark-doc`
+
+When the original input is `doc_name`, the workflow must first search for candidate documents and stop for user confirmation if more than one plausible match exists.
 
 ### Target slides
 
@@ -509,6 +525,9 @@ This is required for:
 Possible causes:
 
 - invalid source URL
+- invalid source token
+- document name search returned no usable match
+- document name search returned multiple plausible matches and the user has not selected one
 - wrong identity
 - missing document permission
 
@@ -517,6 +536,7 @@ Handling:
 - stop immediately
 - surface the underlying `lark-cli` error
 - if permission-related, route according to `lark-shared`
+- if source ambiguity-related, return candidate items and require explicit user selection
 
 ### Outline validation failure
 
@@ -600,6 +620,7 @@ The design is considered satisfied when implementation can demonstrate:
 - Slide XML can become brittle if too much free-form logic is delegated to the AI.
 - Append mode can create awkward decks if duplicate-cover detection is too naive.
 - Source documents can be far denser than presentation-appropriate content, pushing too much judgment into outline generation.
+- Name-based source resolution introduces ambiguity and increases the risk of generating from the wrong document if the workflow guesses.
 
 The design intentionally mitigates these by:
 
@@ -607,6 +628,7 @@ The design intentionally mitigates these by:
 - moving XML rendering to a deterministic script
 - making append mode additive only
 - requiring explicit outline approval
+- forbidding automatic selection when `doc_name` matches multiple candidates
 
 ## Open implementation notes
 
@@ -614,3 +636,4 @@ The design intentionally mitigates these by:
 - The script should assume `lark-cli` is the only required external binary.
 - The script should treat the outline as the single source of truth after user approval; render and publish must not mutate the outline semantics.
 - The skill should clearly state that `slides +create-from-outline` does not exist and is intentionally emulated through the approved command chain.
+- The script should provide a source-resolution stage for `doc_name`, and in ambiguous cases must emit ranked candidates rather than auto-selecting one.
