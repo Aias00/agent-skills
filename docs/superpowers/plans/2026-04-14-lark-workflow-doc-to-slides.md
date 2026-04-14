@@ -832,20 +832,12 @@ git commit -m "feat: render deterministic slide xml from approved outlines"
 - Create: `tests/lark_workflow_doc_to_slides/fixtures/presentation-create.json`
 - Create: `tests/lark_workflow_doc_to_slides/fixtures/slide-create.json`
 
-- [ ] **Step 1: Write failing publish tests for <=10 and >10 slide branches**
+- [ ] **Step 1: Write failing publish tests for the incremental new-deck flow**
 
 ```python
 class PublishNewDeckTests(unittest.TestCase):
-    @mock.patch("doc_to_slides.run_lark_cli")
-    def test_publish_new_deck_uses_slides_create_with_batch_when_slide_count_is_small(self, run_lark_cli):
-        module = load_module()
-        run_lark_cli.return_value = json.loads(pathlib.Path(
-            "tests/lark_workflow_doc_to_slides/fixtures/presentation-create.json"
-        ).read_text())
-        outline = {"presentation": {"title": "项目周报", "target_mode": "new"}}
-        slides = ["<slide>a</slide>", "<slide>b</slide>"]
-        result = module.publish_slides(outline, slides, pathlib.Path("/tmp/run"), None)
-        self.assertEqual(result["xml_presentation_id"], "pres_abc123")
+    def test_publish_new_deck_uses_incremental_add_for_new_presentations(self):
+        ...
 ```
 
 - [ ] **Step 2: Run tests and verify publish flow is missing**
@@ -864,21 +856,6 @@ Expected:
 
 ```python
 def publish_new_deck(title: str, slides: list[str]) -> dict:
-    if len(slides) <= 10:
-        raw = run_lark_cli([
-            "lark-cli", "slides", "+create", "--as", "user",
-            "--title", title,
-            "--slides", json.dumps(slides, ensure_ascii=False),
-            "--format", "json",
-        ])
-        return {
-            "target_mode": "new",
-            "xml_presentation_id": raw["xml_presentation_id"],
-            "url": raw.get("url"),
-            "slide_ids": raw.get("slide_ids", []),
-            "slides_added": raw.get("slides_added", len(raw.get("slide_ids", []))),
-        }
-
     create_result = run_lark_cli([
         "lark-cli", "slides", "+create", "--as", "user",
         "--title", title,
@@ -914,7 +891,7 @@ python3 -m unittest discover tests/lark_workflow_doc_to_slides -v
 
 Expected:
 
-- small-deck and large-deck branch tests PASS
+- new-deck incremental publish tests PASS
 
 - [ ] **Step 5: Commit**
 

@@ -165,7 +165,7 @@ Explains:
 - produce and review outline
 - render slide XML
 - create a new deck
-- choose between `slides +create --slides` and `slides +create` then `xml_presentation.slide.create`
+- create the deck first, then append slides incrementally
 
 #### `references/workflow-append-slides.md`
 
@@ -193,7 +193,7 @@ Defines:
 - title length expectations
 - layout selection rules
 - when to split content across pages
-- when new decks can use batch create and when they must switch to incremental add
+- why new decks use incremental add for recoverability
 
 #### `templates/outline.json`
 
@@ -498,6 +498,7 @@ Rules:
 - choose XML scaffolds by `role` and `layout`
 - produce valid slide XML compatible with existing `lark-slides` references
 - keep rendering deterministic from the outline
+- persist enough metadata to prove the rendered slides still match the approved outline at publish time
 
 ### `publish`
 
@@ -514,9 +515,7 @@ Inputs:
 
 Behavior:
 
-- new deck, `<= 10` slides:
-  - use `lark-cli slides +create --as user --title ... --slides ...`
-- new deck, `> 10` slides:
+- new deck:
   - use `lark-cli slides +create --as user --title ...`
   - extract `xml_presentation_id`
   - loop `lark-cli slides xml_presentation.slide create --as user`
@@ -536,6 +535,13 @@ Result fields should include:
 - `slide_ids`
 - `slides_added`
 - `run_dir`
+
+Before publish:
+
+- verify `render-summary.json` exists
+- verify the current outline still matches the rendered slides
+- fail fast if the current `slides.json` is stale or mismatched
+- create new decks via empty-presentation creation plus incremental slide add so partial-success metadata can always be preserved
 
 ## URL and target resolution
 
@@ -683,7 +689,7 @@ Where feasible:
 
 - verify generated `lark-cli` command shapes
 - verify new-vs-append branch behavior
-- verify `> 10` slide switch from batch create to incremental append
+- verify new-deck incremental publishing and partial-success persistence
 
 The first implementation should prefer deterministic script tests over live network tests.
 

@@ -165,8 +165,13 @@ python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py render \
 
 发布规则是固定的：
 
-- `<= 10` 页：优先 `lark-cli slides +create --as user --title ... --slides ...`
-- `> 10` 页：先 `lark-cli slides +create --as user --title ...` 创建空 deck，再循环 `lark-cli slides xml_presentation.slide create --as user`
+- 先用 `lark-cli slides +create --as user --title ...` 创建空 deck
+- 再逐页调用 `lark-cli slides xml_presentation.slide create --as user`
+
+说明：
+
+- 这样做比 `slides +create --slides` 更啰嗦
+- 但它能稳定保留“部分成功时已经创建的 presentation 和 slide_ids”，更符合本 workflow 的可恢复性要求
 
 执行：
 
@@ -176,6 +181,12 @@ python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py publish \
   --outline <run_dir>/outline.json \
   --slides-json <run_dir>/slides.json
 ```
+
+发布前提：
+
+- `slides.json` 必须来自当前 `run_dir` 的最近一次 `render`
+- `render-summary.json` 必须存在
+- 如果 `outline.json` 和 `slides.json` 不再一致，必须先重新 render，不能直接 publish
 
 冻结的 publish-result 契约：
 

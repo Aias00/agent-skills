@@ -99,6 +99,11 @@ python3 lark-workflow-doc-to-slides/scripts/doc_to_slides.py publish ...
 - `slides_added`
 - `run_dir`
 
+发布保护：
+
+- `publish` 只接受与当前 `outline.json` 匹配的 `slides.json`
+- 如果 `render-summary.json` 缺失，或 `outline` / `slides` 指纹不一致，必须先重新 render
+
 ## Operator Rules
 
 - 用 AI 负责理解原文和写 outline；用脚本负责校验、渲染、发布。

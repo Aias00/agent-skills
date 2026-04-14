@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -25,6 +27,7 @@ FETCHABLE_ENTITY_TYPES = {"DOC", "DOCX"}
 RESOLVABLE_ENTITY_TYPES = {"WIKI"}
 FETCHABLE_WIKI_OBJECT_TYPES = {"doc", "docx"}
 SML_NS = "http://www.larkoffice.com/sml/2.0"
+HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 class PublishError(RuntimeError):
@@ -117,6 +120,20 @@ def normalize_entity_type(value: object) -> str:
     return str(value).strip().upper()
 
 
+def strip_markup(text: object) -> str:
+    if text is None:
+        return ""
+    return HTML_TAG_RE.sub("", str(text))
+
+
+def stable_json_dumps(payload: object) -> str:
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def fingerprint_payload(payload: object) -> str:
+    return hashlib.sha256(stable_json_dumps(payload).encode("utf-8")).hexdigest()
+
+
 def extract_search_results(search_result: dict) -> list[dict]:
     data = search_result.get("data")
     if isinstance(data, dict):
@@ -140,7 +157,7 @@ def extract_search_candidates(search_result: dict) -> list[dict]:
             continue
         candidates.append(
             {
-                "title": item.get("title") or item.get("title_highlighted") or result_meta.get("title") or "",
+                "title": strip_markup(item.get("title") or item.get("title_highlighted") or result_meta.get("title") or ""),
                 "resolved_kind": resolved_kind,
                 "resolved_value": url,
                 "entity_type": entity_type,
@@ -496,8 +513,18 @@ def render_outline(outline: dict, run_dir: Path) -> dict:
             raise ValueError(f"unsupported render layout: {slide['layout']}")
         rendered.append(renderer(slide))
 
+    outline_fingerprint = fingerprint_payload(outline)
+    slides_fingerprint = fingerprint_payload(rendered)
     result = {"slides": rendered, "count": len(rendered)}
-    write_json(run_dir / "render-summary.json", {"count": len(rendered), "layouts": [s["layout"] for s in outline["slides"]]})
+    write_json(
+        run_dir / "render-summary.json",
+        {
+            "count": len(rendered),
+            "layouts": [s["layout"] for s in outline["slides"]],
+            "outline_fingerprint": outline_fingerprint,
+            "slides_fingerprint": slides_fingerprint,
+        },
+    )
     write_json(run_dir / "slides.json", rendered)
     return result
 
@@ -535,6 +562,21 @@ def normalize_publish_result(
         "slides_added": len(slide_ids),
         "run_dir": str(run_dir),
     }
+
+
+def ensure_render_consistency(outline: dict, slides: list[str], run_dir: Path) -> None:
+    summary_path = run_dir / "render-summary.json"
+    if not summary_path.exists():
+        raise RuntimeError("render-summary.json is required before publish")
+    summary = read_json(summary_path)
+    if not isinstance(summary, dict):
+        raise RuntimeError("render-summary.json must be a JSON object")
+    if summary.get("count") != len(slides):
+        raise RuntimeError("slides.json does not match render-summary count")
+    if summary.get("outline_fingerprint") != fingerprint_payload(outline):
+        raise RuntimeError("outline.json no longer matches the rendered slides; rerun render")
+    if summary.get("slides_fingerprint") != fingerprint_payload(slides):
+        raise RuntimeError("slides.json no longer matches render-summary; rerun render")
 
 
 def resolve_target_slides_url(target_slides_url: str) -> tuple[str, str | None]:
@@ -587,31 +629,6 @@ def create_slide_in_presentation(presentation_id: str, slide_xml: str) -> str:
 
 
 def publish_new_deck(title: str, slides: list[str], run_dir: Path) -> dict:
-    if len(slides) <= 10:
-        raw = run_lark_cli(
-            [
-                "lark-cli",
-                "slides",
-                "+create",
-                "--as",
-                "user",
-                "--title",
-                title,
-                "--slides",
-                json.dumps(slides, ensure_ascii=False),
-                "--format",
-                "json",
-            ]
-        )
-        payload = extract_create_payload(raw)
-        return normalize_publish_result(
-            "new",
-            payload["xml_presentation_id"],
-            payload.get("url"),
-            list(payload.get("slide_ids", [])),
-            run_dir,
-        )
-
     create_raw = run_lark_cli(
         [
             "lark-cli",
@@ -657,6 +674,7 @@ def publish_append(target_slides_url: str, slides: list[str], run_dir: Path) -> 
 
 def publish_slides(outline: dict, slides: list[str], run_dir: Path, target_slides_url: str | None) -> dict:
     validate_outline(outline)
+    ensure_render_consistency(outline, slides, run_dir)
     target_mode = outline["presentation"]["target_mode"]
     try:
         if target_mode == "new":
