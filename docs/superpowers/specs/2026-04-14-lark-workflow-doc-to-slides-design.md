@@ -117,7 +117,11 @@ The workflow should normalize all accepted source inputs into one concrete docum
 - `doc_token`: resolve directly through `lark-doc` supported token handling
 - `doc_name`: search first, then require the user to choose one concrete result when ambiguity exists
 
-For `doc_name`, automatic guessing is explicitly disallowed in v1. If search returns multiple plausible results, the workflow must stop and ask the user to choose the source document before any fetch or outline generation continues.
+For `doc_name`, automatic guessing is explicitly disallowed in v1. The resolution rule should be:
+
+- `0` candidates: fail and ask the user to provide a better document identifier
+- `1` clear candidate: continue automatically
+- `>1` plausible candidates: stop and ask the user to choose before any fetch or outline generation continues
 
 ## Skill structure
 
@@ -401,6 +405,10 @@ Behavior:
 - `doc_url`: persist as already resolved
 - `doc_token`: persist as already resolved
 - `doc_name`: search document-like sources first, restricted to source types that `lark-cli docs +fetch` can consume
+- `doc_name` resolution must follow:
+  - `0` candidates: fail
+  - `1` clear candidate: continue
+  - `>1` plausible candidates: stop and require user choice
 - when `doc_name` returns multiple plausible candidates:
   - stop immediately
   - emit a shortlist of candidates for user choice
@@ -436,6 +444,12 @@ Outputs:
 
 - `source.json`
 - `source.md`
+
+Behavior notes:
+
+- fetch must continue pagination until the full source document is retrieved
+- if `docs +fetch` returns `has_more`, the script must continue with the appropriate `offset` / `limit` inputs until completion
+- `source.md` must represent the full source document, not only the first fetched chunk
 
 ### `validate-outline`
 
@@ -534,7 +548,11 @@ Supported final source targets should include:
 - wiki urls resolving to document content
 - document tokens supported by `lark-doc`
 
-When the original input is `doc_name`, the workflow must first search for candidate documents and stop for user confirmation if more than one plausible match exists. The search stage must only return candidates that the later fetch stage can actually consume.
+When the original input is `doc_name`, the workflow must first search for candidate documents. The search stage must only return candidates that the later fetch stage can actually consume. Resolution behavior must be:
+
+- `0` candidates: fail
+- `1` clear candidate: continue
+- `>1` plausible candidates: stop for user confirmation
 
 ### Target slides
 
@@ -559,6 +577,7 @@ All workflow state should persist under:
 Planned contents:
 
 ```text
+resolved-source.json
 source.json
 source.md
 outline.json
@@ -593,6 +612,7 @@ Handling:
 - surface the underlying `lark-cli` error
 - if permission-related, route according to `lark-shared`
 - if source ambiguity-related, return candidate items and require explicit user selection
+- if fetch pagination is incomplete or interrupted, do not continue to outline generation
 
 ### Outline validation failure
 
@@ -637,7 +657,10 @@ Implementation planning should cover three test layers.
 
 - source input normalization
 - mutually exclusive source argument validation
+- `doc_name` zero-match behavior
+- `doc_name` single-match auto-continue behavior
 - ambiguous `doc_name` candidate handling
+- paginated fetch aggregation
 - outline validation
 - layout enum validation
 - role-to-layout rendering selection
@@ -668,7 +691,9 @@ The first implementation should prefer deterministic script tests over live netw
 The design is considered satisfied when implementation can demonstrate:
 
 - support for source inputs via `doc_url`, `doc_token`, and `doc_name`
+- automatic continue behavior when `doc_name` resolves to exactly one clear candidate
 - explicit stop-and-choose behavior when `doc_name` resolves to multiple plausible candidates
+- full-document fetch behavior across paginated `docs +fetch` responses
 - outline-first workflow, with an explicit user approval stop
 - both `new` and `append` target modes
 - both `faithful` and `report` content modes, defaulting to `report`
