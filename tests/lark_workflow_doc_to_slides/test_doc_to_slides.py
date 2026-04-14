@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -133,6 +134,22 @@ class FetchTests(unittest.TestCase):
                 self.assertEqual(wiki_call[2:4], ["spaces", "get_node"])
                 self.assertIn("doccn_resolved_123", fetch_call)
 
+    def test_fetch_fails_fast_for_unresolved_source_choice_state(self):
+        module = load_module()
+        unresolved = {
+            "input_kind": "doc_name",
+            "resolved_kind": "",
+            "resolved_value": "",
+            "title": "",
+            "search_candidates": [
+                {"title": "项目周报", "resolved_kind": "doc_url", "resolved_value": "https://example/docx/doccn123"}
+            ],
+            "needs_user_choice": True,
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaises(RuntimeError):
+                module.fetch_source(unresolved, pathlib.Path(temp_dir))
+
 
 class OutlineValidationTests(unittest.TestCase):
     def test_valid_report_outline_passes(self):
@@ -166,12 +183,41 @@ class OutlineValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.validate_outline(outline)
 
+    def test_missing_section_divider_is_rejected(self):
+        module = load_module()
+        outline = read_fixture("outline-valid-report.json")
+        outline["slides"][0].pop("section_divider")
+        with self.assertRaises(ValueError):
+            module.validate_outline(outline)
+
 
 class TemplateTests(unittest.TestCase):
     def test_outline_template_parses_and_validates(self):
         module = load_module()
         outline = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
         module.validate_outline(outline)
+
+
+class ValidateOutlineCliTests(unittest.TestCase):
+    def test_validate_outline_cli_emits_structured_error_payload(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            outline_path = pathlib.Path(temp_dir) / "invalid-outline.json"
+            outline = read_fixture("outline-valid-report.json")
+            outline["slides"][0].pop("section_divider")
+            outline_path.write_text(json.dumps(outline, ensure_ascii=False), encoding="utf-8")
+
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT_PATH), "validate-outline", "--outline", str(outline_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertNotEqual(proc.returncode, 0)
+            payload = json.loads(proc.stdout)
+            self.assertEqual(payload["ok"], False)
+            self.assertEqual(payload["command"], "validate-outline")
+            self.assertIn("section_divider", payload["error"])
 
 
 class RenderTests(unittest.TestCase):

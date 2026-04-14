@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 from xml.sax.saxutils import escape
@@ -30,6 +31,18 @@ class PublishError(RuntimeError):
     def __init__(self, message: str, result: dict) -> None:
         super().__init__(message)
         self.result = result
+
+
+def emit_error(command: str, error: Exception) -> int:
+    payload = {
+        "ok": False,
+        "command": command,
+        "error": str(error),
+        "error_type": type(error).__name__,
+    }
+    json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 1
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -245,7 +258,17 @@ def resolve_fetch_target(resolved: dict) -> tuple[str, dict | None]:
     return fetch_target, wiki_node
 
 
+def ensure_resolved_source_ready(resolved: dict) -> None:
+    if resolved.get("needs_user_choice"):
+        raise RuntimeError("resolved source still requires explicit user choice before fetch")
+    if not resolved.get("resolved_kind"):
+        raise RuntimeError("resolved source is missing resolved_kind")
+    if not resolved.get("resolved_value"):
+        raise RuntimeError("resolved source is missing resolved_value")
+
+
 def fetch_source(resolved: dict, run_dir: Path) -> dict:
+    ensure_resolved_source_ready(resolved)
     offset = 0
     limit = 200
     pages: list[dict] = []
@@ -323,7 +346,7 @@ def validate_outline(outline: dict) -> None:
             raise ValueError(f"missing presentation.source.{field}")
 
     for index, slide in enumerate(slides, start=1):
-        for field in ("no", "role", "title", "layout", "key_points"):
+        for field in ("no", "role", "section_divider", "title", "layout", "key_points"):
             if field not in slide:
                 raise ValueError(f"slide {index} missing {field}")
         if not isinstance(slide["no"], int) or slide["no"] <= 0:
@@ -334,7 +357,7 @@ def validate_outline(outline: dict) -> None:
             raise ValueError(f"slide {index} key_points must be a list")
         if len(slide["key_points"]) > 5:
             raise ValueError(f"slide {index} exceeds 5 key points")
-        if "section_divider" in slide and not isinstance(slide["section_divider"], bool):
+        if not isinstance(slide["section_divider"], bool):
             raise ValueError(f"slide {index} section_divider must be a boolean")
 
     if presentation["target_mode"] == "append":
@@ -680,11 +703,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "validate-outline":
-        outline = read_json(Path(args.outline))
-        if not isinstance(outline, dict):
-            raise ValueError("outline must be a JSON object")
-        validate_outline(outline)
-        return 0
+        try:
+            outline = read_json(Path(args.outline))
+            if not isinstance(outline, dict):
+                raise ValueError("outline must be a JSON object")
+            validate_outline(outline)
+            return 0
+        except (ValueError, RuntimeError, json.JSONDecodeError) as exc:
+            return emit_error("validate-outline", exc)
 
     if args.command == "render":
         run_dir = ensure_run_dir(args.run_dir)
