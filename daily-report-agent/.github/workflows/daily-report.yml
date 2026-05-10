@@ -1,0 +1,45 @@
+name: Daily Team Report
+
+on:
+  schedule:
+    # 每天 9:00 北京时间 (UTC+8 = UTC 1:00)
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+    # 支持手动触发，方便调试
+    inputs:
+      date:
+        description: '目标日期 (YYYY-MM-DD)，默认昨天'
+        required: false
+        default: ''
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install anthropic requests
+
+      - name: Run Daily Report Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPO: ${{ github.repository }}
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            python daily_report_agent.py --date "${{ github.event.inputs.date }}"
+          else
+            python daily_report_agent.py
+          fi
