@@ -130,6 +130,70 @@ prompt = f"""请将以下 Git 提交记录整理成团队日报。
 
 参考 `push_to_feishu` 和 `push_to_dingtalk` 函数，添加其他平台的推送逻辑。
 
+## 本地验证
+
+### 快速测试（无需 API Key）
+
+```bash
+# 创建虚拟环境
+python3 -m venv .venv
+source .venv/bin/activate  # Mac/Linux
+# .venv\Scripts\activate   # Windows
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 创建测试脚本
+python3 << 'EOF'
+from datetime import datetime, timedelta
+
+# Mock 数据
+MOCK_COMMITS = [
+    {"sha": "abc1234", "commit": {"author": {"name": "张三"}, "message": "feat: 添加用户认证模块"}},
+    {"sha": "def5678", "commit": {"author": {"name": "张三"}, "message": "fix: 修复登录样式"}},
+    {"sha": "ghi9012", "commit": {"author": {"name": "李四"}, "message": "feat: 数据导出功能"}},
+]
+
+# 按作者分组
+by_author = {}
+for c in MOCK_COMMITS:
+    author = c["commit"]["author"]["name"]
+    message = c["commit"]["message"].split("\n")[0]
+    sha = c["sha"][:7]
+    if author not in by_author:
+        by_author[author] = []
+    by_author[author].append({"sha": sha, "message": message})
+
+# 生成日报
+print("## 📅 团队日报\n")
+for author, commits in by_author.items():
+    print(f"### 👤 {author}")
+    for c in commits:
+        print(f"- [{c['sha']}] {c['message']}")
+    print()
+print(f"**📊 统计**: {len(by_author)} 人提交")
+EOF
+```
+
+### 完整测试（需要 API Key）
+
+```bash
+# 设置环境变量
+export GITHUB_TOKEN="ghp_xxx"
+export GITHUB_REPO="owner/repo"
+export ANTHROPIC_API_KEY="sk-xxx"
+export FEISHU_WEBHOOK="https://open.feishu.cn/xxx"  # 可选
+
+# 干跑模式（只生成，不推送）
+python daily_report_agent.py --dry-run
+
+# 完整运行
+python daily_report_agent.py
+
+# 指定日期
+python daily_report_agent.py --date 2024-01-15
+```
+
 ## 常见问题
 
 **Q: GitHub Actions 定时不准时怎么办？**
@@ -152,6 +216,41 @@ url = f"https://gitlab.com/api/v4/projects/{project_id}/repository/commits"
 
 # Gitee
 url = f"https://gitee.com/api/v5/repos/{owner}/{repo}/commits"
+```
+
+**Q: 运行时提示 `ModuleNotFoundError: No module named 'anthropic'`？**
+
+A: 确保已安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+**Q: 飞书推送失败怎么办？**
+
+A: 检查：
+1. Webhook 地址是否正确
+2. 机器人是否被移出群
+3. 消息内容是否超过飞书限制（Markdown 最大 10000 字符）
+
+**Q: 如何调试 GitHub Actions？**
+
+A: 在 Workflow 中添加调试步骤：
+```yaml
+- name: Debug
+  run: |
+    echo "GITHUB_REPO: $GITHUB_REPO"
+    echo "Commits found: $(ls -la)"
+```
+
+## 项目结构
+
+```
+daily-report-agent/
+├── daily_report_agent.py      # 主程序
+├── requirements.txt           # Python 依赖
+├── README.md                  # 使用文档
+└── .github/workflows/
+    └── daily-report.yml       # GitHub Actions 配置
 ```
 
 ## License
