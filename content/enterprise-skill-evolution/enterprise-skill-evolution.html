@@ -650,771 +650,139 @@ name: team-refactor
 <span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"tool_result"</span><span class="p">,</span><span class="w"> </span><span class="nt">"output"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}</span>
 </code></pre></div>
 <h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.2 会话日志分析脚本（v2 增强版）</h3>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">以下脚本提供深度语义分析，相比基础版本有重大改进：</p>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937; font-style: italic"><strong style="font-weight: 600; color: #1f2937">完整脚本</strong>：<a href="scripts/analyze_conversations_v2.py" style="color: #3b82f6; text-decoration: none; border-bottom: 1px solid #3b82f6"><code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>scripts/analyze_conversations_v2.py</code></a></p>
+</blockquote>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">v2 版本核心改进：</strong><br/>
-- <strong style="font-weight: 600; color: #1f2937">细粒度意图分类</strong>：11 种意图 + 子意图（code_review/debug/refactor/test/implement/document/deploy/api/security/architecture/explain）<br/>
-- <strong style="font-weight: 600; color: #1f2937">修正模式检测</strong>：识别用户纠正 AI 的模式（风格修正、逻辑修正、范围修正、质量修正）<br/>
-- <strong style="font-weight: 600; color: #1f2937">重复模式检测</strong>：识别高频重复操作，提示可自动化<br/>
-- <strong style="font-weight: 600; color: #1f2937">工作流模式检测</strong>：识别连续意图序列（TDD、调试、代码审查等完整工作流）<br/>
-- <strong style="font-weight: 600; color: #1f2937">智能置信度计算</strong>：综合频率、修正模式、重复模式、示例质量</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">"""</span>
-<span class="sd">analyze_conversations_v2.py - 深度分析会话日志，提取有价值的 Skill 模式</span>
+- <strong style="font-weight: 600; color: #1f2937">细粒度意图分类</strong>：11 种意图 + 子意图<br/>
+- <strong style="font-weight: 600; color: #1f2937">修正模式检测</strong>：识别用户纠正 AI 的模式<br/>
+- <strong style="font-weight: 600; color: #1f2937">重复模式检测</strong>：识别高频重复操作<br/>
+- <strong style="font-weight: 600; color: #1f2937">工作流模式检测</strong>：识别连续意图序列<br/>
+- <strong style="font-weight: 600; color: #1f2937">报告生成</strong>：<code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--report</code> 选项生成 Markdown 可读报告</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">用法</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python<span class="w"> </span>analyze_conversations_v2.py<span class="w"> </span>--all<span class="w"> </span>--min-count<span class="w"> </span><span class="m">3</span><span class="w"> </span>--output<span class="w"> </span>analysis.json<span class="w"> </span>--report
 
-<span class="sd">用法：</span>
-<span class="sd">    python analyze_conversations_v2.py --all --min-count 3 --output deep-analysis.json</span>
-<span class="sd">    python analyze_conversations_v2.py --all --report  # 生成可读报告</span>
-<span class="sd">"""</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">defaultdict</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-
-<span class="n">INTENT_PATTERNS</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"code_review"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"keywords"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"检查"</span><span class="p">,</span> <span class="s2">"review"</span><span class="p">,</span> <span class="s2">"审查"</span><span class="p">,</span> <span class="s2">"看下这段代码"</span><span class="p">,</span> <span class="s2">"有没有问题"</span><span class="p">],</span>
-        <span class="s2">"sub_intents"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"security_check"</span><span class="p">,</span> <span class="s2">"performance_check"</span><span class="p">,</span> <span class="s2">"style_check"</span><span class="p">,</span> <span class="s2">"logic_check"</span><span class="p">]</span>
-    <span class="p">},</span>
-    <span class="s2">"debug"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"keywords"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"报错"</span><span class="p">,</span> <span class="s2">"错误"</span><span class="p">,</span> <span class="s2">"bug"</span><span class="p">,</span> <span class="s2">"为什么"</span><span class="p">,</span> <span class="s2">"不工作"</span><span class="p">,</span> <span class="s2">"调试"</span><span class="p">,</span> <span class="s2">"失败"</span><span class="p">,</span> <span class="s2">"异常"</span><span class="p">],</span>
-        <span class="s2">"sub_intents"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"runtime_error"</span><span class="p">,</span> <span class="s2">"logic_error"</span><span class="p">,</span> <span class="s2">"config_error"</span><span class="p">,</span> <span class="s2">"dependency_error"</span><span class="p">]</span>
-    <span class="p">},</span>
-<span class="p">}</span>
-
-<span class="n">CORRECTION_PATTERNS</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"style_correction"</span><span class="p">:</span> <span class="p">[</span><span class="sa">r</span><span class="s2">"不[，,。]应该"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"不要这样"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"换成"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"改成"</span><span class="p">],</span>
-    <span class="s2">"logic_correction"</span><span class="p">:</span> <span class="p">[</span><span class="sa">r</span><span class="s2">"理解错了"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"不是这个意思"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"我想说的是"</span><span class="p">],</span>
-    <span class="s2">"scope_correction"</span><span class="p">:</span> <span class="p">[</span><span class="sa">r</span><span class="s2">"只需要"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"不用改"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"范围太大了"</span><span class="p">],</span>
-    <span class="s2">"quality_correction"</span><span class="p">:</span> <span class="p">[</span><span class="sa">r</span><span class="s2">"太复杂了"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"简化一点"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"可读性"</span><span class="p">]</span>
-<span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">detect_correction_patterns</span><span class="p">(</span><span class="n">flows</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""检测修正模式（用户反复纠正 AI）"""</span>
-    <span class="n">corrections</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">flow</span> <span class="ow">in</span> <span class="n">flows</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">exchange</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">flow</span><span class="p">[</span><span class="s2">"exchanges"</span><span class="p">]):</span>
-            <span class="n">user_msg</span> <span class="o">=</span> <span class="n">exchange</span><span class="p">[</span><span class="s2">"user"</span><span class="p">]</span>
-            <span class="k">for</span> <span class="n">correction_type</span><span class="p">,</span> <span class="n">patterns</span> <span class="ow">in</span> <span class="n">CORRECTION_PATTERNS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">patterns</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">user_msg</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">):</span>
-                        <span class="n">corrections</span><span class="p">[</span><span class="n">correction_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                            <span class="s2">"correction"</span><span class="p">:</span> <span class="n">user_msg</span><span class="p">[:</span><span class="mi">200</span><span class="p">],</span>
-                            <span class="s2">"session"</span><span class="p">:</span> <span class="n">flow</span><span class="p">[</span><span class="s2">"session_file"</span><span class="p">]</span>
-                        <span class="p">})</span>
-    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">corrections</span><span class="p">)</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">detect_repetition_patterns</span><span class="p">(</span><span class="n">flows</span><span class="p">,</span> <span class="n">min_repeat</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""检测重复模式（用户重复相似指令）"""</span>
-    <span class="n">repetition_groups</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">flow</span> <span class="ow">in</span> <span class="n">flows</span><span class="p">:</span>
-        <span class="k">for</span> <span class="n">exchange</span> <span class="ow">in</span> <span class="n">flow</span><span class="p">[</span><span class="s2">"exchanges"</span><span class="p">]:</span>
-            <span class="n">user_msg</span> <span class="o">=</span> <span class="n">exchange</span><span class="p">[</span><span class="s2">"user"</span><span class="p">]</span>
-            <span class="n">key_patterns</span> <span class="o">=</span> <span class="n">extract_key_pattern</span><span class="p">(</span><span class="n">user_msg</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">key_patterns</span><span class="p">:</span>
-                <span class="n">repetition_groups</span><span class="p">[</span><span class="n">pattern</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-                    <span class="s2">"message"</span><span class="p">:</span> <span class="n">user_msg</span><span class="p">[:</span><span class="mi">200</span><span class="p">],</span>
-                    <span class="s2">"session"</span><span class="p">:</span> <span class="n">flow</span><span class="p">[</span><span class="s2">"session_file"</span><span class="p">]</span>
-                <span class="p">})</span>
-    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">repetition_groups</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">min_repeat</span><span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_detailed_skill_proposal</span><span class="p">(</span><span class="n">intent_name</span><span class="p">,</span> <span class="n">intent_count</span><span class="p">,</span> <span class="n">examples</span><span class="p">,</span> <span class="n">corrections</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""生成详细的 Skill 提案，包含推荐理由"""</span>
-    <span class="n">confidence_factors</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">"frequency"</span><span class="p">:</span> <span class="nb">min</span><span class="p">(</span><span class="n">intent_count</span> <span class="o">/</span> <span class="mi">10</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
-        <span class="s2">"has_corrections"</span><span class="p">:</span> <span class="mf">0.2</span> <span class="k">if</span> <span class="n">corrections</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="s2">"has_repetitions"</span><span class="p">:</span> <span class="mf">0.1</span> <span class="k">if</span> <span class="n">repetitions</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="p">}</span>
-    <span class="n">confidence</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">confidence_factors</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-
-    <span class="n">reasons</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">if</span> <span class="n">intent_count</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
-        <span class="n">reasons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"高频操作（</span><span class="si">{</span><span class="n">intent_count</span><span class="si">}</span><span class="s2"> 次）"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">corrections</span><span class="p">:</span>
-        <span class="n">reasons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"存在 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">corrections</span><span class="p">)</span><span class="si">}</span><span class="s2"> 类修正模式（说明 Skill 可避免重复纠正）"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">repetitions</span><span class="p">:</span>
-        <span class="n">reasons</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"存在 </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">repetitions</span><span class="p">)</span><span class="si">}</span><span class="s2"> 类重复操作（说明 Skill 可自动化）"</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"suggested_skill"</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
-        <span class="s2">"confidence"</span><span class="p">:</span> <span class="n">confidence</span><span class="p">,</span>
-        <span class="s2">"recommendation_reasons"</span><span class="p">:</span> <span class="n">reasons</span>
-    <span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">flows</span> <span class="o">=</span> <span class="n">extract_conversation_flows</span><span class="p">(</span><span class="n">sessions</span><span class="p">)</span>
-
-    <span class="n">corrections</span> <span class="o">=</span> <span class="n">detect_correction_patterns</span><span class="p">(</span><span class="n">flows</span><span class="p">)</span>
-    <span class="n">repetitions</span> <span class="o">=</span> <span class="n">detect_repetition_patterns</span><span class="p">(</span><span class="n">flows</span><span class="p">)</span>
-    <span class="n">workflows</span> <span class="o">=</span> <span class="n">detect_workflow_patterns</span><span class="p">(</span><span class="n">flows</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">report</span><span class="p">:</span>
-        <span class="n">generate_report</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">report_file</span><span class="p">)</span>
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">输出示例（v2 增强）：</strong><br/>
-        if not matched:<br/>
-            clusters["other"].append(prompt)</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>return {k: v for k, v in clusters.items() if len(v) &gt;= min_count}
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">def extract_patterns(prompts):<br/>
-    """提取高频模式"""<br/>
-    phrases = []<br/>
-    for prompt in prompts:<br/>
-        cn_phrases = re.findall(r'[一-龥]{2,10}', prompt)<br/>
-        phrases.extend(cn_phrases)<br/>
-        en_phrases = re.findall(r'\b[a-z]{3,}(?:\s+[a-z]{3,}){0,3}\b', prompt.lower())<br/>
-        phrases.extend(en_phrases)</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>phrase_counter = Counter(phrases)
-
-prompt_counter = Counter(prompts)
-
-return {
-    "top_phrases": phrase_counter.most_common(20),
-    "top_prompts": prompt_counter.most_common(10),
-    "total_prompts": len(prompts),
-    "unique_prompts": len(set(prompts))
-}
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">def generate_skill_proposal(cluster_name, prompts, count):<br/>
-    """根据聚类生成 Skill 提案"""<br/>
-    skill_templates = {<br/>
-        "code_review": {<br/>
-            "name": "review-checklist",<br/>
-            "description": "代码审查清单",<br/>
-            "triggers": ["review", "审查", "检查代码"]<br/>
-        },<br/>
-        "debug": {<br/>
-            "name": "debug-workflow",<br/>
-            "description": "调试工作流",<br/>
-            "triggers": ["debug", "调试", "报错"]<br/>
-        },<br/>
-        "refactor": {<br/>
-            "name": "refactor-guide",<br/>
-            "description": "重构指南",<br/>
-            "triggers": ["refactor", "重构", "优化"]<br/>
-        },<br/>
-        "test": {<br/>
-            "name": "test-workflow",<br/>
-            "description": "测试工作流",<br/>
-            "triggers": ["test", "测试"]<br/>
-        },<br/>
-        "api": {<br/>
-            "name": "api-standard",<br/>
-            "description": "API 开发规范",<br/>
-            "triggers": ["api", "接口"]<br/>
-        }<br/>
-    }</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="n">template</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">skill_templates</span><span class="p">.</span><span class="k">get</span><span class="p">(</span><span class="n">cluster_name</span><span class="p">,</span><span class="w"> </span><span class="err">{</span>
-<span class="w">    </span><span class="ss">"name"</span><span class="err">:</span><span class="w"> </span><span class="n">f</span><span class="ss">"{cluster_name}-workflow"</span><span class="p">,</span>
-<span class="w">    </span><span class="ss">"description"</span><span class="err">:</span><span class="w"> </span><span class="n">f</span><span class="ss">"{cluster_name} 相关工作流"</span><span class="p">,</span>
-<span class="w">    </span><span class="ss">"triggers"</span><span class="err">:</span><span class="w"> </span><span class="o">[</span><span class="n">cluster_name</span><span class="o">]</span>
-<span class="err">}</span><span class="p">)</span>
-
-<span class="k">return</span><span class="w"> </span><span class="err">{</span>
-<span class="w">    </span><span class="ss">"suggested_skill"</span><span class="err">:</span><span class="w"> </span><span class="n">template</span><span class="p">,</span>
-<span class="w">    </span><span class="ss">"sample_prompts"</span><span class="err">:</span><span class="w"> </span><span class="n">prompts</span><span class="o">[</span><span class="n">:5</span><span class="o">]</span><span class="p">,</span>
-<span class="w">    </span><span class="ss">"occurrence_count"</span><span class="err">:</span><span class="w"> </span><span class="nf">count</span><span class="p">,</span>
-<span class="w">    </span><span class="ss">"confidence"</span><span class="err">:</span><span class="w"> </span><span class="nf">min</span><span class="p">(</span><span class="nf">count</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">)</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="n">置信度</span>
-<span class="err">}</span>
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">def main():<br/>
-    parser = argparse.ArgumentParser(description="分析 Claude Code 会话日志")<br/>
-    parser.add_argument("--project", help="指定项目路径")<br/>
-    parser.add_argument("--all", action="store_true", help="分析所有项目")<br/>
-    parser.add_argument("--limit", type=int, default=1000, help="限制历史记录数量")<br/>
-    parser.add_argument("--min-count", type=int, default=3, help="最小出现次数")<br/>
-    parser.add_argument("--output", default="patterns.json", help="输出文件")<br/>
-    args = parser.parse_args()</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nb">print</span><span class="p">(</span><span class="s2">"📂 加载会话历史..."</span><span class="p">)</span>
-
-<span class="k">if</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">project</span><span class="p">:</span>
-<span class="w">    </span><span class="n">records</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load_project_sessions</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">project</span><span class="p">)</span>
-<span class="w">    </span><span class="n">prompts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
-<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="n">session</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">records</span><span class="p">:</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">session</span><span class="p">[</span><span class="s2">"messages"</span><span class="p">]:</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"type"</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"user"</span><span class="p">:</span>
-<span class="w">                </span><span class="n">content</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">msg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"content"</span><span class="p">,</span><span class="w"> </span><span class="s2">""</span><span class="p">)</span>
-<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="n">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span><span class="w"> </span><span class="nb">str</span><span class="p">)</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">content</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span><span class="p">:</span>
-<span class="w">                    </span><span class="n">prompts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-<span class="w">    </span><span class="n">records</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load_history</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">limit</span><span class="p">)</span>
-<span class="w">    </span><span class="n">prompts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">extract_user_prompts</span><span class="p">(</span><span class="n">records</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">"📊 分析 {len(prompts)} 条提示词..."</span><span class="p">)</span>
-
-<span class="n">clusters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cluster_by_intent</span><span class="p">(</span><span class="n">prompts</span><span class="p">,</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">min_count</span><span class="p">)</span>
-
-<span class="n">patterns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">extract_patterns</span><span class="p">(</span><span class="n">prompts</span><span class="p">)</span>
-
-<span class="n">proposals</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span>
-<span class="k">for</span><span class="w"> </span><span class="n">cluster_name</span><span class="p">,</span><span class="w"> </span><span class="n">cluster_prompts</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">clusters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">cluster_prompts</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">args</span><span class="o">.</span><span class="n">min_count</span><span class="p">:</span>
-<span class="w">        </span><span class="n">proposal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">generate_skill_proposal</span><span class="p">(</span><span class="n">cluster_name</span><span class="p">,</span><span class="w"> </span><span class="n">cluster_prompts</span><span class="p">,</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">cluster_prompts</span><span class="p">))</span>
-<span class="w">        </span><span class="n">proposals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">proposal</span><span class="p">)</span>
-
-<span class="n">proposals</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">lambda</span><span class="w"> </span><span class="n">x</span><span class="p">:</span><span class="w"> </span><span class="n">x</span><span class="p">[</span><span class="s2">"confidence"</span><span class="p">],</span><span class="w"> </span><span class="n">reverse</span><span class="o">=</span><span class="n">True</span><span class="p">)</span>
-
-<span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="s2">"analysis_time"</span><span class="p">:</span><span class="w"> </span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
-<span class="w">    </span><span class="s2">"total_prompts"</span><span class="p">:</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">prompts</span><span class="p">),</span>
-<span class="w">    </span><span class="s2">"unique_prompts"</span><span class="p">:</span><span class="w"> </span><span class="n">patterns</span><span class="p">[</span><span class="s2">"unique_prompts"</span><span class="p">],</span>
-<span class="w">    </span><span class="s2">"clusters"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="w"> </span><span class="n">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">k</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">clusters</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
-<span class="w">    </span><span class="s2">"top_phrases"</span><span class="p">:</span><span class="w"> </span><span class="n">patterns</span><span class="p">[</span><span class="s2">"top_phrases"</span><span class="p">],</span>
-<span class="w">    </span><span class="s2">"skill_proposals"</span><span class="p">:</span><span class="w"> </span><span class="n">proposals</span>
-<span class="p">}</span>
-
-<span class="n">with</span><span class="w"> </span><span class="n">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span><span class="w"> </span><span class="s1">'w'</span><span class="p">,</span><span class="w"> </span><span class="n">encoding</span><span class="o">=</span><span class="s1">'utf-8'</span><span class="p">)</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">f</span><span class="p">:</span>
-<span class="w">    </span><span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="n">f</span><span class="p">,</span><span class="w"> </span><span class="n">ensure_ascii</span><span class="o">=</span><span class="n">False</span><span class="p">,</span><span class="w"> </span><span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">✅ 分析完成！结果保存到 {args.output}"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">📈 发现 {len(proposals)} 个 Skill 提案："</span><span class="p">)</span>
-<span class="k">for</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">proposals</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>
-<span class="w">    </span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">"  - {p['suggested_skill']['name']}: {p['suggested_skill']['description']} (置信度: {p['confidence']:.0%})"</span><span class="p">)</span>
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">if <strong style="font-weight: 600; color: #1f2937">name</strong> == "<strong style="font-weight: 600; color: #1f2937">main</strong>":<br/>
-    main()</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="o">**</span><span class="err">使用示例</span><span class="o">**</span><span class="err">：</span>
-
-<span class="err">```</span><span class="n">bash</span>
-<span class="n">python</span><span class="w"> </span><span class="n">analyze_conversations</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--</span><span class="n">project</span><span class="w"> </span><span class="o">/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">your</span><span class="o">/</span><span class="n">project</span>
-
-<span class="n">python</span><span class="w"> </span><span class="n">analyze_conversations</span><span class="o">.</span><span class="n">py</span><span class="w"> </span><span class="o">--</span><span class="n">all</span><span class="w"> </span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">count</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="o">--</span><span class="n">output</span><span class="w"> </span><span class="n">my</span><span class="o">-</span><span class="n">patterns</span><span class="o">.</span><span class="n">json</span>
-
-<span class="n">cat</span><span class="w"> </span><span class="n">patterns</span><span class="o">.</span><span class="n">json</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">python</span><span class="w"> </span><span class="o">-</span><span class="n">m</span><span class="w"> </span><span class="n">json</span><span class="o">.</span><span class="k">tool</span>
+python<span class="w"> </span>create_skill_v2.py<span class="w"> </span>--from-analysis<span class="w"> </span>analysis.json<span class="w"> </span>--top<span class="w"> </span><span class="m">5</span>
 </code></pre></div>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">输出示例</strong>：</p>
 <div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
-<span class="w">  </span><span class="nt">"analysis_time"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2024-05-21T15:30:00"</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"total_prompts"</span><span class="p">:</span><span class="w"> </span><span class="mi">523</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"unique_prompts"</span><span class="p">:</span><span class="w"> </span><span class="mi">187</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">"clusters"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">"code_review"</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">"debug"</span><span class="p">:</span><span class="w"> </span><span class="mi">38</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">"api"</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span>
-<span class="w">    </span><span class="nt">"test"</span><span class="p">:</span><span class="w"> </span><span class="mi">28</span>
-<span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nt">"top_phrases"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">    </span><span class="p">[</span><span class="s2">"检查一下"</span><span class="p">,</span><span class="w"> </span><span class="mi">23</span><span class="p">],</span>
-<span class="w">    </span><span class="p">[</span><span class="s2">"帮我看看"</span><span class="p">,</span><span class="w"> </span><span class="mi">18</span><span class="p">],</span>
-<span class="w">    </span><span class="p">[</span><span class="s2">"有没有问题"</span><span class="p">,</span><span class="w"> </span><span class="mi">15</span><span class="p">],</span>
-<span class="w">    </span><span class="p">[</span><span class="s2">"代码审查"</span><span class="p">,</span><span class="w"> </span><span class="mi">12</span><span class="p">],</span>
-<span class="w">    </span><span class="p">[</span><span class="s2">"单元测试"</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">]</span>
-<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"total_prompts"</span><span class="p">:</span><span class="w"> </span><span class="mi">365</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"clusters"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"code_review"</span><span class="p">:</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span><span class="w"> </span><span class="nt">"debug"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="nt">"test"</span><span class="p">:</span><span class="w"> </span><span class="mi">33</span><span class="p">},</span>
 <span class="w">  </span><span class="nt">"skill_proposals"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 <span class="w">    </span><span class="p">{</span>
-<span class="w">      </span><span class="nt">"suggested_skill"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"review-checklist"</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"代码审查清单"</span><span class="p">,</span>
-<span class="w">        </span><span class="nt">"triggers"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"review"</span><span class="p">,</span><span class="w"> </span><span class="s2">"审查"</span><span class="p">,</span><span class="w"> </span><span class="s2">"检查代码"</span><span class="p">]</span>
-<span class="w">      </span><span class="p">},</span>
-<span class="w">      </span><span class="nt">"sample_prompts"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<span class="w">        </span><span class="s2">"帮我检查一下这段代码有没有问题"</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">"review 这个 PR"</span><span class="p">,</span>
-<span class="w">        </span><span class="s2">"看看有没有边界情况遗漏"</span>
-<span class="w">      </span><span class="p">],</span>
-<span class="w">      </span><span class="nt">"occurrence_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">45</span><span class="p">,</span>
-<span class="w">      </span><span class="nt">"confidence"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span>
+<span class="w">      </span><span class="nt">"suggested_skill"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"review-checklist"</span><span class="p">,</span><span class="w"> </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"代码审查清单"</span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"occurrence_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"confidence"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"recommendation_reasons"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"高频操作（17 次）"</span><span class="p">]</span>
 <span class="w">    </span><span class="p">}</span>
 <span class="w">  </span><span class="p">]</span>
 <span class="p">}</span>
 </code></pre></div>
 <h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.3 Skill 文件创建脚本（v2 高质量版）</h3>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">v2 版本根据意图类型生成<strong style="font-weight: 600; color: #1f2937">完整的、可执行的 Skill 内容</strong>，而非简单的模板填充：</p>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937; font-style: italic"><strong style="font-weight: 600; color: #1f2937">完整脚本</strong>：<a href="scripts/create_skill_v2.py" style="color: #3b82f6; text-decoration: none; border-bottom: 1px solid #3b82f6"><code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>scripts/create_skill_v2.py</code></a></p>
+</blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">v2 版本根据意图类型生成<strong style="font-weight: 600; color: #1f2937">完整的、可执行的 Skill 内容</strong>：</p>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">核心改进：</strong><br/>
 - <strong style="font-weight: 600; color: #1f2937">预定义高质量模板</strong>：为每种意图类型提供完整的工作流程、检查清单、示例和陷阱<br/>
-- <strong style="font-weight: 600; color: #1f2937">完整 Skill 结构</strong>：Workflow（4阶段）、Checklist（分类检查项）、Examples（好/坏示例）、Common Pitfalls（陷阱和解决方案）</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">"""</span>
-<span class="sd">create_skill_v2.py - 创建高质量的 Claude Code Skill 文件</span>
+- <strong style="font-weight: 600; color: #1f2937">完整 Skill 结构</strong>：Workflow（4阶段）、Checklist（分类检查项）、Examples、Common Pitfalls</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">用法</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python<span class="w"> </span>create_skill_v2.py<span class="w"> </span>--from-analysis<span class="w"> </span>analysis.json<span class="w"> </span>--top<span class="w"> </span><span class="m">3</span>
 
-<span class="sd">用法：</span>
-<span class="sd">    python create_skill_v2.py --from-analysis deep-analysis.json --top 3</span>
-<span class="sd">    python create_skill_v2.py --intent code_review --output-dir ./skills</span>
-<span class="sd">"""</span>
-
-<span class="n">SKILL_TEMPLATES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">"code_review"</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s2">"workflow"</span><span class="p">:</span> <span class="s2">"""### 1. 静态检查阶段</span>
-<span class="s2">- 代码风格检查（命名、格式、注释）</span>
-<span class="s2">- 潜在问题扫描（未使用变量、死代码）</span>
-<span class="s2">- 安全漏洞扫描（SQL 注入、XSS）</span>
-<span class="s2">- 依赖检查（版本冲突、已知漏洞）</span>
-
-<span class="s2">### 2. 逻辑审查阶段</span>
-<span class="s2">- 边界条件处理（空值、越界、异常输入）</span>
-<span class="s2">- 异常处理完整性</span>
-<span class="s2">- 并发安全性（线程安全、竞态条件）</span>
-<span class="s2">- 资源管理（内存泄漏、文件句柄）</span>
-
-<span class="s2">### 3. 性能评估阶段</span>
-<span class="s2">- 算法复杂度评估</span>
-<span class="s2">- 数据库查询优化</span>
-<span class="s2">- 缓存策略检查</span>
-<span class="s2">- 潜在性能瓶颈识别</span>
-
-<span class="s2">### 4. 测试覆盖阶段</span>
-<span class="s2">- 单元测试覆盖核心逻辑</span>
-<span class="s2">- 边界测试覆盖异常输入</span>
-<span class="s2">- 集成测试覆盖关键路径</span>
-<span class="s2">- 测试可读性和可维护性"""</span><span class="p">,</span>
-        <span class="s2">"checklist"</span><span class="p">:</span> <span class="s2">"""### 代码质量</span>
-<span class="s2">- [ ] 命名清晰，符合团队规范</span>
-<span class="s2">- [ ] 无重复代码，DRY 原则</span>
-<span class="s2">- [ ] 函数职责单一，不超过 50 行</span>
-<span class="s2">- [ ] 无魔法数字，常量有命名</span>
-<span class="s2">- [ ] 注释清晰，复杂逻辑有说明</span>
-
-<span class="s2">### 功能正确性</span>
-<span class="s2">- [ ] 边界条件已处理</span>
-<span class="s2">- [ ] 异常情况已覆盖</span>
-<span class="s2">- [ ] 无明显的逻辑错误</span>
-<span class="s2">- [ ] 无安全隐患</span>
-
-<span class="s2">### 性能考量</span>
-<span class="s2">- [ ] 无 O(n²) 以上复杂度</span>
-<span class="s2">- [ ] 数据库查询已优化</span>
-<span class="s2">- [ ] 无内存泄漏风险</span>
-<span class="s2">- [ ] 大数据量场景已考虑</span>
-
-<span class="s2">### 测试覆盖</span>
-<span class="s2">- [ ] 单元测试覆盖核心逻辑</span>
-<span class="s2">- [ ] 边界测试覆盖异常输入</span>
-<span class="s2">- [ ] 集成测试覆盖关键路径</span>
-<span class="s2">- [ ] 测试覆盖率达标"""</span><span class="p">,</span>
-        <span class="s2">"examples"</span><span class="p">:</span> <span class="s2">"""### 好的示例</span>
-
-<span class="s2">**检查边界条件：**</span>
-<span class="s2">```python</span>
-<span class="s2">def get_user(user_id: str) -&gt; Optional[User]:</span>
-<span class="s2">    if not user_id:</span>
-<span class="s2">        return None</span>
-<span class="s2">    return db.query(User).filter_by(id=user_id).first()</span>
+python<span class="w"> </span>create_skill_v2.py<span class="w"> </span>--intent<span class="w"> </span>code_review<span class="w"> </span>--output-dir<span class="w"> </span>./skills
 </code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">有意义的错误信息：</strong></p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Invalid user_id: </span><span class="si">{</span><span class="n">user_id</span><span class="si">}</span><span class="s2">, expected UUID format"</span><span class="p">)</span>
-<span class="err">```</span><span class="s2">""",</span>
-<span class="s2">        "anti_patterns": """</span><span class="c1">### 常见陷阱</span>
-
-<span class="mf">1.</span> <span class="o">**</span><span class="n">过度信任输入</span><span class="o">**</span>
-   <span class="o">-</span> <span class="n">问题</span><span class="err">：</span><span class="n">假设用户输入总是有效的</span>
-   <span class="o">-</span> <span class="n">解决</span><span class="err">：</span><span class="n">始终验证和清理输入</span>
-
-<span class="mf">2.</span> <span class="o">**</span><span class="n">忽略错误处理</span><span class="o">**</span>
-   <span class="o">-</span> <span class="n">问题</span><span class="err">：</span><span class="k">try</span><span class="o">-</span><span class="n">catch</span> <span class="n">捕获但不处理</span>
-   <span class="o">-</span> <span class="n">解决</span><span class="err">：</span><span class="n">至少记录日志</span><span class="err">，</span><span class="n">或向上传播</span>
-
-<span class="mf">3.</span> <span class="o">**</span><span class="n">过度优化</span><span class="o">**</span>
-   <span class="o">-</span> <span class="n">问题</span><span class="err">：</span><span class="n">过早优化</span><span class="err">，</span><span class="n">牺牲可读性</span>
-   <span class="o">-</span> <span class="n">解决</span><span class="err">：</span><span class="n">先写清晰代码</span><span class="err">，</span><span class="n">必要时再优化</span><span class="s2">"""</span>
-<span class="s2">    },</span>
-<span class="s2">    "debug": {</span>
-<span class="s2">        "workflow": """</span><span class="c1">### 1. 问题复现阶段</span>
-<span class="o">-</span> <span class="n">记录完整的错误信息</span>
-<span class="o">-</span> <span class="n">确认稳定的复现步骤</span>
-<span class="o">-</span> <span class="n">收集环境信息</span>
-
-<span class="c1">### 2. 问题定位阶段</span>
-<span class="o">-</span> <span class="n">分析错误栈追踪</span>
-<span class="o">-</span> <span class="n">使用二分法缩小范围</span>
-<span class="o">-</span> <span class="n">检查最近变更</span>
-
-<span class="c1">### 3. 根因分析阶段</span>
-<span class="o">-</span> <span class="n">区分表面原因和根本原因</span>
-<span class="o">-</span> <span class="n">检查相关代码逻辑</span>
-<span class="o">-</span> <span class="n">验证假设</span>
-
-<span class="c1">### 4. 修复验证阶段</span>
-<span class="o">-</span> <span class="n">实现最小化修复</span>
-<span class="o">-</span> <span class="n">添加回归测试</span>
-<span class="o">-</span> <span class="n">验证修复不影响其他功能</span><span class="s2">""",</span>
-<span class="s2">    }</span>
-<span class="s2">}</span>
-
-<span class="s2">def create_skill_from_intent(intent_name: str, sample_prompts: List[str]) -&gt; Path:</span>
-<span class="s2">    """</span><span class="n">根据意图类型创建</span> <span class="n">Skill</span><span class="s2">"""</span>
-<span class="s2">    template = SKILL_TEMPLATES.get(intent_name, DEFAULT_TEMPLATE)</span>
-
-<span class="s2">    content = generate_skill_markdown(</span>
-<span class="s2">        name=skill_meta["name"],</span>
-<span class="s2">        description=skill_meta["description"],</span>
-<span class="s2">        triggers=skill_meta["triggers"],</span>
-<span class="s2">        workflow=template["workflow"],</span>
-<span class="s2">        checklist=template["checklist"],</span>
-<span class="s2">        examples=template["examples"],</span>
-<span class="s2">        anti_patterns=template["anti_patterns"],</span>
-<span class="s2">        sample_prompts=sample_prompts</span>
-<span class="s2">    )</span>
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">生成的 Skill 示例（debug-workflow）：</strong></p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>---
-name: debug-workflow
-description: 调试工作流，从问题复现到修复验证的完整流程
-triggers: ["debug", "调试", "报错", "错误", "异常"]
-<span class="gu">version: 1.0.0</span>
-<span class="gu">---</span>
-
-
-<span class="gu">## Workflow</span>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">生成的 Skill 示例（debug-workflow）</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## Workflow</span>
 
 <span class="gu">### 1. 问题复现阶段</span>
 <span class="k">-</span><span class="w"> </span>记录完整的错误信息（错误栈、错误消息、错误码）
 <span class="k">-</span><span class="w"> </span>确认稳定的复现步骤
-<span class="k">-</span><span class="w"> </span>收集环境信息（版本、配置、操作系统）
 
 <span class="gu">### 2. 问题定位阶段</span>
 <span class="k">-</span><span class="w"> </span>分析错误栈追踪
 <span class="k">-</span><span class="w"> </span>使用二分法缩小范围
-<span class="k">-</span><span class="w"> </span>检查最近变更（git diff/blame）
 
 <span class="gu">### 3. 根因分析阶段</span>
 <span class="k">-</span><span class="w"> </span>区分表面原因和根本原因（5 Why 方法）
-<span class="k">-</span><span class="w"> </span>检查相关代码逻辑
-<span class="k">-</span><span class="w"> </span>验证假设
 
 <span class="gu">### 4. 修复验证阶段</span>
 <span class="k">-</span><span class="w"> </span>实现最小化修复
 <span class="k">-</span><span class="w"> </span>添加回归测试
-<span class="k">-</span><span class="w"> </span>验证修复不影响其他功能
 
 <span class="gu">## Checklist</span>
 
 <span class="gu">### 问题复现</span>
 <span class="k">- [ ]</span> 完整错误信息已记录
 <span class="k">- [ ]</span> 复现步骤已确认
-<span class="k">- [ ]</span> 环境信息已收集
-
-<span class="gu">### 问题定位</span>
-<span class="k">- [ ]</span> 错误栈已分析
-<span class="k">- [ ]</span> 相关代码已检查
-<span class="k">- [ ]</span> 最近变更已审查
-
-<span class="gu">### 根因分析</span>
-<span class="k">- [ ]</span> 表面原因已区分
-<span class="k">- [ ]</span> 根本原因已确定
-<span class="k">- [ ]</span> 假设已验证
-
-<span class="gu">### 修复验证</span>
-<span class="k">- [ ]</span> 最小化修复已实现
-<span class="k">- [ ]</span> 回归测试已添加
-<span class="k">- [ ]</span> 副作用已检查
 
 <span class="gu">## Common Pitfalls</span>
 
 <span class="k">1.</span> <span class="gs">**只修复表面症状**</span>
 <span class="w">   </span><span class="k">-</span><span class="w"> </span>问题：修复了错误信息，没修复根因
 <span class="w">   </span><span class="k">-</span><span class="w"> </span>解决：问 5 次 Why
-
-<span class="k">2.</span> <span class="gs">**跳过复现阶段**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>问题：假设问题原因，盲目修改
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>解决：先确认能稳定复现
 </code></pre></div>
 <h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.4 团队风格分析脚本（v2 深度版）</h3>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937; font-style: italic"><strong style="font-weight: 600; color: #1f2937">完整脚本</strong>：<a href="scripts/analyze_team_style_v2.py" style="color: #3b82f6; text-decoration: none; border-bottom: 1px solid #3b82f6"><code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>scripts/analyze_team_style_v2.py</code></a></p>
+</blockquote>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937">v2 版本提供深度分析，生成可执行的团队 Skill：</p>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">核心改进：</strong><br/>
 - <strong style="font-weight: 600; color: #1f2937">深度提交分析</strong>：Conventional Commits 覆盖率、Breaking Changes、Issue 引用<br/>
-- <strong style="font-weight: 600; color: #1f2937">文件关联分析</strong>：识别经常一起修改的文件对，提示依赖关系<br/>
+- <strong style="font-weight: 600; color: #1f2937">文件关联分析</strong>：识别经常一起修改的文件对<br/>
 - <strong style="font-weight: 600; color: #1f2937">代码风格检测</strong>：自动检测缩进风格、命名约定、测试框架<br/>
-- <strong style="font-weight: 600; color: #1f2937">团队 Skill 生成</strong>：生成完整的团队规范 Skill 文件</p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/usr/bin/env python3</span>
-<span class="sd">"""</span>
-<span class="sd">analyze_team_style_v2.py - 深度分析团队代码风格和协作模式</span>
-
-<span class="sd">用法：</span>
-<span class="sd">    python analyze_team_style_v2.py --repo . --report --skill</span>
-<span class="sd">"""</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">analyze_commit_messages</span><span class="p">(</span><span class="n">since</span><span class="o">=</span><span class="s2">"3 months ago"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""深度分析提交消息模式"""</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"conventional_commits_ratio"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span>
-        <span class="s2">"prefix_patterns"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"feat"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span> <span class="s2">"fix"</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="s2">"docs"</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-        <span class="s2">"breaking_changes"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-        <span class="s2">"issue_refs"</span><span class="p">:</span> <span class="mi">35</span>
-    <span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">analyze_file_changes</span><span class="p">(</span><span class="n">since</span><span class="o">=</span><span class="s2">"3 months ago"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""分析文件变更模式和关联"""</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"hot_files"</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
-        <span class="s2">"file_pairs"</span><span class="p">:</span> <span class="p">{</span>  <span class="c1"># 经常一起修改的文件</span>
-            <span class="s2">"src/api.py &lt;-&gt; tests/test_api.py"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-            <span class="s2">"src/models.py &lt;-&gt; src/schemas.py"</span><span class="p">:</span> <span class="mi">8</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">analyze_code_style</span><span class="p">(</span><span class="n">repo_path</span><span class="o">=</span><span class="s2">"."</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""分析代码风格（从现有代码中提取）"""</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"indentation"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"4-spaces"</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">"tabs"</span><span class="p">:</span> <span class="mi">10</span><span class="p">},</span>
-        <span class="s2">"naming_conventions"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"snake_case_functions"</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s2">"PascalCase_classes"</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
-        <span class="s2">"test_patterns"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"pytest"</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span> <span class="s2">"jest"</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
-    <span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_team_skill_content</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""生成团队 Skill 内容"""</span>
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"workflow"</span><span class="p">:</span> <span class="s2">"""### 开发流程</span>
-
-<span class="s2">1. **创建分支** - feature/xxx, bugfix/xxx, hotfix/xxx</span>
-<span class="s2">2. **编写代码** - 遵循团队代码风格</span>
-<span class="s2">3. **提交代码** - Conventional Commits 规范</span>
-<span class="s2">4. **创建 PR** - 标题格式、描述模板</span>
-<span class="s2">5. **Code Review** - 检查清单</span>
-<span class="s2">6. **合并代码** - Squash Merge</span>
-
-<span class="s2">### 提交消息格式</span>
-<span class="s2">type(scope): description</span>
-
-<span class="s2">常用类型：</span>
-<span class="s2">- feat: 新功能</span>
-<span class="s2">- fix: Bug 修复</span>
-<span class="s2">- docs: 文档更新</span>
-<span class="s2">"""</span><span class="p">,</span>
-        <span class="s2">"checklist"</span><span class="p">:</span> <span class="s2">"""### 提交前检查</span>
-<span class="s2">- [ ] 代码风格符合规范</span>
-<span class="s2">- [ ] 新增代码有测试覆盖</span>
-<span class="s2">- [ ] 所有测试通过</span>
-<span class="s2">- [ ] 热门文件变更已检查依赖</span>
-<span class="s2">"""</span>
-    <span class="p">}</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">analyze_commit_messages</span><span class="p">()</span>
-    <span class="n">analyze_file_changes</span><span class="p">()</span>
-    <span class="n">analyze_code_style</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">report</span><span class="p">:</span>
-        <span class="n">generate_report</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="s2">"team-style-report.md"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">skill</span><span class="p">:</span>
-        <span class="n">generate_team_skill_markdown</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+- <strong style="font-weight: 600; color: #1f2937">团队 Skill 生成</strong>：<code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--skill</code> 选项生成完整的团队规范 Skill</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">用法</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python<span class="w"> </span>analyze_team_style_v2.py<span class="w"> </span>--repo<span class="w"> </span>.<span class="w"> </span>--since<span class="w"> </span><span class="s2">"3 months ago"</span><span class="w"> </span>--report<span class="w"> </span>--skill
 </code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">生成的团队 Skill 示例：</strong></p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>---
-name: team-style
-description: 团队代码风格和协作规范
-triggers: ["team", "团队", "规范", "convention"]
-<span class="gu">version: 1.0.0</span>
-<span class="gu">---</span>
-
-
-<span class="gu">## Overview</span>
-
-团队代码风格和协作规范，帮助新成员快速融入团队，保持代码一致性。
-
-<span class="gu">## Workflow</span>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">生成的团队 Skill 示例</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## Workflow</span>
 
 <span class="gu">### 开发流程</span>
 
-<span class="k">1.</span> <span class="gs">**创建分支**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>功能开发: <span class="sb">`feature/xxx`</span> 或 <span class="sb">`feat/xxx`</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>Bug 修复: <span class="sb">`bugfix/xxx`</span> 或 <span class="sb">`fix/xxx`</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>紧急修复: <span class="sb">`hotfix/xxx`</span>
-
-<span class="k">2.</span> <span class="gs">**编写代码**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>遵循项目代码风格
-<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**缩进**</span>: 4-spaces
-<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**命名约定**</span>: snake_case_functions, PascalCase_classes
-
-<span class="k">3.</span> <span class="gs">**提交代码**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>团队使用 Conventional Commits 规范（覆盖率: 85%）
-<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**建议格式**</span>: <span class="sb">`type(scope): description`</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="gs">**常用类型**</span>:
-<span class="w">     </span><span class="k">-</span><span class="w"> </span><span class="sb">`feat`</span>: 新功能
-<span class="w">     </span><span class="k">-</span><span class="w"> </span><span class="sb">`fix`</span>: Bug 修复
-<span class="w">     </span><span class="k">-</span><span class="w"> </span><span class="sb">`docs`</span>: 文档更新
-<span class="w">     </span><span class="k">-</span><span class="w"> </span><span class="sb">`refactor`</span>: 代码重构
-<span class="w">     </span><span class="k">-</span><span class="w"> </span><span class="sb">`test`</span>: 测试相关
-
-<span class="k">4.</span> <span class="gs">**创建 PR**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>标题格式: <span class="sb">`type(scope): description`</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>描述包含: 变更内容、测试方案、影响范围
-
-<span class="k">5.</span> <span class="gs">**Code Review**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>检查代码风格
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>检查测试覆盖
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>检查文档更新
-
-<span class="k">6.</span> <span class="gs">**合并代码**</span>
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>确保所有 CI 检查通过
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>确保所有 Review 通过
-<span class="w">   </span><span class="k">-</span><span class="w"> </span>使用 Squash Merge 保持提交历史整洁
+<span class="k">1.</span> <span class="gs">**创建分支**</span> - feature/xxx, bugfix/xxx, hotfix/xxx
+<span class="k">2.</span> <span class="gs">**编写代码**</span> - 遵循团队代码风格（4空格缩进）
+<span class="k">3.</span> <span class="gs">**提交代码**</span> - Conventional Commits 规范（覆盖率: 85%）
+<span class="k">4.</span> <span class="gs">**创建 PR**</span> - 标题格式: type(scope): description
+<span class="k">5.</span> <span class="gs">**Code Review**</span> - 检查清单
+<span class="k">6.</span> <span class="gs">**合并代码**</span> - Squash Merge
 
 <span class="gu">## Checklist</span>
 
 <span class="gu">### 提交前检查</span>
-
-<span class="gs">**代码质量**</span>
-<span class="k">- [ ]</span> 代码风格符合团队规范
-<span class="k">- [ ]</span> 无重复代码，DRY 原则
-<span class="k">- [ ]</span> 函数职责单一，不超过 50 行
-<span class="k">- [ ]</span> 注释清晰，复杂逻辑有说明
-
-<span class="gs">**测试覆盖**</span>
+<span class="k">- [ ]</span> 代码风格符合规范
 <span class="k">- [ ]</span> 新增代码有测试覆盖
-<span class="k">- [ ]</span> 所有测试通过
-<span class="k">- [ ]</span> 边界情况已测试
-
-<span class="gs">**文档同步**</span>
-<span class="k">- [ ]</span> API 文档已更新（如有必要）
-<span class="k">- [ ]</span> README 已更新（如有必要）
-<span class="k">- [ ]</span> CHANGELOG 已更新（如有必要）
-
-<span class="gs">**提交规范**</span>
-<span class="k">- [ ]</span> 提交消息格式正确
-<span class="k">- [ ]</span> 关联了相关 Issue
-<span class="k">- [ ]</span> 提交粒度适当（一个提交解决一个问题）
-
-<span class="gs">**热门文件变更检查**</span>
-<span class="k">- [ ]</span> 检查 <span class="sb">`src/api.py`</span> 的依赖关系（变更 15 次）
-<span class="k">- [ ]</span> 检查 <span class="sb">`src/models.py`</span> 的依赖关系（变更 12 次）
-<span class="k">- [ ]</span> 检查 <span class="sb">`tests/test_api.py`</span> 的依赖关系（变更 10 次）
-
-<span class="gu">## Hot Files</span>
-
-以下文件变更频繁，修改时请特别注意依赖关系：
-
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/api.py`</span> - 变更 15 次
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/models.py`</span> - 变更 12 次
-<span class="k">-</span><span class="w"> </span><span class="sb">`tests/test_api.py`</span> - 变更 10 次
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/schemas.py`</span> - 变更 8 次
+<span class="k">- [ ]</span> 热门文件变更已检查依赖
+<span class="w">  </span><span class="k">-</span><span class="w"> </span><span class="sb">`src/api.py`</span>（变更 15 次）
+<span class="w">  </span><span class="k">-</span><span class="w"> </span><span class="sb">`src/models.py`</span>（变更 12 次）
 
 <span class="gu">## File Associations</span>
 
-以下文件经常在同一次提交中修改，修改其中之一时请考虑另一文件：
-
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/api.py &lt;-&gt; tests/test_api.py`</span>: 12 次
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/models.py &lt;-&gt; src/schemas.py`</span>: 8 次
-<span class="k">-</span><span class="w"> </span><span class="sb">`src/api.py &lt;-&gt; src/schemas.py`</span>: 6 次
-
-<span class="gu">## Code Style Summary</span>
-
-<span class="k">-</span><span class="w"> </span><span class="gs">**Indentation**</span>: 4-spaces（检测到 150 处）
-<span class="k">-</span><span class="w"> </span><span class="gs">**Naming Conventions**</span>: snake_case_functions（80 处）, PascalCase_classes（30 处）
-<span class="k">-</span><span class="w"> </span><span class="gs">**Test Framework**</span>: pytest（25 处）
-
-<span class="gu">## Evolution Log</span>
-
-<span class="gu">### v1.0.0 (2024-05-21)</span>
-<span class="k">-</span><span class="w"> </span>初始版本
-<span class="k">-</span><span class="w"> </span>触发：从团队 Git 历史自动生成
-<span class="k">-</span><span class="w"> </span>内容：提交约定、分支规范、热门文件、代码风格
+<span class="k">-</span><span class="w"> </span><span class="sb">`src/api.py &lt;-&gt; tests/test_api.py`</span>: 12 次同时修改
+<span class="k">-</span><span class="w"> </span><span class="sb">`src/models.py &lt;-&gt; src/schemas.py`</span>: 8 次同时修改
 </code></pre></div>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">### 5.5 Skill 迭代更新脚本</span>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.5 Skill 迭代更新脚本</h3>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937; font-style: italic"><strong style="font-weight: 600; color: #1f2937">完整脚本</strong>：<a href="scripts/evolve_skill.py" style="color: #3b82f6; text-decoration: none; border-bottom: 1px solid #3b82f6"><code style='background: #faf5ff; color: #7c3aed; padding: 2px 6px; border-radius: 4px; border: 1px solid #e9e0f7; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>scripts/evolve_skill.py</code></a></p>
+</blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">用于安全地迭代更新 Skill：</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">用法</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python<span class="w"> </span>evolve_skill.py<span class="w"> </span>--skill<span class="w"> </span>review-checklist<span class="w"> </span>--add-check<span class="w"> </span><span class="s2">"性能影响评估"</span><span class="w"> </span>--reason<span class="w"> </span><span class="s2">"项目复盘发现性能问题遗漏"</span>
 
-<span class="n">以下脚本用于安全地迭代更新</span> <span class="n">Skill</span><span class="err">：</span>
-
-<span class="err">```</span><span class="n">python</span>
-<span class="c1">#!/usr/bin/env python3</span>
-<span class="sd">"""</span>
-<span class="sd">evolve_skill.py - 迭代更新 Skill 文件</span>
-
-<span class="sd">用法：</span>
-<span class="sd">    python evolve_skill.py --skill review-checklist --add-check "性能影响评估"</span>
-<span class="sd">    python evolve_skill.py --skill debug-workflow --from-feedback session-xxx.jsonl</span>
-<span class="sd">"""</span>
-
-<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
-
-<span class="n">SKILLS_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">".claude"</span> <span class="o">/</span> <span class="s2">"skills"</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">read_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""读取 Skill 文件"""</span>
-    <span class="n">skill_file</span> <span class="o">=</span> <span class="n">SKILLS_DIR</span> <span class="o">/</span> <span class="n">skill_name</span> <span class="o">/</span> <span class="s2">"SKILL.md"</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">skill_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Skill not found: </span><span class="si">{</span><span class="n">skill_name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">skill_file</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s1">'utf-8'</span><span class="p">)</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">write_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""写入 Skill 文件"""</span>
-    <span class="n">skill_file</span> <span class="o">=</span> <span class="n">SKILLS_DIR</span> <span class="o">/</span> <span class="n">skill_name</span> <span class="o">/</span> <span class="s2">"SKILL.md"</span>
-    <span class="n">skill_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">'utf-8'</span><span class="p">)</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">add_check_item</span><span class="p">(</span><span class="n">skill_name</span><span class="p">,</span> <span class="n">section</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">""</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""添加检查项"""</span>
-    <span class="n">content</span> <span class="o">=</span> <span class="n">read_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">)</span>
-
-    <span class="n">section_pattern</span> <span class="o">=</span> <span class="sa">rf</span><span class="s1">'(## </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s1">.*?)(\n## |\Z)'</span>
-    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">section_pattern</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">DOTALL</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
-        <span class="n">section_content</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        <span class="n">new_item</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">- [ ] </span><span class="si">{</span><span class="n">item</span><span class="si">}</span><span class="s2">"</span>
-        <span class="n">updated_section</span> <span class="o">=</span> <span class="n">section_content</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="n">new_item</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span>
-        <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">section_content</span><span class="p">,</span> <span class="n">updated_section</span><span class="p">)</span>
-
-        <span class="n">log_entry</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"""</span>
-<span class="s2">### v1.x.0 (</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">"%Y-%m-</span><span class="si">%d</span><span class="s2">"</span><span class="p">)</span><span class="si">}</span><span class="s2">)</span>
-<span class="s2">- 新增：</span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">item</span><span class="si">}</span>
-<span class="s2">- 触发：</span><span class="si">{</span><span class="n">reason</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'手动添加'</span><span class="si">}</span>
-<span class="s2">"""</span>
-
-        <span class="k">if</span> <span class="s2">"## Evolution Log"</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
-            <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"## Evolution Log"</span><span class="p">,</span> <span class="s2">"## Evolution Log"</span> <span class="o">+</span> <span class="n">log_entry</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">content</span> <span class="o">+=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">## Evolution Log</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="n">log_entry</span>
-
-        <span class="n">write_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">,</span> <span class="n">content</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✅ 已添加检查项: </span><span class="si">{</span><span class="n">item</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"❌ 未找到章节: </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">validate_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""验证 Skill 格式"""</span>
-    <span class="n">content</span> <span class="o">=</span> <span class="n">read_skill</span><span class="p">(</span><span class="n">skill_name</span><span class="p">)</span>
-
-    <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">content</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"---"</span><span class="p">):</span>
-        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"缺少 YAML frontmatter"</span><span class="p">)</span>
-
-    <span class="n">required_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"name"</span><span class="p">,</span> <span class="s2">"description"</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">:</span>
-        <span class="k">if</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">:"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span><span class="p">[:</span><span class="mi">500</span><span class="p">]:</span>
-            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"缺少必要字段: </span><span class="si">{</span><span class="n">field</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="n">required_sections</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"## Overview"</span><span class="p">,</span> <span class="s2">"## Workflow"</span><span class="p">,</span> <span class="s2">"## Checklist"</span><span class="p">]</span>
-    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">required_sections</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">section</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
-            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"缺少必要章节: </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="s2">"## Evolution Log"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
-        <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"缺少 Evolution Log 章节"</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">issues</span>
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">"迭代更新 Skill"</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--skill"</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"Skill 名称"</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--add-check"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"添加检查项"</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--section"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"Checklist"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"目标章节"</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--reason"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"更新原因"</span><span class="p">)</span>
-    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">"--validate"</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">"store_true"</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">"验证 Skill 格式"</span><span class="p">)</span>
-    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">validate</span><span class="p">:</span>
-        <span class="n">issues</span> <span class="o">=</span> <span class="n">validate_skill</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">skill</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">issues</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"❌ 验证失败:"</span><span class="p">)</span>
-            <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">issues</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  - </span><span class="si">{</span><span class="n">issue</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✅ 验证通过: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">skill</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">add_check</span><span class="p">:</span>
-        <span class="n">add_check_item</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">skill</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">section</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">add_check</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">reason</span><span class="p">)</span>
-
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"请指定操作: --add-check 或 --validate"</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
+python<span class="w"> </span>evolve_skill.py<span class="w"> </span>--skill<span class="w"> </span>review-checklist<span class="w"> </span>--validate
 </code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">Evolution Log 示例</strong>：</p>
+<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## Evolution Log</span>
+
+<span class="gu">### v2.1.0 (2024-03-15)</span>
+<span class="k">-</span><span class="w"> </span>新增：关键路径集成测试要求
+<span class="k">-</span><span class="w"> </span>触发：项目 X 复盘发现线上 bug 源于集成测试缺失
+<span class="k">-</span><span class="w"> </span>影响：新增 API 开发流程，需补充集成测试
+
+<span class="gu">### v2.0.0 (2024-02-01)</span>
+<span class="k">-</span><span class="w"> </span>重构：按开发阶段重新组织结构
+<span class="k">-</span><span class="w"> </span>触发：团队反馈 Skill 结构不够清晰
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.6 团队协作流程 SOP</h3>
 <h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5.6 团队协作流程 SOP</h3>
 <h4 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #7c3aed; font-size: 20px">5.6.1 启动阶段（第 1 周）</h4>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">Day 1-2：环境准备</strong></p>
@@ -1805,12 +1173,6 @@ python<span class="w"> </span>create_skill.py<span class="w"> </span><span class
 - <strong style="font-weight: 600; color: #1f2937">长期</strong>：AI 越用越懂你，真正成为你的智能助手</p>
 <hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
 <p style="margin: 16px 0; line-height: 1.85; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">现在就开始行动吧。</strong></p>
-<div class="codehilite"><pre style="background: #f8f5fc; color: #4a5568; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; border: 1px solid #e9e0f7"><span></span><code style='background: transparent; color: #4a5568; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python<span class="w"> </span>analyze_conversations.py<span class="w"> </span>--all<span class="w"> </span>--min-count<span class="w"> </span><span class="m">3</span>
-</code></pre></div>
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">你的第一个 Skill，会是什么？</p>
-<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
-<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0">
-<p style="margin: 16px 0; line-height: 1.85; color: #1f2937; font-style: italic">本文是 Skill 进化系列的第一篇。后续将分享更多实战案例和工具实现，欢迎关注。</p>
-</blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #1f2937">```bash</p>
 </body>
 </html>

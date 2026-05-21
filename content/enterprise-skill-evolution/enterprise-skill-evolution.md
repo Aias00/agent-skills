@@ -625,305 +625,40 @@ description: 团队重构工作流
 {"type": "tool_result", "output": "..."}
 ```
 
+
 ### 5.2 会话日志分析脚本（v2 增强版）
 
-以下脚本提供深度语义分析，相比基础版本有重大改进：
+> **完整脚本**：[`scripts/analyze_conversations_v2.py`](scripts/analyze_conversations_v2.py)
 
 **v2 版本核心改进：**
-- **细粒度意图分类**：11 种意图 + 子意图（code_review/debug/refactor/test/implement/document/deploy/api/security/architecture/explain）
-- **修正模式检测**：识别用户纠正 AI 的模式（风格修正、逻辑修正、范围修正、质量修正）
-- **重复模式检测**：识别高频重复操作，提示可自动化
-- **工作流模式检测**：识别连续意图序列（TDD、调试、代码审查等完整工作流）
-- **智能置信度计算**：综合频率、修正模式、重复模式、示例质量
+- **细粒度意图分类**：11 种意图 + 子意图
+- **修正模式检测**：识别用户纠正 AI 的模式
+- **重复模式检测**：识别高频重复操作
+- **工作流模式检测**：识别连续意图序列
+- **报告生成**：`--report` 选项生成 Markdown 可读报告
 
-```python
-#!/usr/bin/env python3
-"""
-analyze_conversations_v2.py - 深度分析会话日志，提取有价值的 Skill 模式
-
-用法：
-    python analyze_conversations_v2.py --all --min-count 3 --output deep-analysis.json
-    python analyze_conversations_v2.py --all --report  # 生成可读报告
-"""
-
-import json
-import argparse
-from pathlib import Path
-from collections import Counter, defaultdict
-from datetime import datetime
-import re
-
-# 意图分类模板（更细粒度）
-INTENT_PATTERNS = {
-    "code_review": {
-        "keywords": ["检查", "review", "审查", "看下这段代码", "有没有问题"],
-        "sub_intents": ["security_check", "performance_check", "style_check", "logic_check"]
-    },
-    "debug": {
-        "keywords": ["报错", "错误", "bug", "为什么", "不工作", "调试", "失败", "异常"],
-        "sub_intents": ["runtime_error", "logic_error", "config_error", "dependency_error"]
-    },
-    # ... 其他意图定义
-}
-
-# 修正模式检测（用户纠正 AI 的模式）
-CORRECTION_PATTERNS = {
-    "style_correction": [r"不[，,。]应该", r"不要这样", r"换成", r"改成"],
-    "logic_correction": [r"理解错了", r"不是这个意思", r"我想说的是"],
-    "scope_correction": [r"只需要", r"不用改", r"范围太大了"],
-    "quality_correction": [r"太复杂了", r"简化一点", r"可读性"]
-}
-
-def detect_correction_patterns(flows):
-    """检测修正模式（用户反复纠正 AI）"""
-    corrections = defaultdict(list)
-    for flow in flows:
-        for i, exchange in enumerate(flow["exchanges"]):
-            user_msg = exchange["user"]
-            for correction_type, patterns in CORRECTION_PATTERNS.items():
-                for pattern in patterns:
-                    if re.search(pattern, user_msg, re.IGNORECASE):
-                        corrections[correction_type].append({
-                            "correction": user_msg[:200],
-                            "session": flow["session_file"]
-                        })
-    return dict(corrections)
-
-def detect_repetition_patterns(flows, min_repeat=2):
-    """检测重复模式（用户重复相似指令）"""
-    repetition_groups = defaultdict(list)
-    for flow in flows:
-        for exchange in flow["exchanges"]:
-            user_msg = exchange["user"]
-            key_patterns = extract_key_pattern(user_msg)
-            for pattern in key_patterns:
-                repetition_groups[pattern].append({
-                    "message": user_msg[:200],
-                    "session": flow["session_file"]
-                })
-    return {k: v for k, v in repetition_groups.items() if len(v) >= min_repeat}
-
-def generate_detailed_skill_proposal(intent_name, intent_count, examples, corrections):
-    """生成详细的 Skill 提案，包含推荐理由"""
-    confidence_factors = {
-        "frequency": min(intent_count / 10, 1.0),
-        "has_corrections": 0.2 if corrections else 0,
-        "has_repetitions": 0.1 if repetitions else 0,
-    }
-    confidence = sum(confidence_factors.values())
-
-    reasons = []
-    if intent_count >= 10:
-        reasons.append(f"高频操作（{intent_count} 次）")
-    if corrections:
-        reasons.append(f"存在 {len(corrections)} 类修正模式（说明 Skill 可避免重复纠正）")
-    if repetitions:
-        reasons.append(f"存在 {len(repetitions)} 类重复操作（说明 Skill 可自动化）")
-
-    return {
-        "suggested_skill": {...},
-        "confidence": confidence,
-        "recommendation_reasons": reasons
-    }
-
-def main():
-    # ... 参数解析
-    flows = extract_conversation_flows(sessions)
-
-    # 深度分析
-    corrections = detect_correction_patterns(flows)
-    repetitions = detect_repetition_patterns(flows)
-    workflows = detect_workflow_patterns(flows)
-
-    # 生成报告
-    if args.report:
-        generate_report(result, report_file)
-```
-
-**输出示例（v2 增强）：**
-        if not matched:
-            clusters["other"].append(prompt)
-    
-    # 过滤低频聚类
-    return {k: v for k, v in clusters.items() if len(v) >= min_count}
-
-def extract_patterns(prompts):
-    """提取高频模式"""
-    # 1. 高频短语
-    phrases = []
-    for prompt in prompts:
-        # 提取中文短语（2-10字）
-        cn_phrases = re.findall(r'[一-龥]{2,10}', prompt)
-        phrases.extend(cn_phrases)
-        # 提取英文单词组合
-        en_phrases = re.findall(r'\b[a-z]{3,}(?:\s+[a-z]{3,}){0,3}\b', prompt.lower())
-        phrases.extend(en_phrases)
-    
-    phrase_counter = Counter(phrases)
-    
-    # 2. 高频完整提示词
-    prompt_counter = Counter(prompts)
-    
-    return {
-        "top_phrases": phrase_counter.most_common(20),
-        "top_prompts": prompt_counter.most_common(10),
-        "total_prompts": len(prompts),
-        "unique_prompts": len(set(prompts))
-    }
-
-def generate_skill_proposal(cluster_name, prompts, count):
-    """根据聚类生成 Skill 提案"""
-    skill_templates = {
-        "code_review": {
-            "name": "review-checklist",
-            "description": "代码审查清单",
-            "triggers": ["review", "审查", "检查代码"]
-        },
-        "debug": {
-            "name": "debug-workflow",
-            "description": "调试工作流",
-            "triggers": ["debug", "调试", "报错"]
-        },
-        "refactor": {
-            "name": "refactor-guide",
-            "description": "重构指南",
-            "triggers": ["refactor", "重构", "优化"]
-        },
-        "test": {
-            "name": "test-workflow",
-            "description": "测试工作流",
-            "triggers": ["test", "测试"]
-        },
-        "api": {
-            "name": "api-standard",
-            "description": "API 开发规范",
-            "triggers": ["api", "接口"]
-        }
-    }
-    
-    template = skill_templates.get(cluster_name, {
-        "name": f"{cluster_name}-workflow",
-        "description": f"{cluster_name} 相关工作流",
-        "triggers": [cluster_name]
-    })
-    
-    return {
-        "suggested_skill": template,
-        "sample_prompts": prompts[:5],
-        "occurrence_count": count,
-        "confidence": min(count / 10, 1.0)  # 置信度
-    }
-
-def main():
-    parser = argparse.ArgumentParser(description="分析 Claude Code 会话日志")
-    parser.add_argument("--project", help="指定项目路径")
-    parser.add_argument("--all", action="store_true", help="分析所有项目")
-    parser.add_argument("--limit", type=int, default=1000, help="限制历史记录数量")
-    parser.add_argument("--min-count", type=int, default=3, help="最小出现次数")
-    parser.add_argument("--output", default="patterns.json", help="输出文件")
-    args = parser.parse_args()
-    
-    print("📂 加载会话历史...")
-    
-    if args.project:
-        records = load_project_sessions(args.project)
-        prompts = []
-        for session in records:
-            for msg in session["messages"]:
-                if msg.get("type") == "user":
-                    content = msg.get("content", "")
-                    if isinstance(content, str) and len(content) > 10:
-                        prompts.append(content)
-    else:
-        records = load_history(args.limit)
-        prompts = extract_user_prompts(records)
-    
-    print(f"📊 分析 {len(prompts)} 条提示词...")
-    
-    # 聚类
-    clusters = cluster_by_intent(prompts, args.min_count)
-    
-    # 提取模式
-    patterns = extract_patterns(prompts)
-    
-    # 生成 Skill 提案
-    proposals = []
-    for cluster_name, cluster_prompts in clusters.items():
-        if len(cluster_prompts) >= args.min_count:
-            proposal = generate_skill_proposal(cluster_name, cluster_prompts, len(cluster_prompts))
-            proposals.append(proposal)
-    
-    # 按置信度排序
-    proposals.sort(key=lambda x: x["confidence"], reverse=True)
-    
-    result = {
-        "analysis_time": datetime.now().isoformat(),
-        "total_prompts": len(prompts),
-        "unique_prompts": patterns["unique_prompts"],
-        "clusters": {k: len(v) for k, v in clusters.items()},
-        "top_phrases": patterns["top_phrases"],
-        "skill_proposals": proposals
-    }
-    
-    with open(args.output, 'w', encoding='utf-8') as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
-    
-    print(f"\n✅ 分析完成！结果保存到 {args.output}")
-    print(f"\n📈 发现 {len(proposals)} 个 Skill 提案：")
-    for p in proposals[:5]:
-        print(f"  - {p['suggested_skill']['name']}: {p['suggested_skill']['description']} (置信度: {p['confidence']:.0%})")
-
-if __name__ == "__main__":
-    main()
-```
-
-**使用示例**：
+**用法**：
 
 ```bash
-# 分析当前项目的会话
-python analyze_conversations.py --project /path/to/your/project
+# 分析会话并生成报告
+python analyze_conversations_v2.py --all --min-count 3 --output analysis.json --report
 
-# 分析所有项目，输出高频模式
-python analyze_conversations.py --all --min-count 5 --output my-patterns.json
-
-# 查看分析结果
-cat patterns.json | python -m json.tool
+# 从分析结果创建 Skill
+python create_skill_v2.py --from-analysis analysis.json --top 5
 ```
 
 **输出示例**：
 
 ```json
 {
-  "analysis_time": "2024-05-21T15:30:00",
-  "total_prompts": 523,
-  "unique_prompts": 187,
-  "clusters": {
-    "code_review": 45,
-    "debug": 38,
-    "api": 32,
-    "test": 28
-  },
-  "top_phrases": [
-    ["检查一下", 23],
-    ["帮我看看", 18],
-    ["有没有问题", 15],
-    ["代码审查", 12],
-    ["单元测试", 10]
-  ],
+  "total_prompts": 365,
+  "clusters": {"code_review": 17, "debug": 20, "test": 33},
   "skill_proposals": [
     {
-      "suggested_skill": {
-        "name": "review-checklist",
-        "description": "代码审查清单",
-        "triggers": ["review", "审查", "检查代码"]
-      },
-      "sample_prompts": [
-        "帮我检查一下这段代码有没有问题",
-        "review 这个 PR",
-        "看看有没有边界情况遗漏"
-      ],
-      "occurrence_count": 45,
-      "confidence": 1.0
+      "suggested_skill": {"name": "review-checklist", "description": "代码审查清单"},
+      "occurrence_count": 17,
+      "confidence": 1.0,
+      "recommendation_reasons": ["高频操作（17 次）"]
     }
   ]
 }
@@ -931,546 +666,137 @@ cat patterns.json | python -m json.tool
 
 ### 5.3 Skill 文件创建脚本（v2 高质量版）
 
-v2 版本根据意图类型生成**完整的、可执行的 Skill 内容**，而非简单的模板填充：
+> **完整脚本**：[`scripts/create_skill_v2.py`](scripts/create_skill_v2.py)
+
+v2 版本根据意图类型生成**完整的、可执行的 Skill 内容**：
 
 **核心改进：**
 - **预定义高质量模板**：为每种意图类型提供完整的工作流程、检查清单、示例和陷阱
-- **完整 Skill 结构**：Workflow（4阶段）、Checklist（分类检查项）、Examples（好/坏示例）、Common Pitfalls（陷阱和解决方案）
+- **完整 Skill 结构**：Workflow（4阶段）、Checklist（分类检查项）、Examples、Common Pitfalls
 
-```python
-#!/usr/bin/env python3
-"""
-create_skill_v2.py - 创建高质量的 Claude Code Skill 文件
+**用法**：
 
-用法：
-    python create_skill_v2.py --from-analysis deep-analysis.json --top 3
-    python create_skill_v2.py --intent code_review --output-dir ./skills
-"""
+```bash
+# 从分析结果创建 Skill
+python create_skill_v2.py --from-analysis analysis.json --top 3
 
-# 高质量的 Skill 模板（按意图类型）
-SKILL_TEMPLATES = {
-    "code_review": {
-        "workflow": """### 1. 静态检查阶段
-- 代码风格检查（命名、格式、注释）
-- 潜在问题扫描（未使用变量、死代码）
-- 安全漏洞扫描（SQL 注入、XSS）
-- 依赖检查（版本冲突、已知漏洞）
-
-### 2. 逻辑审查阶段
-- 边界条件处理（空值、越界、异常输入）
-- 异常处理完整性
-- 并发安全性（线程安全、竞态条件）
-- 资源管理（内存泄漏、文件句柄）
-
-### 3. 性能评估阶段
-- 算法复杂度评估
-- 数据库查询优化
-- 缓存策略检查
-- 潜在性能瓶颈识别
-
-### 4. 测试覆盖阶段
-- 单元测试覆盖核心逻辑
-- 边界测试覆盖异常输入
-- 集成测试覆盖关键路径
-- 测试可读性和可维护性""",
-        "checklist": """### 代码质量
-- [ ] 命名清晰，符合团队规范
-- [ ] 无重复代码，DRY 原则
-- [ ] 函数职责单一，不超过 50 行
-- [ ] 无魔法数字，常量有命名
-- [ ] 注释清晰，复杂逻辑有说明
-
-### 功能正确性
-- [ ] 边界条件已处理
-- [ ] 异常情况已覆盖
-- [ ] 无明显的逻辑错误
-- [ ] 无安全隐患
-
-### 性能考量
-- [ ] 无 O(n²) 以上复杂度
-- [ ] 数据库查询已优化
-- [ ] 无内存泄漏风险
-- [ ] 大数据量场景已考虑
-
-### 测试覆盖
-- [ ] 单元测试覆盖核心逻辑
-- [ ] 边界测试覆盖异常输入
-- [ ] 集成测试覆盖关键路径
-- [ ] 测试覆盖率达标""",
-        "examples": """### 好的示例
-
-**检查边界条件：**
-```python
-def get_user(user_id: str) -> Optional[User]:
-    if not user_id:
-        return None
-    return db.query(User).filter_by(id=user_id).first()
+# 按意图类型创建 Skill
+python create_skill_v2.py --intent code_review --output-dir ./skills
 ```
 
-**有意义的错误信息：**
-```python
-raise ValueError(f"Invalid user_id: {user_id}, expected UUID format")
-```""",
-        "anti_patterns": """### 常见陷阱
-
-1. **过度信任输入**
-   - 问题：假设用户输入总是有效的
-   - 解决：始终验证和清理输入
-
-2. **忽略错误处理**
-   - 问题：try-catch 捕获但不处理
-   - 解决：至少记录日志，或向上传播
-
-3. **过度优化**
-   - 问题：过早优化，牺牲可读性
-   - 解决：先写清晰代码，必要时再优化"""
-    },
-    "debug": {
-        "workflow": """### 1. 问题复现阶段
-- 记录完整的错误信息
-- 确认稳定的复现步骤
-- 收集环境信息
-
-### 2. 问题定位阶段
-- 分析错误栈追踪
-- 使用二分法缩小范围
-- 检查最近变更
-
-### 3. 根因分析阶段
-- 区分表面原因和根本原因
-- 检查相关代码逻辑
-- 验证假设
-
-### 4. 修复验证阶段
-- 实现最小化修复
-- 添加回归测试
-- 验证修复不影响其他功能""",
-        # ... 其他模板
-    }
-    # ... 其他意图模板
-}
-
-def create_skill_from_intent(intent_name: str, sample_prompts: List[str]) -> Path:
-    """根据意图类型创建 Skill"""
-    template = SKILL_TEMPLATES.get(intent_name, DEFAULT_TEMPLATE)
-
-    content = generate_skill_markdown(
-        name=skill_meta["name"],
-        description=skill_meta["description"],
-        triggers=skill_meta["triggers"],
-        workflow=template["workflow"],
-        checklist=template["checklist"],
-        examples=template["examples"],
-        anti_patterns=template["anti_patterns"],
-        sample_prompts=sample_prompts
-    )
-    # 写入文件...
-```
-
-**生成的 Skill 示例（debug-workflow）：**
+**生成的 Skill 示例（debug-workflow）**：
 
 ```markdown
----
-name: debug-workflow
-description: 调试工作流，从问题复现到修复验证的完整流程
-triggers: ["debug", "调试", "报错", "错误", "异常"]
-version: 1.0.0
----
-
-# Debug Workflow
-
 ## Workflow
 
 ### 1. 问题复现阶段
 - 记录完整的错误信息（错误栈、错误消息、错误码）
 - 确认稳定的复现步骤
-- 收集环境信息（版本、配置、操作系统）
 
 ### 2. 问题定位阶段
 - 分析错误栈追踪
 - 使用二分法缩小范围
-- 检查最近变更（git diff/blame）
 
 ### 3. 根因分析阶段
 - 区分表面原因和根本原因（5 Why 方法）
-- 检查相关代码逻辑
-- 验证假设
 
 ### 4. 修复验证阶段
 - 实现最小化修复
 - 添加回归测试
-- 验证修复不影响其他功能
 
 ## Checklist
 
 ### 问题复现
 - [ ] 完整错误信息已记录
 - [ ] 复现步骤已确认
-- [ ] 环境信息已收集
-
-### 问题定位
-- [ ] 错误栈已分析
-- [ ] 相关代码已检查
-- [ ] 最近变更已审查
-
-### 根因分析
-- [ ] 表面原因已区分
-- [ ] 根本原因已确定
-- [ ] 假设已验证
-
-### 修复验证
-- [ ] 最小化修复已实现
-- [ ] 回归测试已添加
-- [ ] 副作用已检查
 
 ## Common Pitfalls
 
 1. **只修复表面症状**
    - 问题：修复了错误信息，没修复根因
    - 解决：问 5 次 Why
-
-2. **跳过复现阶段**
-   - 问题：假设问题原因，盲目修改
-   - 解决：先确认能稳定复现
 ```
 
 ### 5.4 团队风格分析脚本（v2 深度版）
+
+> **完整脚本**：[`scripts/analyze_team_style_v2.py`](scripts/analyze_team_style_v2.py)
 
 v2 版本提供深度分析，生成可执行的团队 Skill：
 
 **核心改进：**
 - **深度提交分析**：Conventional Commits 覆盖率、Breaking Changes、Issue 引用
-- **文件关联分析**：识别经常一起修改的文件对，提示依赖关系
+- **文件关联分析**：识别经常一起修改的文件对
 - **代码风格检测**：自动检测缩进风格、命名约定、测试框架
-- **团队 Skill 生成**：生成完整的团队规范 Skill 文件
+- **团队 Skill 生成**：`--skill` 选项生成完整的团队规范 Skill
 
-```python
-#!/usr/bin/env python3
-"""
-analyze_team_style_v2.py - 深度分析团队代码风格和协作模式
+**用法**：
 
-用法：
-    python analyze_team_style_v2.py --repo . --report --skill
-"""
-
-def analyze_commit_messages(since="3 months ago"):
-    """深度分析提交消息模式"""
-    # 解析提交前缀 (type(scope): description)
-    # 统计 Conventional Commits 覆盖率
-    # 检测 Breaking Changes
-    # 检测 Issue 引用
-    # 统计提交消息长度分布
-    return {
-        "conventional_commits_ratio": 0.85,
-        "prefix_patterns": {"feat": 20, "fix": 15, "docs": 10},
-        "breaking_changes": 2,
-        "issue_refs": 35
-    }
-
-def analyze_file_changes(since="3 months ago"):
-    """分析文件变更模式和关联"""
-    # 统计热门文件
-    # 分析文件关联（经常一起修改的文件对）
-    # 统计文件类型分布
-    return {
-        "hot_files": {...},
-        "file_pairs": {  # 经常一起修改的文件
-            "src/api.py <-> tests/test_api.py": 12,
-            "src/models.py <-> src/schemas.py": 8
-        }
-    }
-
-def analyze_code_style(repo_path="."):
-    """分析代码风格（从现有代码中提取）"""
-    # 检测缩进风格（2空格/4空格/Tab）
-    # 检测命名约定（snake_case/PascalCase/camelCase）
-    # 检测测试框架（pytest/jest/junit）
-    return {
-        "indentation": {"4-spaces": 150, "tabs": 10},
-        "naming_conventions": {"snake_case_functions": 80, "PascalCase_classes": 30},
-        "test_patterns": {"pytest": 25, "jest": 0}
-    }
-
-def generate_team_skill_content(...):
-    """生成团队 Skill 内容"""
-    return {
-        "workflow": """### 开发流程
-
-1. **创建分支** - feature/xxx, bugfix/xxx, hotfix/xxx
-2. **编写代码** - 遵循团队代码风格
-3. **提交代码** - Conventional Commits 规范
-4. **创建 PR** - 标题格式、描述模板
-5. **Code Review** - 检查清单
-6. **合并代码** - Squash Merge
-
-### 提交消息格式
-type(scope): description
-
-常用类型：
-- feat: 新功能
-- fix: Bug 修复
-- docs: 文档更新
-""",
-        "checklist": """### 提交前检查
-- [ ] 代码风格符合规范
-- [ ] 新增代码有测试覆盖
-- [ ] 所有测试通过
-- [ ] 热门文件变更已检查依赖
-"""
-    }
-
-def main():
-    # 分析并生成
-    analyze_commit_messages()
-    analyze_file_changes()
-    analyze_code_style()
-
-    # 生成报告和 Skill
-    if args.report:
-        generate_report(result, "team-style-report.md")
-    if args.skill:
-        generate_team_skill_markdown(...)
+```bash
+# 分析团队风格并生成报告和 Skill
+python analyze_team_style_v2.py --repo . --since "3 months ago" --report --skill
 ```
 
-**生成的团队 Skill 示例：**
+**生成的团队 Skill 示例**：
 
 ```markdown
----
-name: team-style
-description: 团队代码风格和协作规范
-triggers: ["team", "团队", "规范", "convention"]
-version: 1.0.0
----
-
-# Team Style
-
-## Overview
-
-团队代码风格和协作规范，帮助新成员快速融入团队，保持代码一致性。
-
 ## Workflow
 
 ### 开发流程
 
-1. **创建分支**
-   - 功能开发: `feature/xxx` 或 `feat/xxx`
-   - Bug 修复: `bugfix/xxx` 或 `fix/xxx`
-   - 紧急修复: `hotfix/xxx`
-
-2. **编写代码**
-   - 遵循项目代码风格
-   - **缩进**: 4-spaces
-   - **命名约定**: snake_case_functions, PascalCase_classes
-
-3. **提交代码**
-   - 团队使用 Conventional Commits 规范（覆盖率: 85%）
-   - **建议格式**: `type(scope): description`
-   - **常用类型**:
-     - `feat`: 新功能
-     - `fix`: Bug 修复
-     - `docs`: 文档更新
-     - `refactor`: 代码重构
-     - `test`: 测试相关
-
-4. **创建 PR**
-   - 标题格式: `type(scope): description`
-   - 描述包含: 变更内容、测试方案、影响范围
-
-5. **Code Review**
-   - 检查代码风格
-   - 检查测试覆盖
-   - 检查文档更新
-
-6. **合并代码**
-   - 确保所有 CI 检查通过
-   - 确保所有 Review 通过
-   - 使用 Squash Merge 保持提交历史整洁
+1. **创建分支** - feature/xxx, bugfix/xxx, hotfix/xxx
+2. **编写代码** - 遵循团队代码风格（4空格缩进）
+3. **提交代码** - Conventional Commits 规范（覆盖率: 85%）
+4. **创建 PR** - 标题格式: type(scope): description
+5. **Code Review** - 检查清单
+6. **合并代码** - Squash Merge
 
 ## Checklist
 
 ### 提交前检查
-
-**代码质量**
-- [ ] 代码风格符合团队规范
-- [ ] 无重复代码，DRY 原则
-- [ ] 函数职责单一，不超过 50 行
-- [ ] 注释清晰，复杂逻辑有说明
-
-**测试覆盖**
+- [ ] 代码风格符合规范
 - [ ] 新增代码有测试覆盖
-- [ ] 所有测试通过
-- [ ] 边界情况已测试
-
-**文档同步**
-- [ ] API 文档已更新（如有必要）
-- [ ] README 已更新（如有必要）
-- [ ] CHANGELOG 已更新（如有必要）
-
-**提交规范**
-- [ ] 提交消息格式正确
-- [ ] 关联了相关 Issue
-- [ ] 提交粒度适当（一个提交解决一个问题）
-
-**热门文件变更检查**
-- [ ] 检查 `src/api.py` 的依赖关系（变更 15 次）
-- [ ] 检查 `src/models.py` 的依赖关系（变更 12 次）
-- [ ] 检查 `tests/test_api.py` 的依赖关系（变更 10 次）
-
-## Hot Files
-
-以下文件变更频繁，修改时请特别注意依赖关系：
-
-- `src/api.py` - 变更 15 次
-- `src/models.py` - 变更 12 次
-- `tests/test_api.py` - 变更 10 次
-- `src/schemas.py` - 变更 8 次
+- [ ] 热门文件变更已检查依赖
+  - `src/api.py`（变更 15 次）
+  - `src/models.py`（变更 12 次）
 
 ## File Associations
 
-以下文件经常在同一次提交中修改，修改其中之一时请考虑另一文件：
-
-- `src/api.py <-> tests/test_api.py`: 12 次
-- `src/models.py <-> src/schemas.py`: 8 次
-- `src/api.py <-> src/schemas.py`: 6 次
-
-## Code Style Summary
-
-- **Indentation**: 4-spaces（检测到 150 处）
-- **Naming Conventions**: snake_case_functions（80 处）, PascalCase_classes（30 处）
-- **Test Framework**: pytest（25 处）
-
-## Evolution Log
-
-### v1.0.0 (2024-05-21)
-- 初始版本
-- 触发：从团队 Git 历史自动生成
-- 内容：提交约定、分支规范、热门文件、代码风格
-```
-
+- `src/api.py <-> tests/test_api.py`: 12 次同时修改
+- `src/models.py <-> src/schemas.py`: 8 次同时修改
 ```
 
 ### 5.5 Skill 迭代更新脚本
 
-以下脚本用于安全地迭代更新 Skill：
+> **完整脚本**：[`scripts/evolve_skill.py`](scripts/evolve_skill.py)
 
-```python
-#!/usr/bin/env python3
-"""
-evolve_skill.py - 迭代更新 Skill 文件
+用于安全地迭代更新 Skill：
 
-用法：
-    python evolve_skill.py --skill review-checklist --add-check "性能影响评估"
-    python evolve_skill.py --skill debug-workflow --from-feedback session-xxx.jsonl
-"""
+**用法**：
 
-import argparse
-import json
-from pathlib import Path
-from datetime import datetime
-import re
+```bash
+# 添加检查项
+python evolve_skill.py --skill review-checklist --add-check "性能影响评估" --reason "项目复盘发现性能问题遗漏"
 
-SKILLS_DIR = Path.home() / ".claude" / "skills"
-
-def read_skill(skill_name):
-    """读取 Skill 文件"""
-    skill_file = SKILLS_DIR / skill_name / "SKILL.md"
-    if not skill_file.exists():
-        raise FileNotFoundError(f"Skill not found: {skill_name}")
-    return skill_file.read_text(encoding='utf-8')
-
-def write_skill(skill_name, content):
-    """写入 Skill 文件"""
-    skill_file = SKILLS_DIR / skill_name / "SKILL.md"
-    skill_file.write_text(content, encoding='utf-8')
-
-def add_check_item(skill_name, section, item, reason=""):
-    """添加检查项"""
-    content = read_skill(skill_name)
-    
-    # 找到对应章节
-    section_pattern = rf'(## {section}.*?)(\n## |\Z)'
-    match = re.search(section_pattern, content, re.DOTALL)
-    
-    if match:
-        section_content = match.group(1)
-        # 添加检查项
-        new_item = f"\n- [ ] {item}"
-        updated_section = section_content.rstrip() + new_item + "\n"
-        content = content.replace(section_content, updated_section)
-        
-        # 更新 Evolution Log
-        log_entry = f"""
-### v1.x.0 ({datetime.now().strftime("%Y-%m-%d")})
-- 新增：{section} - {item}
-- 触发：{reason or '手动添加'}
-"""
-        
-        if "## Evolution Log" in content:
-            content = content.replace("## Evolution Log", "## Evolution Log" + log_entry)
-        else:
-            content += "\n## Evolution Log\n" + log_entry
-        
-        write_skill(skill_name, content)
-        print(f"✅ 已添加检查项: {item}")
-    else:
-        print(f"❌ 未找到章节: {section}")
-
-def validate_skill(skill_name):
-    """验证 Skill 格式"""
-    content = read_skill(skill_name)
-    
-    issues = []
-    
-    # 检查 YAML frontmatter
-    if not content.startswith("---"):
-        issues.append("缺少 YAML frontmatter")
-    
-    # 检查必要字段
-    required_fields = ["name", "description"]
-    for field in required_fields:
-        if f"{field}:" not in content[:500]:
-            issues.append(f"缺少必要字段: {field}")
-    
-    # 检查章节
-    required_sections = ["## Overview", "## Workflow", "## Checklist"]
-    for section in required_sections:
-        if section not in content:
-            issues.append(f"缺少必要章节: {section}")
-    
-    # 检查 Evolution Log
-    if "## Evolution Log" not in content:
-        issues.append("缺少 Evolution Log 章节")
-    
-    return issues
-
-def main():
-    parser = argparse.ArgumentParser(description="迭代更新 Skill")
-    parser.add_argument("--skill", required=True, help="Skill 名称")
-    parser.add_argument("--add-check", help="添加检查项")
-    parser.add_argument("--section", default="Checklist", help="目标章节")
-    parser.add_argument("--reason", help="更新原因")
-    parser.add_argument("--validate", action="store_true", help="验证 Skill 格式")
-    args = parser.parse_args()
-    
-    if args.validate:
-        issues = validate_skill(args.skill)
-        if issues:
-            print(f"❌ 验证失败:")
-            for issue in issues:
-                print(f"  - {issue}")
-        else:
-            print(f"✅ 验证通过: {args.skill}")
-    
-    elif args.add_check:
-        add_check_item(args.skill, args.section, args.add_check, args.reason)
-    
-    else:
-        print("请指定操作: --add-check 或 --validate")
-
-if __name__ == "__main__":
-    main()
+# 验证 Skill 格式
+python evolve_skill.py --skill review-checklist --validate
 ```
 
+**Evolution Log 示例**：
+
+```markdown
+## Evolution Log
+
+### v2.1.0 (2024-03-15)
+- 新增：关键路径集成测试要求
+- 触发：项目 X 复盘发现线上 bug 源于集成测试缺失
+- 影响：新增 API 开发流程，需补充集成测试
+
+### v2.0.0 (2024-02-01)
+- 重构：按开发阶段重新组织结构
+- 触发：团队反馈 Skill 结构不够清晰
+```
+
+### 5.6 团队协作流程 SOP
 ### 5.6 团队协作流程 SOP
 
 #### 5.6.1 启动阶段（第 1 周）
@@ -1945,11 +1271,3 @@ Skill 进化系统的终极目标：
 **现在就开始行动吧。**
 
 ```bash
-python analyze_conversations.py --all --min-count 3
-```
-
-你的第一个 Skill，会是什么？
-
----
-
-> 本文是 Skill 进化系列的第一篇。后续将分享更多实战案例和工具实现，欢迎关注。
