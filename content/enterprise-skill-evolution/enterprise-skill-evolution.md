@@ -1271,3 +1271,15 @@ Skill 进化系统的终极目标：
 **现在就开始行动吧。**
 
 ```bash
+# 分析你的会话历史
+python analyze_conversations_v2.py --all --min-count 3 --output analysis.json --report
+
+# 创建你的第一个 Skill
+python create_skill_v2.py --from-analysis analysis.json --top 3
+```
+
+你的第一个 Skill，会是什么？
+
+---
+
+> 本文是 Skill 进化系列的第一篇。后续将分享更多实战案例和工具实现，欢迎关注。
