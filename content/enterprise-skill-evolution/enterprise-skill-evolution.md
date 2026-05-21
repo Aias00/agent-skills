@@ -628,7 +628,7 @@ description: 团队重构工作流
 
 ### 5.2 会话日志分析脚本（v2 增强版）
 
-> **完整脚本**：[`scripts/analyze_conversations_v2.py`](scripts/analyze_conversations_v2.py)
+> **完整脚本**：[`scripts/analyze_conversations_v2.py`](https://github.com/Aias00/agent-skills/tree/main/content/enterprise-skill-evolution/scripts/analyze_conversations_v2.py)
 
 **v2 版本核心改进：**
 - **细粒度意图分类**：11 种意图 + 子意图
@@ -666,7 +666,7 @@ python create_skill_v2.py --from-analysis analysis.json --top 5
 
 ### 5.3 Skill 文件创建脚本（v2 高质量版）
 
-> **完整脚本**：[`scripts/create_skill_v2.py`](scripts/create_skill_v2.py)
+> **完整脚本**：[`scripts/create_skill_v2.py`](https://github.com/Aias00/agent-skills/tree/main/content/enterprise-skill-evolution/scripts/create_skill_v2.py)
 
 v2 版本根据意图类型生成**完整的、可执行的 Skill 内容**：
 
@@ -719,7 +719,7 @@ python create_skill_v2.py --intent code_review --output-dir ./skills
 
 ### 5.4 团队风格分析脚本（v2 深度版）
 
-> **完整脚本**：[`scripts/analyze_team_style_v2.py`](scripts/analyze_team_style_v2.py)
+> **完整脚本**：[`scripts/analyze_team_style_v2.py`](https://github.com/Aias00/agent-skills/tree/main/content/enterprise-skill-evolution/scripts/analyze_team_style_v2.py)
 
 v2 版本提供深度分析，生成可执行的团队 Skill：
 
@@ -767,7 +767,7 @@ python analyze_team_style_v2.py --repo . --since "3 months ago" --report --skill
 
 ### 5.5 Skill 迭代更新脚本
 
-> **完整脚本**：[`scripts/evolve_skill.py`](scripts/evolve_skill.py)
+> **完整脚本**：[`scripts/evolve_skill.py`](https://github.com/Aias00/agent-skills/tree/main/content/enterprise-skill-evolution/scripts/evolve_skill.py)
 
 用于安全地迭代更新 Skill：
 
