@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章</title>
+    <style>
+        :root {
+            
+  /* ===== 主色系 ===== */
+  --primary-purple: #4b6b81;      /* 兼容旧变量名，实际作为主品牌色 */
+  --primary-blue: #4b6b81;        /* 主蓝灰色 - 标题、链接、强调 */
+  --primary-cyan: #6f8fa4;        /* 辅助浅蓝灰 - 技术类提示 */
+  --primary-teal: #5c7a8d;        /* 次级强调色 */
+
+  /* ===== 功能色 ===== */
+  --success-green: #5d7b6a;
+  --warning-amber: #b88c54;
+  --danger-red: #a36b68;
+  --info-blue: #4b6b81;
+
+  /* ===== 文字色系 ===== */
+  --text-primary: #263a49;
+  --text-secondary: #3e596a;
+  --text-tertiary: #627584;
+  --text-light: #8c9aa5;
+
+  /* ===== 背景色系 ===== */
+  --bg-white: #fffdf9;
+  --bg-gray-50: #f8fafb;
+  --bg-gray-100: #eef3f5;
+  --bg-purple-50: #eef3f5;
+  --bg-blue-50: #eef3f5;
+  --bg-cyan-50: #f1f5f7;
+  --bg-green-50: #f3f6f4;
+  --bg-amber-50: #faf6ef;
+  --bg-red-50: #faf3f2;
+
+  /* ===== 代码块色系 ===== */
+  --code-bg: #243543;
+  --code-text: #d9e3e9;
+  --code-keyword: #a9c0cf;
+  --code-function: #c7d7e1;
+  --code-string: #c8d7c8;
+  --code-number: #d4b690;
+  --code-comment: #8aa0ad;
+  --code-variable: #d6c1bf;
+  --code-builtin: #d9c8a8;
+
+  /* ===== 边框色系 ===== */
+  --border-light: #d7dfe5;
+  --border-medium: #c3d0d8;
+  --border-dark: #90a2ad;
+
+  /* ===== 阴影色系 ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(38, 58, 73, 0.06);
+  --shadow-md: 0 8px 16px -10px rgba(38, 58, 73, 0.16);
+  --shadow-lg: 0 16px 32px -18px rgba(38, 58, 73, 0.18);
+
+  /* ===== 间距系统 ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ===== 圆角系统 ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+        }
+
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text-primary, #333);
+            background: var(--bg-white, #fff);
+            padding: 20px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- ⚠️ 标题请在微信公众号编辑器中单独填写，HTML 中已自动移除 H1 标题 -->
+    <blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">一个 Skill 让 AI 记住了所有接入细节，从此告别"挤牙膏"式对话。</p>
+</blockquote>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">你有没有经历过这样的对话：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>用户：帮我接入腾讯云 COS 存储
+AI：好的，腾讯云 COS 是对象存储服务...
+用户：这些我知道，我需要具体的接入步骤
+AI：首先注册账号，创建存储桶...
+用户：账号和桶都有了，签名 URL 怎么生成？
+AI：签名 URL 需要 SecretKey...
+用户：这些我也配置了，跨域怎么配？分片上传怎么做？
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">每次接入第三方服务，都要经历这种"挤牙膏"式的对话。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">问题的根源在于：AI 缺乏结构化的、可按需检索的知识。它要么泛泛介绍基础知识，要么等你一步步追问才能给出具体方案。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Skills 可以彻底解决这个问题</strong>——把接入知识按阶段组织好，AI 能够根据你的当前进度，自动加载对应的内容。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这篇文章，我们从零开发一个 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>cos-integration</code> Skill，让它能够：</p>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">识别你处于接入的哪个阶段（认证、基础操作、进阶功能、问题排查）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">按需加载对应文档，不一次性塞满上下文</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">引导你完成完整接入流程，不遗漏任何关键配置</li>
+</ol>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">一、为什么用 Skill 而不是 CLAUDE.md</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">在动手之前，先想清楚一个问题：为什么不直接把这些知识写进项目的 CLAUDE.md？</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">两者有关键区别：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">维度</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">CLAUDE.md</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">Skill</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">加载时机</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">每次对话都加载</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">按需调用</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">内容性质</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">项目规范、约定</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">工作流程、知识库</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">上下文占用</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">始终占用</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">用完即释放</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">适用范围</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">单项目</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">可跨项目复用</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">腾讯云 COS 的接入知识有明显特点：<br/>
+- 不是每个项目都需要<br/>
+- 不同项目可能处于不同接入阶段<br/>
+- 文档内容较长（涵盖认证、API、跨域、分片上传等多个主题）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">结论</strong>：这类知识做成 Skill 更合适，按需加载，不浪费上下文。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">二、Skill 目录结构</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">一个完整的 Skill 通常包含：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>cos-integration/
+├── SKILL.md              # 主入口：工作流定义、路由逻辑
+└── references/           # 参考文档（按需加载）
+    ├── auth.md           # 认证配置
+    ├── basics.md         # 基础操作
+    ├── advanced.md       # 进阶功能
+    └── troubleshooting.md # 常见问题
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">设计原则</strong>：<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>SKILL.md</code> 负责判断用户阶段、路由到对应文档<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>references/</code> 目录按主题拆分，每个文件独立可读<br/>
+- AI 不会一次性加载所有文档，而是按需读取</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">三、编写 SKILL.md 主入口</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>SKILL.md</code> 是 Skill 的入口文件，包含 frontmatter 元信息和工作流定义。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.1 Frontmatter 配置</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>---
+name: cos-integration
+description: 腾讯云 COS 对象存储接入指南。Use when the user asks to 接入 COS、腾讯云存储、对象存储、上传文件到 COS、COS 签名、COS 跨域配置。
+<span class="gu">allowed-tools: Read, Write, Bash, WebFetch</span>
+<span class="gu">---</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">关键字段解析</strong>：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>name</code>：Skill 调用名称，用户可以通过 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>/cos-integration</code> 直接触发</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>description</code>：描述触发条件，AI 会根据这个判断何时调用。<strong style="font-weight: 600; color: #263a49">必须包含中英文关键词</strong></li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>allowed-tools</code>：限制 Skill 可使用的工具，避免过度权限</li>
+</ul>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.2 工作流定义</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>引导完成腾讯云 COS 对象存储的接入，从认证配置到高级功能。
+
+<span class="gu">## When To Use</span>
+
+<span class="k">-</span><span class="w"> </span>"帮我接入腾讯云 COS"
+<span class="k">-</span><span class="w"> </span>"COS 上传文件怎么写"
+<span class="k">-</span><span class="w"> </span>"生成 COS 签名 URL"
+<span class="k">-</span><span class="w"> </span>"COS 跨域报错怎么配"
+<span class="k">-</span><span class="w"> </span>"大文件分片上传"
+
+<span class="gu">## Workflow</span>
+
+```text
+COS Integration Flow:
+<span class="k">- [ ]</span> Step 1: 判断当前阶段
+<span class="k">- [ ]</span> Step 2: 按需加载参考文档
+<span class="k">- [ ]</span> Step 3: 提供具体指导或代码
+<span class="k">- [ ]</span> Step 4: 确认配置正确性
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">Step 1: 判断当前阶段</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">通过对话或代码检查，判断用户处于哪个阶段：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">阶段</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">特征</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">初始化</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">没有配置过 COS，需要创建存储桶、获取密钥</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">基础集成</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">已有配置，需要上传/下载代码</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">进阶功能</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">基础功能已通，需要签名 URL、分片上传等</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">问题排查</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">遇到跨域、权限、限流等问题</td>
+</tr>
+</tbody>
+</table>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">Step 2: 按需加载参考文档</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">根据阶段加载对应文档：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">初始化 → 加载 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>references/auth.md</code></li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">基础集成 → 加载 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>references/basics.md</code></li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">进阶功能 → 加载 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>references/advanced.md</code></li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">问题排查 → 加载 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>references/troubleshooting.md</code></li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">加载方式</strong>：使用 Read 工具读取对应文件。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">Step 3: 提供具体指导或代码</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">根据加载的文档内容，提供：<br/>
+- 配置步骤<br/>
+- 示例代码<br/>
+- 注意事项</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">Step 4: 确认配置正确性</h3>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">是否配置了正确的权限</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">是否处理了错误情况</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">是否遵循最佳实践</li>
+</ul>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">References</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">按需加载，不要一次性全部读取：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><a href="references/auth.md" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">references/auth.md</a> — 认证配置</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><a href="references/basics.md" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">references/basics.md</a> — 基础操作</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><a href="references/advanced.md" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">references/advanced.md</a> — 进阶功能</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><a href="references/troubleshooting.md" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">references/troubleshooting.md</a> — 常见问题</li>
+</ul>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>**设计要点**：
+
+1. **Workflow 分步骤**：清晰的流程引导，而非堆砌文档
+2. **阶段判断表**：帮助 AI 快速定位用户状态
+3. **References 列表**：明确告知 AI 要按需加载
+
+---
+
+<span class="gu">##</span> 四、编写 references 文档
+
+references 目录存放具体知识，每个文件聚焦一个主题。
+
+<span class="gu">##</span># 4.1 auth.md — 认证配置
+
+这个文件回答"如何配置 COS 认证"的问题：
+
+```markdown
+
+<span class="gu">##</span> 前置条件
+
+1. 腾讯云账号，已完成实名认证
+2. 开通 COS 服务
+
+<span class="gu">##</span> 获取密钥
+
+<span class="gu">##</span># 方式一：永久密钥（开发/测试环境）
+
+1. 访问腾讯云 API 密钥管理
+2. 创建密钥，获取 SecretId 和 SecretKey
+3. 配置环境变量：
+
+```bash
+COS_SECRET_ID=your-secret-id
+COS_SECRET_KEY=your-secret-key
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">方式二：临时密钥（生产环境推荐）</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">通过 STS 服务获取临时密钥，有效期可控：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 后端生成临时密钥</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">STS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">require</span><span class="p">(</span><span class="s1">'qcloud-cos-sts'</span><span class="p">);</span>
+
+<span class="nx">STS</span><span class="p">.</span><span class="nx">getCredential</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">secretId</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">COS_SECRET_ID</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">secretKey</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">COS_SECRET_KEY</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">policy</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">version</span><span class="o">:</span><span class="w"> </span><span class="s1">'2.0'</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">statement</span><span class="o">:</span><span class="w"> </span><span class="p">[{</span>
+<span class="w">      </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'name/cos:PutObject'</span><span class="p">,</span><span class="w"> </span><span class="s1">'name/cos:GetObject'</span><span class="p">],</span>
+<span class="w">      </span><span class="nx">effect</span><span class="o">:</span><span class="w"> </span><span class="s1">'allow'</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">resource</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'qcs::cos:ap-guangzhou:uid/1250000000:bucket/*'</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">expireSeconds</span><span class="o">:</span><span class="w"> </span><span class="mf">3600</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// 返回临时密钥给前端</span>
+<span class="p">});</span>
+</code></pre></div>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">创建存储桶</h2>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">访问 COS 控制台</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">创建存储桶，选择地域和访问权限</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">记录存储桶名称和地域</li>
+</ol>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">SDK 初始化</h2>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">Node.js</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>npm<span class="w"> </span>install<span class="w"> </span>cos-nodejs-sdk-v5
+</code></pre></div>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="kd">const</span><span class="w"> </span><span class="nx">COS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">require</span><span class="p">(</span><span class="s1">'cos-nodejs-sdk-v5'</span><span class="p">);</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">cos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">COS</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">SecretId</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">COS_SECRET_ID</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">SecretKey</span><span class="o">:</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">COS_SECRET_KEY</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">浏览器端</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">import</span><span class="w"> </span><span class="nx">COS</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'cos-js-sdk-v5'</span><span class="p">;</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">cos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">COS</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">getAuthorization</span><span class="o">:</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">options</span><span class="p">,</span><span class="w"> </span><span class="nx">callback</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 从后端获取临时密钥</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">res</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s1">'/api/cos-credential'</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">credentials</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">res</span><span class="p">.</span><span class="nx">json</span><span class="p">();</span>
+<span class="w">    </span><span class="nx">callback</span><span class="p">({</span>
+<span class="w">      </span><span class="nx">TmpSecretId</span><span class="o">:</span><span class="w"> </span><span class="nx">credentials</span><span class="p">.</span><span class="nx">tmpSecretId</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">TmpSecretKey</span><span class="o">:</span><span class="w"> </span><span class="nx">credentials</span><span class="p">.</span><span class="nx">tmpSecretKey</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">SecurityToken</span><span class="o">:</span><span class="w"> </span><span class="nx">credentials</span><span class="p">.</span><span class="nx">sessionToken</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">StartTime</span><span class="o">:</span><span class="w"> </span><span class="nx">credentials</span><span class="p">.</span><span class="nx">startTime</span><span class="p">,</span>
+<span class="w">      </span><span class="nx">ExpiredTime</span><span class="o">:</span><span class="w"> </span><span class="nx">credentials</span><span class="p">.</span><span class="nx">expiredTime</span>
+<span class="w">    </span><span class="p">});</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">安全建议</h2>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">永远不要在前端暴露永久密钥</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">生产环境必须使用临时密钥</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">按"最小权限"原则配置 STS policy</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">定期轮换密钥</li>
+</ul>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">### 4.2 basics.md — 基础操作</span>
+
+<span class="err">上传、下载、删除、列表操作：</span>
+
+<span class="err">```</span><span class="n">markdown</span>
+
+<span class="c1">## 上传文件</span>
+
+<span class="c1">### 简单上传（&lt; 5MB）</span>
+
+<span class="err">```</span><span class="n">javascript</span>
+<span class="nb">cos</span><span class="o">.</span><span class="n">putObject</span><span class="p">({</span>
+<span class="w">  </span><span class="n">Bucket</span><span class="p">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Region</span><span class="p">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Key</span><span class="p">:</span><span class="w"> </span><span class="s1">'uploads/avatar.jpg'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Body</span><span class="p">:</span><span class="w"> </span><span class="n">file</span><span class="p">,</span>
+<span class="w">  </span><span class="n">onProgress</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">progressData</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="err">`进度</span><span class="p">:</span><span class="w"> </span><span class="o">$</span><span class="p">{</span><span class="n">Math</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">progressData</span><span class="o">.</span><span class="n">percent</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">)}</span><span class="o">%</span><span class="err">`</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">err</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">console</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">'上传失败:'</span><span class="p">,</span><span class="w"> </span><span class="n">err</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="s1">'文件地址:'</span><span class="p">,</span><span class="w"> </span><span class="err">`</span><span class="n">https</span><span class="p">:</span><span class="o">//$</span><span class="p">{</span><span class="n">data</span><span class="o">.</span><span class="n">Location</span><span class="p">}</span><span class="err">`</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">下载文件</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">getObject</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'uploads/avatar.jpg'</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">'下载失败:'</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">);</span>
+<span class="w">  </span><span class="c1">// data.Body 是文件内容</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">删除文件</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">deleteObject</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'uploads/avatar.jpg'</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">'删除失败:'</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">列出文件</h3>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">getBucket</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Prefix</span><span class="o">:</span><span class="w"> </span><span class="s1">'uploads/'</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">err</span><span class="p">);</span>
+<span class="w">  </span><span class="nx">data</span><span class="p">.</span><span class="nx">Contents</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">item</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">Key</span><span class="p">,</span><span class="w"> </span><span class="nx">item</span><span class="p">.</span><span class="nx">Size</span><span class="p">);</span>
+<span class="w">  </span><span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">文件路径设计建议</h2>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="n">uploads</span><span class="o">/</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">avatars</span><span class="o">/</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="p">{</span><span class="n">user_id</span><span class="p">}</span><span class="o">.</span><span class="n">jpg</span>
+<span class="err">├──</span><span class="w"> </span><span class="n">documents</span><span class="o">/</span>
+<span class="err">│</span><span class="w">   </span><span class="err">└──</span><span class="w"> </span><span class="p">{</span><span class="n">date</span><span class="p">}</span><span class="o">/</span><span class="p">{</span><span class="n">uuid</span><span class="p">}</span><span class="o">.</span><span class="n">pdf</span>
+<span class="err">└──</span><span class="w"> </span><span class="n">temp</span><span class="o">/</span>
+<span class="w">    </span><span class="err">└──</span><span class="w"> </span><span class="p">{</span><span class="n">timestamp</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">random</span><span class="p">}</span><span class="o">.</span><span class="n">tmp</span>
+</code></pre></div>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">使用有意义的目录前缀</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">避免文件名冲突（UUID / 时间戳）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">临时文件单独目录，定期清理</li>
+</ul>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="err">###</span><span class="w"> </span><span class="nt">4</span><span class="p">.</span><span class="nc">3</span><span class="w"> </span><span class="nt">advanced</span><span class="p">.</span><span class="nc">md</span><span class="w"> </span><span class="err">—</span><span class="w"> </span><span class="nt">进阶功能</span>
+
+<span class="nt">签名</span><span class="w"> </span><span class="nt">URL</span><span class="err">、</span><span class="nt">分片上传</span><span class="err">、</span><span class="nt">批量操作</span><span class="err">：</span>
+
+<span class="err">```</span><span class="nt">markdown</span>
+
+<span class="err">##</span><span class="w"> </span><span class="nt">签名</span><span class="w"> </span><span class="nt">URL</span><span class="err">（</span><span class="nt">临时访问链接</span><span class="err">）</span>
+
+<span class="nt">适用场景</span><span class="err">：</span><span class="nt">生成有时限的文件访问链接</span><span class="err">，</span><span class="nt">无需暴露密钥</span><span class="err">。</span>
+
+<span class="err">```</span><span class="nt">javascript</span>
+<span class="nt">cos</span><span class="p">.</span><span class="nc">getObjectUrl</span><span class="o">(</span><span class="p">{</span>
+<span class="w">  </span><span class="n">Bucket</span><span class="p">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'private/report.pdf'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Sign</span><span class="o">:</span><span class="w"> </span><span class="n">true</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Expires</span><span class="o">:</span><span class="w"> </span><span class="mi">3600</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">1</span><span class="err">小时有效</span>
+<span class="p">}</span><span class="o">,</span><span class="w"> </span><span class="o">(</span><span class="nt">err</span><span class="o">,</span><span class="w"> </span><span class="nt">data</span><span class="o">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="err">if</span><span class="w"> </span><span class="err">(err)</span><span class="w"> </span><span class="err">return</span><span class="w"> </span><span class="err">console.error(err)</span><span class="p">;</span>
+<span class="w">  </span><span class="err">console.log('临时访问链接:',</span><span class="w"> </span><span class="err">data.Url)</span><span class="p">;</span>
+<span class="p">}</span><span class="o">);</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">使用场景</strong>：<br/>
+- 私有文件分享<br/>
+- 下载链接有效期控制<br/>
+- 避免文件被永久公开</p>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">分片上传（大文件）</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">文件 &gt; 5MB 时必须使用分片上传：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">sliceUploadFile</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'videos/demo.mp4'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">FilePath</span><span class="o">:</span><span class="w"> </span><span class="nx">file</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">SliceSize</span><span class="o">:</span><span class="w"> </span><span class="mf">8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024</span><span class="p">,</span><span class="w"> </span><span class="c1">// 每片 8MB</span>
+<span class="w">  </span><span class="nx">onProgress</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">progressData</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`上传进度: </span><span class="si">${</span><span class="nb">Math</span><span class="p">.</span><span class="nx">round</span><span class="p">(</span><span class="nx">progressData</span><span class="p">.</span><span class="nx">percent</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100</span><span class="p">)</span><span class="si">}</span><span class="sb">%`</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">'上传失败:'</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">);</span>
+<span class="w">  </span><span class="k">else</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'文件地址:'</span><span class="p">,</span><span class="w"> </span><span class="sb">`https://</span><span class="si">${</span><span class="nx">data</span><span class="p">.</span><span class="nx">Location</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+<span class="p">});</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">断点续传</strong>：分片上传支持中断后继续，SDK 自动记录进度。</p>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">文件元数据</h2>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">putObject</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'images/photo.jpg'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Body</span><span class="o">:</span><span class="w"> </span><span class="nx">file</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">Headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="s1">'x-cos-meta-author'</span><span class="o">:</span><span class="w"> </span><span class="s1">'张三'</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'Cache-Control'</span><span class="o">:</span><span class="w"> </span><span class="s1">'max-age=31536000'</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">},</span><span class="w"> </span><span class="nx">callback</span><span class="p">);</span>
+</code></pre></div>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">##</span># 4.4 troubleshooting.md — 常见问题
+
+跨域、权限、限流等问题的排查：
+
+```markdown
+
+<span class="gu">##</span> 跨域错误（CORS）
+
+**错误表现**：
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Access to XMLHttpRequest has been blocked by CORS policy</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="o">**</span><span class="nt">解决方案</span><span class="o">**</span><span class="err">：</span>
+
+<span class="nt">在</span><span class="w"> </span><span class="nt">COS</span><span class="w"> </span><span class="nt">控制台配置跨域规则</span><span class="err">：</span>
+
+<span class="nt">1</span><span class="o">.</span><span class="w"> </span><span class="nt">进入存储桶</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nt">基础配置</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="nt">跨域访问</span><span class="w"> </span><span class="nt">CORS</span><span class="w"> </span><span class="nt">设置</span>
+<span class="nt">2</span><span class="o">.</span><span class="w"> </span><span class="nt">添加规则</span><span class="err">：</span>
+<span class="w">   </span><span class="nt">-</span><span class="w"> </span><span class="nt">来源</span><span class="w"> </span><span class="nt">Origin</span><span class="err">：`</span><span class="nt">https</span><span class="o">://</span><span class="nt">yourdomain</span><span class="p">.</span><span class="nc">com</span><span class="err">`</span>
+<span class="w">   </span><span class="nt">-</span><span class="w"> </span><span class="nt">操作</span><span class="w"> </span><span class="nt">Methods</span><span class="err">：</span><span class="nt">GET</span><span class="o">,</span><span class="w"> </span><span class="nt">PUT</span><span class="o">,</span><span class="w"> </span><span class="nt">POST</span><span class="o">,</span><span class="w"> </span><span class="nt">DELETE</span><span class="o">,</span><span class="w"> </span><span class="nt">HEAD</span>
+<span class="w">   </span><span class="nt">-</span><span class="w"> </span><span class="nt">Allow-Headers</span><span class="err">：`</span><span class="o">*</span><span class="err">`</span>
+<span class="w">   </span><span class="nt">-</span><span class="w"> </span><span class="nt">Expose-Headers</span><span class="err">：`</span><span class="nt">ETag</span><span class="o">,</span><span class="w"> </span><span class="nt">x-cos-request-id</span><span class="err">`</span>
+<span class="w">   </span><span class="nt">-</span><span class="w"> </span><span class="nt">超时</span><span class="w"> </span><span class="nt">Max-Age</span><span class="err">：`</span><span class="nt">3600</span><span class="err">`</span>
+
+<span class="o">**</span><span class="nt">注意</span><span class="o">**</span><span class="err">：</span><span class="nt">配置后需等待几分钟生效</span><span class="err">。</span>
+
+<span class="err">##</span><span class="w"> </span><span class="nt">权限不足</span><span class="err">（</span><span class="nt">403</span><span class="w"> </span><span class="nt">Access</span><span class="w"> </span><span class="nt">Denied</span><span class="err">）</span>
+
+<span class="o">**</span><span class="nt">原因</span><span class="o">**</span><span class="err">：</span>
+<span class="nt">-</span><span class="w"> </span><span class="nt">SecretKey</span><span class="w"> </span><span class="nt">错误或过期</span>
+<span class="nt">-</span><span class="w"> </span><span class="nt">存储桶权限配置错误</span>
+<span class="nt">-</span><span class="w"> </span><span class="nt">临时密钥权限范围不足</span>
+
+<span class="o">**</span><span class="nt">排查步骤</span><span class="o">**</span><span class="err">：</span>
+
+<span class="nt">1</span><span class="o">.</span><span class="w"> </span><span class="nt">检查密钥是否正确</span>
+<span class="nt">2</span><span class="o">.</span><span class="w"> </span><span class="nt">检查存储桶访问权限</span><span class="err">（</span><span class="nt">私有</span><span class="o">/</span><span class="nt">公有</span><span class="err">）</span>
+<span class="nt">3</span><span class="o">.</span><span class="w"> </span><span class="nt">检查临时密钥的</span><span class="w"> </span><span class="nt">policy</span><span class="w"> </span><span class="nt">是否包含所需</span><span class="w"> </span><span class="nt">action</span>
+
+<span class="err">##</span><span class="w"> </span><span class="nt">文件上传成功但无法访问</span>
+
+<span class="o">**</span><span class="nt">原因</span><span class="o">**</span><span class="err">：</span><span class="nt">文件权限问题</span>
+
+<span class="o">**</span><span class="nt">解决</span><span class="o">**</span><span class="err">：</span><span class="nt">上传时指定</span><span class="w"> </span><span class="nt">ACL</span>
+
+<span class="err">```</span><span class="nt">javascript</span>
+<span class="nt">cos</span><span class="p">.</span><span class="nc">putObject</span><span class="o">(</span><span class="p">{</span>
+<span class="w">  </span><span class="n">Bucket</span><span class="p">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'public/avatar.jpg'</span><span class="p">,</span>
+<span class="w">  </span><span class="n">Body</span><span class="o">:</span><span class="w"> </span><span class="n">file</span><span class="p">,</span>
+<span class="w">  </span><span class="n">ACL</span><span class="o">:</span><span class="w"> </span><span class="s1">'public-read'</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="err">公有读</span>
+<span class="p">}</span><span class="o">,</span><span class="w"> </span><span class="nt">callback</span><span class="o">);</span>
+</code></pre></div>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">上传超时</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">原因</strong>：文件过大或网络不稳定</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解决</strong>：<br/>
+- 使用分片上传<br/>
+- 增加超时时间</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="kd">const</span><span class="w"> </span><span class="nx">cos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">COS</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">Timeout</span><span class="o">:</span><span class="w"> </span><span class="mf">60000</span><span class="w"> </span><span class="c1">// 60秒</span>
+<span class="p">});</span>
+</code></pre></div>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">限流（503 Slow Down）</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">原因</strong>：请求频率超过限制</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解决</strong>：<br/>
+- 实现请求队列<br/>
+- 添加重试逻辑</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">uploadWithRetry</span><span class="p">(</span><span class="nx">params</span><span class="p">,</span><span class="w"> </span><span class="nx">retries</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">retries</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">cos</span><span class="p">.</span><span class="nx">putObject</span><span class="p">(</span><span class="nx">params</span><span class="p">).</span><span class="nx">promise</span><span class="p">();</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">statusCode</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">503</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">retries</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Promise</span><span class="p">(</span><span class="nx">r</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setTimeout</span><span class="p">(</span><span class="nx">r</span><span class="p">,</span><span class="w"> </span><span class="mf">1000</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="nx">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">1</span><span class="p">)));</span>
+<span class="w">        </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="k">throw</span><span class="w"> </span><span class="nx">err</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>---
+
+<span class="gu">##</span> 五、安装与使用
+
+Skill 写好后，需要安装到 Claude Code 才能使用。
+
+<span class="gu">##</span># 5.1 安装方式
+
+**方式一：项目级安装**
+
+将 <span class="sb">`cos-integration`</span> 目录放在项目的 <span class="sb">`.claude/skills/`</span> 下：
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">your-project/<br/>
+└── .claude/<br/>
+    └── skills/<br/>
+        └── cos-integration/<br/>
+            ├── SKILL.md<br/>
+            └── references/</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>**方式二：全局安装**
+
+放到 <span class="sb">`~/.claude/skills/`</span> 目录：
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">~/.claude/skills/<br/>
+└── cos-integration/<br/>
+    ├── SKILL.md<br/>
+    └── references/</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>**方式三：符号链接**
+
+如果你在多个项目间复用 Skill：
+
+```bash
+ln -s /path/to/cos-integration ~/.claude/skills/cos-integration
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.2 使用方式</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">安装完成后，在 Claude Code 中直接使用：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>/cos-integration
+
+"帮我接入腾讯云 COS"
+"COS 跨域报错怎么配"
+"生成一个 COS 签名 URL"
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">AI 会自动：<br/>
+1. 判断你处于哪个阶段<br/>
+2. 加载对应的参考文档<br/>
+3. 提供具体的代码和配置</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">六、最佳实践总结</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">开发这个 Skill 的过程中，有几个关键经验：</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.1 知识分层原则</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">把知识分层，不要全部塞进一个文件：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">层级</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">内容</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">加载时机</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">SKILL.md</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">工作流、路由逻辑</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">始终加载</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">auth.md</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">认证配置</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">初始化阶段</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">basics.md</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">基础操作</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">基础集成阶段</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">advanced.md</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">进阶功能</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">进阶功能阶段</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">troubleshooting.md</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">问题排查</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">遇到问题时</td>
+</tr>
+</tbody>
+</table>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.2 触发词设计</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>description</code> 字段要覆盖用户可能的表达方式：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">腾讯云 COS 对象存储接入指南。Use when the user asks to 接入 COS、腾讯云存储、对象存储、上传文件到 COS、COS 签名、COS 跨域配置。</span>
+</code></pre></div>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">中文名称：腾讯云 COS、腾讯云存储</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">通用术语：对象存储、上传文件</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">具体操作：签名、跨域配置</li>
+</ul>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.3 阶段判断逻辑</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">在 SKILL.md 中明确阶段判断标准，帮助 AI 快速定位：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>| 阶段 | 特征 |
+|------|------|
+| 初始化 | 没有配置过 COS，需要创建存储桶、获取密钥 |
+| 基础集成 | 已有配置，需要上传/下载代码 |
+| 进阶功能 | 基础功能已通，需要签名 URL、分片上传等 |
+| 问题排查 | 遇到跨域、权限、限流等问题 |
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.4 保持文档独立可读</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">每个 reference 文件应该独立可读，不依赖其他文件：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">包含完整的代码示例</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">包含必要的上下文说明</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">包含常见问题解答</li>
+</ul>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">七、扩展思路</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这个 Skill 还可以继续扩展：</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">增加更多云服务商</strong>：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>cos-integration/
+├── SKILL.md
+└── references/
+    ├── tencent-cos/
+    │   ├── auth.md
+    │   ├── basics.md
+    │   └── ...
+    ├── aliyun-oss/
+    │   ├── auth.md
+    │   ├── basics.md
+    │   └── ...
+    └── qiniu/
+        └── ...
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">增加最佳实践</strong>：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">文件命名规范</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">权限模型设计</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">成本优化策略</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">监控告警配置</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">增加代码模板</strong>：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">NestJS 集成模板</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">Next.js 集成模板</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">小程序集成模板</li>
+</ul>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">总结</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这篇文章我们从零开发了一个腾讯云 COS 集成 Skill，核心思路是：</p>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">知识分层</strong>：SKILL.md 负责路由，references 负责具体知识</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">按需加载</strong>：根据用户阶段加载对应文档，不浪费上下文</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">阶段判断</strong>：明确定义各阶段特征，帮助 AI 快速定位</li>
+</ol>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这个模式可以复用到其他第三方服务集成：<br/>
+- 支付服务（微信支付、支付宝）<br/>
+- 短信服务（阿里云、腾讯云）<br/>
+- 地图服务（高德、百度）<br/>
+- AI 服务（OpenAI、通义千问）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Skills 让 AI 记住了所有接入细节，从此告别"挤牙膏"式对话。</strong></p>
+</body>
+</html>
