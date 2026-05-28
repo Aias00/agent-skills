@@ -90,6 +90,7 @@
     <blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
 <p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">一个 Skill 让 AI 记住了所有接入细节，从此告别"挤牙膏"式对话。</p>
 </blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">完整代码</strong>：<a href="https://github.com/Aias00/agent-skills/tree/main/content/cos-integration-skill-tutorial" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">GitHub - cos-integration-skill-tutorial</a></p>
 <hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
 <p style="margin: 16px 0; line-height: 1.85; color: #263a49">你有没有经历过这样的对话：</p>
 <div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>用户：帮我接入腾讯云 COS 存储
@@ -304,12 +305,15 @@ COS_SECRET_KEY=your-secret-key
 <span class="w">    </span><span class="nx">statement</span><span class="o">:</span><span class="w"> </span><span class="p">[{</span>
 <span class="w">      </span><span class="nx">action</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'name/cos:PutObject'</span><span class="p">,</span><span class="w"> </span><span class="s1">'name/cos:GetObject'</span><span class="p">],</span>
 <span class="w">      </span><span class="nx">effect</span><span class="o">:</span><span class="w"> </span><span class="s1">'allow'</span><span class="p">,</span>
-<span class="w">      </span><span class="nx">resource</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'qcs::cos:ap-guangzhou:uid/1250000000:bucket/*'</span><span class="p">]</span>
+<span class="w">      </span><span class="nx">resource</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">'qcs::cos:ap-guangzhou:uid/1250000000:examplebucket-1250000000/*'</span><span class="p">]</span>
 <span class="w">    </span><span class="p">}]</span>
 <span class="w">  </span><span class="p">},</span>
-<span class="w">  </span><span class="nx">expireSeconds</span><span class="o">:</span><span class="w"> </span><span class="mf">3600</span>
+<span class="w">  </span><span class="nx">durationSeconds</span><span class="o">:</span><span class="w"> </span><span class="mf">3600</span><span class="w"> </span><span class="c1">// 有效期 1 小时</span>
 <span class="p">},</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="c1">// 返回临时密钥给前端</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="nx">err</span><span class="p">);</span>
+<span class="w">  </span><span class="c1">// data.credentials.tmpSecretId</span>
+<span class="w">  </span><span class="c1">// data.credentials.tmpSecretKey</span>
+<span class="w">  </span><span class="c1">// data.credentials.sessionToken</span>
 <span class="p">});</span>
 </code></pre></div>
 <h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">创建存储桶</h2>
@@ -453,13 +457,14 @@ COS_SECRET_KEY=your-secret-key
 - 下载链接有效期控制<br/>
 - 避免文件被永久公开</p>
 <h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">分片上传（大文件）</h2>
-<p style="margin: 16px 0; line-height: 1.85; color: #263a49">文件 &gt; 5MB 时必须使用分片上传：</p>
-<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">sliceUploadFile</span><span class="p">({</span>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">SDK 提供 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>uploadFile</code> 方法，自动判断是否需要分片上传（默认 &gt; 1MB 分片）：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">uploadFile</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">Region</span><span class="o">:</span><span class="w"> </span><span class="s1">'ap-guangzhou'</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="s1">'videos/demo.mp4'</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">FilePath</span><span class="o">:</span><span class="w"> </span><span class="nx">file</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">SliceSize</span><span class="o">:</span><span class="w"> </span><span class="mf">8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024</span><span class="p">,</span><span class="w"> </span><span class="c1">// 每片 8MB</span>
+<span class="w">  </span><span class="nx">FilePath</span><span class="o">:</span><span class="w"> </span><span class="s1">'/local/path/demo.mp4'</span><span class="p">,</span><span class="w"> </span><span class="c1">// Node.js：本地文件路径</span>
+<span class="w">  </span><span class="c1">// Body: file, // 浏览器端：File 对象</span>
+<span class="w">  </span><span class="nx">SliceSize</span><span class="o">:</span><span class="w"> </span><span class="mf">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1024</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="c1">// 超过 5MB 启用分片上传</span>
 <span class="w">  </span><span class="nx">onProgress</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">progressData</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`上传进度: </span><span class="si">${</span><span class="nb">Math</span><span class="p">.</span><span class="nx">round</span><span class="p">(</span><span class="nx">progressData</span><span class="p">.</span><span class="nx">percent</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">100</span><span class="p">)</span><span class="si">}</span><span class="sb">%`</span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
@@ -469,6 +474,9 @@ COS_SECRET_KEY=your-secret-key
 <span class="p">});</span>
 </code></pre></div>
 <p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">断点续传</strong>：分片上传支持中断后继续，SDK 自动记录进度。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Node.js 与浏览器端区别</strong>：<br/>
+- Node.js：使用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>FilePath</code> 指定本地文件路径<br/>
+- 浏览器端：使用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Body</code> 传入 File 对象</p>
 <h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">文件元数据</h2>
 <div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nx">cos</span><span class="p">.</span><span class="nx">putObject</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">Bucket</span><span class="o">:</span><span class="w"> </span><span class="s1">'examplebucket-1250000000'</span><span class="p">,</span>
