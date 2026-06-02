@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章</title>
+    <style>
+        :root {
+            
+  /* ===== 主色系 ===== */
+  --primary-purple: #4b6b81;      /* 兼容旧变量名，实际作为主品牌色 */
+  --primary-blue: #4b6b81;        /* 主蓝灰色 - 标题、链接、强调 */
+  --primary-cyan: #6f8fa4;        /* 辅助浅蓝灰 - 技术类提示 */
+  --primary-teal: #5c7a8d;        /* 次级强调色 */
+
+  /* ===== 功能色 ===== */
+  --success-green: #5d7b6a;
+  --warning-amber: #b88c54;
+  --danger-red: #a36b68;
+  --info-blue: #4b6b81;
+
+  /* ===== 文字色系 ===== */
+  --text-primary: #263a49;
+  --text-secondary: #3e596a;
+  --text-tertiary: #627584;
+  --text-light: #8c9aa5;
+
+  /* ===== 背景色系 ===== */
+  --bg-white: #fffdf9;
+  --bg-gray-50: #f8fafb;
+  --bg-gray-100: #eef3f5;
+  --bg-purple-50: #eef3f5;
+  --bg-blue-50: #eef3f5;
+  --bg-cyan-50: #f1f5f7;
+  --bg-green-50: #f3f6f4;
+  --bg-amber-50: #faf6ef;
+  --bg-red-50: #faf3f2;
+
+  /* ===== 代码块色系 ===== */
+  --code-bg: #243543;
+  --code-text: #d9e3e9;
+  --code-keyword: #a9c0cf;
+  --code-function: #c7d7e1;
+  --code-string: #c8d7c8;
+  --code-number: #d4b690;
+  --code-comment: #8aa0ad;
+  --code-variable: #d6c1bf;
+  --code-builtin: #d9c8a8;
+
+  /* ===== 边框色系 ===== */
+  --border-light: #d7dfe5;
+  --border-medium: #c3d0d8;
+  --border-dark: #90a2ad;
+
+  /* ===== 阴影色系 ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(38, 58, 73, 0.06);
+  --shadow-md: 0 8px 16px -10px rgba(38, 58, 73, 0.16);
+  --shadow-lg: 0 16px 32px -18px rgba(38, 58, 73, 0.18);
+
+  /* ===== 间距系统 ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ===== 圆角系统 ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+        }
+
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text-primary, #333);
+            background: var(--bg-white, #fff);
+            padding: 20px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- ⚠️ 标题请在微信公众号编辑器中单独填写，HTML 中已自动移除 H1 标题 -->
+    <hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">title: Claude Code 自动化工作流实战：构建内容生产流水线<br/>
+description: 以内容生产为例，系统讲解 Hooks、MCP、Skills 三驾马车的组合使用，搭建从写作到发布的完整自动化链路。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">先说结论</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Claude Code 的自动化能力由三驾马车构成：<strong style="font-weight: 600; color: #263a49">Hooks</strong> 负责事件触发，<strong style="font-weight: 600; color: #263a49">MCP</strong> 负责外部能力扩展，<strong style="font-weight: 600; color: #263a49">Skills</strong> 负责任务封装复用。理解它们的边界和组合方式，就能搭建出真正省心的自动化工作流。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这篇文章以一个真实场景——「从 Markdown 草稿到公众号发布」——为线索，给出完整可复制的配置文件和代码。你看完就能照着搭一套自己的内容生产流水线。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">一、自动化工作流的三驾马车</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">很多同学问我：「我想让 Claude Code 自动帮我做事，到底该用 Hooks、MCP 还是 Skills？」</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">答案是：它们不是互斥的，而是各司其职。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">1.1 Hooks：零成本的事件触发器</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Hooks 是 Claude Code 的生命周期钩子。你不需要启动额外进程，只需要在 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>settings.json</code> 里配置一下，Claude 就会在特定时机自动执行你的脚本。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">典型用途：</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">钩子</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">触发时机</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">典型用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PreToolUse</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">调用工具前</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">拦截危险命令、自动加参数</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PostToolUse</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">调用工具后</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">记录日志、通知</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Stop</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">会话结束时</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">自动保存、清理、汇总</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">一个最简单的例子——会话结束时自动保存：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// ~/.claude/settings.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"Stop"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"git add . &amp;&amp; git commit -m 'auto: save at $(date +%Y%m%d-%H%M)'"</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">注意：</strong> <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Stop</code> 钩子不支持 matcher。只有 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PreToolUse</code> 和 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PostToolUse</code> 支持 matcher 来匹配工具名称。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Hooks 的限制：</strong><br/>
+- 只能「触发时执行」，无法持久化状态<br/>
+- 无法访问 Claude 的内部上下文（比如对话历史）<br/>
+- 脚本执行时间不宜过长（默认 60 秒超时）</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">1.2 MCP：给 Claude 装上外部能力的插件</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">MCP（Model Context Protocol）是 Anthropic 推出的标准化协议，让 Claude 能够访问外部数据和工具。它是一个独立进程，通过 stdio 或网络与 Claude Code 通信。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">典型用途：</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">MCP Server</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">能力</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>filesystem</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">读写本地文件（受限目录）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>postgres</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">查询 PostgreSQL 数据库</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>brave-search</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">网络搜索</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>puppeteer</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">浏览器自动化</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">配置示例：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// ~/.claude/settings.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"filesystem"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"@modelcontextprotocol/server-filesystem"</span><span class="p">,</span><span class="w"> </span><span class="s2">"/Users/you/articles"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">"brave-search"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"@modelcontextprotocol/server-brave-search"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"BRAVE_API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"your-api-key"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">MCP 的成本：</strong><br/>
+- 每个 MCP server 都是一个独立进程，占用内存<br/>
+- 启动需要时间（几十毫秒到几秒）<br/>
+- 需要额外的权限配置</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">1.3 Skills：可复用的任务封装</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Skills 是把复杂的多步骤任务打包成可复用的模块。一个 Skill 就是一个目录，里面有一份 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>SKILL.md</code> 文件描述任务流程。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">典型用途：</strong><br/>
+- 代码审查流程<br/>
+- 文章审阅与格式化<br/>
+- 项目初始化模板</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">最小化 Skill 结构：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>~/.claude/skills/article-init/
+├── SKILL.md          # 技能描述与执行步骤
+├── scripts/          # 配套脚本（可选）
+│   └── init.sh
+└── references/       # 参考文档（可选）
+    └── template.md
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">SKILL.md 示例：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>---
+name: article-init
+description: 从模板创建新文章
+triggers:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"创建文章"
+<span class="gu">  - "新文章"</span>
+<span class="gu">---</span>
+
+<span class="gu">## 执行步骤</span>
+
+<span class="k">1.</span> 询问用户文章主题和类型（技术/转载/随笔）
+<span class="k">2.</span> 在 articles/workspaces/ 下创建目录
+<span class="k">3.</span> 从模板复制初始文件结构
+<span class="k">4.</span> 初始化 Git 分支：`git checkout -b article/{article-name}`
+<span class="k">5.</span> 打开编辑器
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Skills 的优势：</strong><br/>
+- 可分享、可版本控制<br/>
+- 团队统一流程<br/>
+- 比 MCP 轻量，比 Hooks 强大</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">1.4 选型决策树</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">用一个流程图总结：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>需要访问外部数据/工具？
+├── 是 → 用 MCP
+└── 否 → 只是触发时执行脚本？
+         ├── 是 → 用 Hooks
+         └── 否 → 多步骤任务需要复用？
+                  ├── 是 → 用 Skills
+                  └── 否 → 直接对话就够了
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">但实际场景中，三者经常组合使用：</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">Hook 触发 Skill 执行（会话结束时自动审阅）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">Skill 内部调用 MCP（审阅时查询数据库）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">MCP 结果触发 Hook（查询完成后发送通知）</li>
+</ul>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">二、场景拆解：内容生产的四个阶段</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">自动化不是「一个指令搞定所有」。越是复杂的流程，越需要拆解。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">2.1 拆解原则</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">好的拆解要满足三个条件：<br/>
+1. <strong style="font-weight: 600; color: #263a49">清晰的输入输出</strong>——每个阶段接收什么、产出什么，一目了然<br/>
+2. <strong style="font-weight: 600; color: #263a49">可独立调试</strong>——出了问题能快速定位是哪个阶段<br/>
+3. <strong style="font-weight: 600; color: #263a49">可灵活组合</strong>——今天只自动化两个阶段，明天再加一个，互不影响</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">2.2 四阶段流程图</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">以「从草稿到发布」为例：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   写作      │───▶│   审阅      │───▶│   格式化    │───▶│   发布      │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+      │                  │                  │                  │
+      ▼                  ▼                  ▼                  ▼
+ 灵感/素材          Markdown草稿       审阅报告+修订稿      多平台HTML       文章链接
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">2.3 各阶段详解</h3>
+<h4 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #3e596a; font-size: 20px">写作阶段</h4>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> 灵感、素材、大纲<br/>
+<strong style="font-weight: 600; color: #263a49">输出：</strong> Markdown 草稿文件</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">自动化点：</strong><br/>
+- 自动保存（Hook: Stop 时 Git 提交）<br/>
+- 草稿版本管理（按时间戳备份）<br/>
+- 模板初始化（Skill: article-init）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">触发条件：</strong> 手动启动（写作是创造性工作，不宜过度自动化）</p>
+<h4 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #3e596a; font-size: 20px">审阅阶段</h4>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> Markdown 草稿<br/>
+<strong style="font-weight: 600; color: #263a49">输出：</strong> 审阅报告 + 修订后的草稿</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">自动化点：</strong><br/>
+- 技术正确性检查（Skill: technical-article-review）<br/>
+- 禁用词扫描（脚本：check_banned_scaffolding.py）<br/>
+- 风格一致性检查（自定义规则）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">触发条件：</strong> 文件保存后自动触发，或手动调用</p>
+<h4 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #3e596a; font-size: 20px">格式化阶段</h4>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> 审阅后的 Markdown<br/>
+<strong style="font-weight: 600; color: #263a49">输出：</strong> 平台适配的 HTML（微信/头条/博客）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">自动化点：</strong><br/>
+- Markdown → HTML 转换（Skill: wechat-article-formatter）<br/>
+- 主题选择与样式注入<br/>
+- 图片处理与优化</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">触发条件：</strong> 审阅通过后</p>
+<h4 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #3e596a; font-size: 20px">发布阶段</h4>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> 格式化后的 HTML + 封面图<br/>
+<strong style="font-weight: 600; color: #263a49">输出：</strong> 文章链接</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">自动化点：</strong><br/>
+- 封面图自动生成（脚本：generate-cover-image.py）<br/>
+- API 推送（Skill: wechat-publisher）<br/>
+- 发布结果通知（Hook: Stop 时汇总）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">触发条件：</strong> 格式化完成且封面就绪</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">2.4 与现有工具的对应</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这个仓库里已经有现成的 Skills 可以直接用：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">阶段</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">现有工具</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">位置</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">写作</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>article-init</code>（需创建）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">-</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">审阅</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>technical-article-review</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>../technical-article-review/</code></td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">格式化</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>wechat-article-formatter</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>../wechat-article-formatter/</code></td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">发布</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>wechat-publisher</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>../wechat-publisher/</code></td>
+</tr>
+</tbody>
+</table>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">三、实战：搭建文章生产流水线</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这一章是整篇文章的核心。我会给出完整可复制的配置和代码，你照着做就能跑起来。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.1 环境准备</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">目录结构：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>articles/
+├── workspaces/      # 草稿区
+│   └── my-article/
+│       ├── my-article.md
+│       └── imgs/
+├── publishing/      # 待发布
+└── archives/        # 已发布
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">依赖安装：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nb">cd</span><span class="w"> </span>wechat-article-formatter
+python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+.venv/bin/pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="nb">cd</span><span class="w"> </span>../wechat-publisher
+bun<span class="w"> </span>install
+bun<span class="w"> </span>scripts/bootstrap-local.ts<span class="w"> </span>--project-root<span class="w"> </span>..
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.2 写作阶段：自动保存与版本管理</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">先解决一个痛点：写着写着忘了保存，或者想找回之前的版本。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Hook 配置——会话结束时自动提交：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// ~/.claude/settings.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"Stop"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cd /path/to/articles/workspaces &amp;&amp; git add . &amp;&amp; git commit -m 'auto: draft save at $(date +%Y%m%d-%H%M)' 2&gt;/dev/null || true"</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">注意几点：<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Stop</code> 钩子不支持 matcher，会在所有会话结束时触发，所以命令中要用完整路径<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>2&gt;/dev/null || true</code> 防止「没有变更」时报错<br/>
+- 提交信息带时间戳，方便后续筛选<br/>
+- 如果只想在特定目录触发，可以在命令开头加条件判断：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>[ -d "articles/workspaces" ] &amp;&amp; ...</code></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">创建新文章的 Skill：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">&lt;!-- ~/.claude/skills/article-init/SKILL.md --&gt;</span>
+<span class="gu">---</span>
+name: article-init
+description: 从模板创建新文章
+triggers:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"创建文章"
+<span class="gu">  - "新文章"</span>
+<span class="gu">---</span>
+
+<span class="gu">## 执行步骤</span>
+
+<span class="k">1.</span> 询问用户文章主题（用于生成目录名）
+<span class="k">2.</span> 询问文章类型：
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>技术文章 → 使用 technical 模板
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>转载文章 → 使用 repost 模板
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>随笔 → 使用 essay 模板
+<span class="k">3.</span> 在 articles/workspaces/ 下创建目录：`{主题slug}/`
+<span class="k">4.</span> 创建文件结构：
+<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="sb">`{主题slug}.md`</span>（从模板复制）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span><span class="sb">`imgs/`</span> 目录
+<span class="k">5.</span> 初始化 Git 分支：`git checkout -b article/{主题slug}`
+<span class="k">6.</span> 输出：已创建文章，可以开始写作
+
+<span class="gu">## 模板</span>
+
+技术文章模板 frontmatter：
+</code></pre></div>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">title: {标题}<br/>
+created: {日期}<br/>
+status: draft<br/>
+type: tech</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">踩坑经验：</strong><br/>
+- Git 提交信息格式要规范，方便后续用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>git log --oneline</code> 筛选<br/>
+- 如果工作目录不在 Git 仓库根目录，<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>cd</code> 命令要写完整路径<br/>
+- Hook 执行时没有交互环境，不要用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>git commit</code> 不带 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>-m</code></p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.3 审阅阶段：质量检查流水线</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">写完草稿后，需要检查技术正确性和「AI 味道」。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">调用 technical-article-review Skill：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>&gt;<span class="w"> </span>用<span class="w"> </span>technical-article-review<span class="w"> </span>审阅<span class="w"> </span>articles/workspaces/my-article/my-article.md
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这个 Skill 会检查：<br/>
+- 技术内容正确性<br/>
+- 逻辑连贯性<br/>
+- 是否有未解释的术语<br/>
+- 代码示例是否可运行</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">补充脚本：禁用词扫描</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">有些表达方式太「AI 味道」，比如「不是……而是……」「也就是说」。仓库里自带一个检测脚本：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python3<span class="w"> </span>../technical-article-review/scripts/check_banned_scaffolding.py<span class="w"> </span>--input<span class="w"> </span>articles/workspaces/my-article/my-article.md
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输出示例：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">成功时：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>OK: no banned scaffolding patterns found in prose
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">发现问题 时：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="n">Blocked</span><span class="o">:</span><span class="w"> </span><span class="n">banned</span><span class="w"> </span><span class="n">scaffolding</span><span class="w"> </span><span class="n">patterns</span><span class="w"> </span><span class="n">found</span>
+<span class="n">line</span><span class="w"> </span><span class="mi">42</span><span class="o">:</span><span class="w"> </span><span class="err">不是……而是……</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="err">这不是简单的工具，而是完整的开发环境</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">踩坑经验：</strong><br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>technical-article-review</code> 默认会直接修改文章，如果你想只看报告不改文章，明确说「只审不改」或 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>review-only</code><br/>
+- 禁用词检查会自动排除代码块和引用块，避免误报<br/>
+- 这个脚本是硬阻断模式：有错误就退出码非零，可以配合 CI 使用</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.4 格式化阶段：一键生成多平台 HTML</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">审阅通过后，生成适配微信公众号的 HTML。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">调用 wechat-article-formatter：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>wechat-article-formatter/.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>wechat-article-formatter/scripts/markdown_to_html.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span>/Users/you/articles/workspaces/my-article/my-article.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--theme<span class="w"> </span>mist-blue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>/Users/you/articles/workspaces/my-article/my-article.html<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--preview
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">参数说明：</strong><br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--input</code>：Markdown 源文件（建议用绝对路径）<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--theme</code>：主题样式，可选值见下表<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--output</code>：输出的 HTML 文件路径<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--preview</code>：生成后自动打开浏览器预览</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">可用主题：</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">主题</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">适用场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>mist-blue</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">技术文章（默认，雾霾蓝）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>ai-tech</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">AI 主题、产品展示</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>tech-blue</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">科技感</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>forest-green</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">自然主题</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>sunset</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">暖色调</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>slate</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">中性专业</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>midnight</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">深色主题</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>warm-orange</code></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">活力风格</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">踩坑经验：</strong><br/>
+- 图片路径要用相对路径（相对于 Markdown 文件），或者用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>imgs/xxx.png</code> 格式<br/>
+- 微信编辑器会过滤 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>&lt;style&gt;</code> 标签，所以 formatter 用的是内联样式<br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--preview</code> 在无头服务器上会报错，可以去掉</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.5 发布阶段：封面生成与 API 推送</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">自动生成封面图：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>python3<span class="w"> </span>../wechat-publisher/scripts/generate-cover-image.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--markdown<span class="w"> </span>/Users/you/articles/workspaces/my-article/my-article.md<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--out<span class="w"> </span>/Users/you/articles/workspaces/my-article/imgs/cover.png<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--bootstrap-pillow
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--bootstrap-pillow</code> 会在缺少 Pillow 库时自动安装。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">发布到微信公众号：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nb">cd</span><span class="w"> </span>../wechat-publisher
+
+bun<span class="w"> </span>scripts/check-permissions.ts<span class="w"> </span>--project-root<span class="w"> </span>..
+
+bun<span class="w"> </span>scripts/wechat-publish.ts<span class="w"> </span>/Users/you/articles/workspaces/my-article/my-article.md<span class="w"> </span>--dry-run
+
+bun<span class="w"> </span>scripts/wechat-publish.ts<span class="w"> </span>/Users/you/articles/workspaces/my-article/my-article.md
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">踩坑经验：</strong><br/>
+- 封面图比例要求 2.35:1，尺寸至少 900×383<br/>
+- 如果没有封面图，会按顺序尝试：frontmatter 中的 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>coverImage</code> → <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>imgs/cover.png</code> → 文章第一张图<br/>
+- API 有频率限制，批量发布时注意间隔</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.6 完整流水线脚本</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">把上面所有步骤串起来，用一个 Makefile：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nv">ARTICLE</span><span class="w"> </span><span class="o">?=</span><span class="w"> </span>articles/workspaces/my-article/my-article.md
+<span class="nv">ARTICLE_DIR</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>dir<span class="w"> </span><span class="k">$(</span>ARTICLE<span class="k">))</span>
+<span class="nv">ARTICLE_NAME</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>basename<span class="w"> </span><span class="k">$(</span>notdir<span class="w"> </span><span class="k">$(</span>ARTICLE<span class="k">)))</span>
+
+<span class="nf">.PHONY</span><span class="o">:</span><span class="w"> </span><span class="n">review</span> <span class="n">format</span> <span class="n">cover</span> <span class="n">publish</span> <span class="n">all</span>
+
+<span class="nf">review</span><span class="o">:</span>
+<span class="w">    </span>@echo<span class="w"> </span><span class="s2">"📋 审阅文章..."</span>
+<span class="w">    </span>python3<span class="w"> </span>../technical-article-review/scripts/check_banned_scaffolding.py<span class="w"> </span>--input<span class="w"> </span><span class="k">$(</span>ARTICLE<span class="k">)</span>
+
+<span class="nf">format</span><span class="o">:</span>
+<span class="w">    </span>@echo<span class="w"> </span><span class="s2">"🎨 格式化..."</span>
+<span class="w">    </span>../wechat-article-formatter/.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>../wechat-article-formatter/scripts/markdown_to_html.py<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--input<span class="w"> </span><span class="k">$(</span>ARTICLE<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--theme<span class="w"> </span>mist-blue<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--output<span class="w"> </span><span class="k">$(</span>ARTICLE_DIR<span class="k">)$(</span>ARTICLE_NAME<span class="k">)</span>.html
+
+<span class="nf">cover</span><span class="o">:</span>
+<span class="w">    </span>@echo<span class="w"> </span><span class="s2">"🖼️ 生成封面..."</span>
+<span class="w">    </span>python3<span class="w"> </span>../wechat-publisher/scripts/generate-cover-image.py<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--markdown<span class="w"> </span><span class="k">$(</span>ARTICLE<span class="k">)</span><span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>--out<span class="w"> </span><span class="k">$(</span>ARTICLE_DIR<span class="k">)</span>imgs/cover.png
+
+<span class="nf">publish</span><span class="o">:</span><span class="w"> </span><span class="n">review</span> <span class="n">format</span> <span class="n">cover</span>
+<span class="w">    </span>@echo<span class="w"> </span><span class="s2">"🚀 发布..."</span>
+<span class="w">    </span><span class="nb">cd</span><span class="w"> </span>../wechat-publisher<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>bun<span class="w"> </span>scripts/wechat-publish.ts<span class="w"> </span>../content/<span class="k">$(</span>ARTICLE<span class="k">)</span>
+
+<span class="nf">all</span><span class="o">:</span><span class="w"> </span><span class="n">review</span> <span class="n">format</span> <span class="n">cover</span>
+<span class="w">    </span>@echo<span class="w"> </span><span class="s2">"✅ 流水线完成，可以发布了"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">使用方式：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>make<span class="w"> </span>review<span class="w"> </span><span class="nv">ARTICLE</span><span class="o">=</span>articles/workspaces/my-article/my-article.md
+
+make<span class="w"> </span>format<span class="w"> </span><span class="nv">ARTICLE</span><span class="o">=</span>articles/workspaces/my-article/my-article.md
+
+make<span class="w"> </span>cover<span class="w"> </span><span class="nv">ARTICLE</span><span class="o">=</span>articles/workspaces/my-article/my-article.md
+
+make<span class="w"> </span>all<span class="w"> </span><span class="nv">ARTICLE</span><span class="o">=</span>articles/workspaces/my-article/my-article.md
+
+make<span class="w"> </span>publish<span class="w"> </span><span class="nv">ARTICLE</span><span class="o">=</span>articles/workspaces/my-article/my-article.md
+</code></pre></div>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">四、进阶模式</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">基础流水线搭好后，可以进一步优化。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.1 并行执行多个任务</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">场景：同时生成微信、头条、博客三个平台的 HTML。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/bin/bash</span>
+
+<span class="nv">ARTICLE</span><span class="o">=</span><span class="nv">$1</span>
+<span class="nv">BASENAME</span><span class="o">=</span><span class="k">$(</span>basename<span class="w"> </span><span class="s2">"</span><span class="nv">$ARTICLE</span><span class="s2">"</span><span class="w"> </span>.md<span class="k">)</span>
+<span class="nv">DIR</span><span class="o">=</span><span class="k">$(</span>dirname<span class="w"> </span><span class="s2">"</span><span class="nv">$ARTICLE</span><span class="s2">"</span><span class="k">)</span>
+
+wechat-article-formatter/.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>wechat-article-formatter/scripts/markdown_to_html.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span><span class="s2">"</span><span class="nv">$ARTICLE</span><span class="s2">"</span><span class="w"> </span>--theme<span class="w"> </span>mist-blue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">"</span><span class="nv">$DIR</span><span class="s2">/</span><span class="nv">$BASENAME</span><span class="s2">-wechat.html"</span><span class="w"> </span><span class="p">&amp;</span>
+
+wechat-article-formatter/.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>wechat-article-formatter/scripts/markdown_to_html.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span><span class="s2">"</span><span class="nv">$ARTICLE</span><span class="s2">"</span><span class="w"> </span>--theme<span class="w"> </span>tech-blue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">"</span><span class="nv">$DIR</span><span class="s2">/</span><span class="nv">$BASENAME</span><span class="s2">-toutiao.html"</span><span class="w"> </span><span class="p">&amp;</span>
+
+wechat-article-formatter/.venv/bin/python<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>wechat-article-formatter/scripts/markdown_to_html.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span><span class="s2">"</span><span class="nv">$ARTICLE</span><span class="s2">"</span><span class="w"> </span>--theme<span class="w"> </span>forest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span><span class="s2">"</span><span class="nv">$DIR</span><span class="s2">/</span><span class="nv">$BASENAME</span><span class="s2">-blog.html"</span><span class="w"> </span><span class="p">&amp;</span>
+
+<span class="nb">wait</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"✅ 三个平台的 HTML 已生成"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">注意事项：</strong><br/>
+- <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>&amp;</code> 把任务放到后台，<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>wait</code> 等待所有后台任务完成<br/>
+- 避免多个进程同时写同一个文件<br/>
+- 如果任务之间有依赖，不能并行</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.2 错误恢复与重试</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">API 调用可能失败，需要自动重试。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// retry.ts</span>
+<span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">withRetry</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="nx">fn</span><span class="o">:</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">options</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">maxRetries</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">baseDelayMs</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">name?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nb">Promise</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">lastError</span><span class="o">:</span><span class="w"> </span><span class="kt">Error</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kc">null</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">  </span><span class="kd">let</span><span class="w"> </span><span class="nx">delay</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">options</span><span class="p">.</span><span class="nx">baseDelayMs</span><span class="p">;</span>
+
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kd">let</span><span class="w"> </span><span class="nx">attempt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span><span class="p">;</span><span class="w"> </span><span class="nx">attempt</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="nx">options</span><span class="p">.</span><span class="nx">maxRetries</span><span class="p">;</span><span class="w"> </span><span class="nx">attempt</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fn</span><span class="p">();</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">attempt</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`✅ </span><span class="si">${</span><span class="nx">options</span><span class="p">.</span><span class="nx">name</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">'操作'</span><span class="si">}</span><span class="sb"> 在第 </span><span class="si">${</span><span class="nx">attempt</span><span class="si">}</span><span class="sb"> 次重试后成功`</span><span class="p">);</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="k">return</span><span class="w"> </span><span class="nx">result</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="nx">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nx">lastError</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">error</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="ne">Error</span><span class="p">;</span>
+<span class="w">      </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span>
+<span class="w">        </span><span class="sb">`⚠️ </span><span class="si">${</span><span class="nx">options</span><span class="p">.</span><span class="nx">name</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">'操作'</span><span class="si">}</span><span class="sb"> 第 </span><span class="si">${</span><span class="nx">attempt</span><span class="si">}</span><span class="sb"> 次失败: </span><span class="si">${</span><span class="nx">lastError</span><span class="p">.</span><span class="nx">message</span><span class="si">}</span><span class="sb">`</span>
+<span class="w">      </span><span class="p">);</span>
+
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">attempt</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="nx">options</span><span class="p">.</span><span class="nx">maxRetries</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`   </span><span class="si">${</span><span class="nx">delay</span><span class="si">}</span><span class="sb">ms 后重试...`</span><span class="p">);</span>
+<span class="w">        </span><span class="k">await</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Promise</span><span class="p">((</span><span class="nx">resolve</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setTimeout</span><span class="p">(</span><span class="nx">resolve</span><span class="p">,</span><span class="w"> </span><span class="nx">delay</span><span class="p">));</span>
+<span class="w">        </span><span class="nx">delay</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mf">2</span><span class="p">;</span><span class="w"> </span><span class="c1">// 指数退避</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="k">throw</span><span class="w"> </span><span class="nx">lastError</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 使用示例</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(</span>
+<span class="w">  </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">publishToWechat</span><span class="p">(</span><span class="nx">article</span><span class="p">),</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">maxRetries</span><span class="o">:</span><span class="w"> </span><span class="kt">3</span><span class="p">,</span><span class="w"> </span><span class="nx">baseDelayMs</span><span class="o">:</span><span class="w"> </span><span class="kt">1000</span><span class="p">,</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'发布到微信'</span><span class="w"> </span><span class="p">}</span>
+<span class="p">);</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">踩坑经验：</strong><br/>
+- 重试次数 3 次足够，太多会浪费等待时间<br/>
+- 指数退避（每次延迟翻倍）比固定延迟更友好<br/>
+- 确保操作是幂等的——多次执行结果相同</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.3 条件分支：根据文章类型选择流程</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">不同类型的文章，处理流程不同：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">技术文章：审阅 → 格式化 → 发布</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">转载文章：只格式化 → 发布</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">草稿：只保存备份</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">在 Skill 中实现条件判断：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">&lt;!-- ~/.claude/skills/article-process/SKILL.md --&gt;</span>
+<span class="gu">---</span>
+name: article-process
+description: 根据文章类型执行不同处理流程
+triggers:
+<span class="w">  </span><span class="k">-</span><span class="w"> </span>"处理文章"
+<span class="gu">  - "文章流程"</span>
+<span class="gu">---</span>
+
+<span class="gu">## 执行逻辑</span>
+
+<span class="k">1.</span> 读取文章 frontmatter 中的 <span class="sb">`type`</span> 字段
+<span class="k">2.</span> 根据类型执行不同流程：
+
+<span class="gs">**type: tech（技术文章）**</span>
+<span class="k">1.</span> 运行技术审阅
+<span class="k">2.</span> 运行禁用词检查
+<span class="k">3.</span> 格式化为 HTML
+<span class="k">4.</span> 生成封面图
+<span class="k">5.</span> 询问是否发布
+
+<span class="gs">**type: repost（转载文章）**</span>
+<span class="k">1.</span> 格式化为 HTML
+<span class="k">2.</span> 生成封面图
+<span class="k">3.</span> 询问是否发布
+
+<span class="gs">**type: draft（草稿）**</span>
+<span class="k">1.</span> 仅保存备份
+<span class="k">2.</span> 提示「草稿已保存」
+
+<span class="k">3.</span> 更新 frontmatter 中的 <span class="sb">`status`</span> 字段
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">在 Hook 中根据文件类型触发：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PreToolUse</code> 和 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>PostToolUse</code> 支持 matcher，可以用来根据工具名称触发：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"PreToolUse"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"matcher"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Write|Edit"</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"echo 'File modified' &gt;&gt; /tmp/changes.log"</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">但 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Stop</code> 钩子不支持 matcher。如果需要条件触发，要在脚本内部判断：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/bin/bash</span>
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">"articles/workspaces"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span>make<span class="w"> </span>review
+<span class="k">fi</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.4 状态管理与追踪</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">用 frontmatter 记录文章状态，是最轻量的方案：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nn">---</span>
+<span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">我的文章</span>
+<span class="nt">status</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">draft</span><span class="w">      </span><span class="c1"># draft → reviewing → ready → published</span>
+<span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">tech</span>
+<span class="nt">created</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2024-01-15</span>
+<span class="nt">updated</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2024-01-16</span>
+<span class="nt">reviewed_at</span><span class="p">:</span><span class="w">       </span><span class="c1"># 审阅完成后填写</span>
+<span class="nt">published_at</span><span class="p">:</span><span class="w">      </span><span class="c1"># 发布完成后填写</span>
+<span class="nt">published_url</span><span class="p">:</span><span class="w">     </span><span class="c1"># 发布后的文章链接</span>
+<span class="nn">---</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">状态更新脚本：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/bin/bash</span>
+
+<span class="nv">FILE</span><span class="o">=</span><span class="nv">$1</span>
+<span class="nv">NEW_STATUS</span><span class="o">=</span><span class="nv">$2</span>
+
+sed<span class="w"> </span>-i.bak<span class="w"> </span><span class="s2">"s/^status:.*/status: </span><span class="nv">$NEW_STATUS</span><span class="s2">/"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$FILE</span><span class="s2">"</span>
+
+sed<span class="w"> </span>-i.bak<span class="w"> </span><span class="s2">"s/^updated:.*/updated: </span><span class="k">$(</span>date<span class="w"> </span>+%Y-%m-%d<span class="k">)</span><span class="s2">/"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$FILE</span><span class="s2">"</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="s2">"</span><span class="nv">$NEW_STATUS</span><span class="s2">"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"published"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span>sed<span class="w"> </span>-i.bak<span class="w"> </span><span class="s2">"s/^published_at:.*/published_at: </span><span class="k">$(</span>date<span class="w"> </span>+%Y-%m-%d<span class="k">)</span><span class="s2">/"</span><span class="w"> </span><span class="s2">"</span><span class="nv">$FILE</span><span class="s2">"</span>
+<span class="k">fi</span>
+
+rm<span class="w"> </span>-f<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">FILE</span><span class="si">}</span><span class="s2">.bak"</span>
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"✅ 状态已更新为: </span><span class="nv">$NEW_STATUS</span><span class="s2">"</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.5 监控与日志</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">知道每次自动化执行的结果，方便排查问题。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// logger.ts</span>
+<span class="kd">interface</span><span class="w"> </span><span class="nx">LogEntry</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">timestamp</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">level</span><span class="o">:</span><span class="w"> </span><span class="s1">'info'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'warn'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'error'</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'write'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'review'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'format'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'publish'</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">article?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">duration?</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">log</span><span class="p">(</span><span class="nx">entry</span><span class="o">:</span><span class="w"> </span><span class="kt">Omit</span><span class="o">&lt;</span><span class="nx">LogEntry</span><span class="p">,</span><span class="w"> </span><span class="s1">'timestamp'</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">fullEntry</span><span class="o">:</span><span class="w"> </span><span class="kt">LogEntry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">...</span><span class="nx">entry</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">timestamp</span><span class="o">:</span><span class="w"> </span><span class="kt">new</span><span class="w"> </span><span class="nb">Date</span><span class="p">().</span><span class="nx">toISOString</span><span class="p">(),</span>
+<span class="w">  </span><span class="p">};</span>
+
+<span class="w">  </span><span class="c1">// 输出到文件</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">logLine</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">fullEntry</span><span class="p">);</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">logFile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sb">`</span><span class="si">${</span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">HOME</span><span class="si">}</span><span class="sb">/.claude/article-pipeline.log`</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">require</span><span class="p">(</span><span class="s1">'fs'</span><span class="p">).</span><span class="nx">appendFileSync</span><span class="p">(</span><span class="nx">logFile</span><span class="p">,</span><span class="w"> </span><span class="nx">logLine</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s1">'\n'</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// 同时输出到控制台</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">prefix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">entry</span><span class="p">.</span><span class="nx">level</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">'error'</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s1">'❌'</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="nx">entry</span><span class="p">.</span><span class="nx">level</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">'warn'</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s1">'⚠️'</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s1">'✅'</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`</span><span class="si">${</span><span class="nx">prefix</span><span class="si">}</span><span class="sb"> [</span><span class="si">${</span><span class="nx">entry</span><span class="p">.</span><span class="nx">stage</span><span class="si">}</span><span class="sb">] </span><span class="si">${</span><span class="nx">entry</span><span class="p">.</span><span class="nx">message</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">entry</span><span class="p">.</span><span class="nx">duration</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`   耗时: </span><span class="si">${</span><span class="nx">entry</span><span class="p">.</span><span class="nx">duration</span><span class="si">}</span><span class="sb">ms`</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 使用示例</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">start</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Date</span><span class="p">.</span><span class="nx">now</span><span class="p">();</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">formatArticle</span><span class="p">(</span><span class="nx">article</span><span class="p">);</span>
+<span class="nx">log</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">level</span><span class="o">:</span><span class="w"> </span><span class="s1">'info'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">stage</span><span class="o">:</span><span class="w"> </span><span class="s1">'format'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">article</span><span class="o">:</span><span class="w"> </span><span class="kt">article</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">message</span><span class="o">:</span><span class="w"> </span><span class="s1">'格式化完成'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">duration</span><span class="o">:</span><span class="w"> </span><span class="kt">Date.now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">start</span><span class="p">,</span>
+<span class="p">});</span>
+</code></pre></div>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">五、踩坑经验与最佳实践</h2>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.1 配置调试技巧</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Hook 不触发：</strong><br/>
+1. 检查 JSON 语法：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>cat ~/.claude/settings.json | python3 -m json.tool</code><br/>
+2. 检查 matcher 正则是否正确（可以用在线正则测试）<br/>
+3. 查看 Claude Code 日志：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>~/.claude/logs/</code></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">MCP 连不上：</strong><br/>
+1. 独立启动 server 测试：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>npx @modelcontextprotocol/server-filesystem /your/path</code><br/>
+2. 检查端口占用：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>lsof -i :端口号</code><br/>
+3. 检查命令路径：用绝对路径更稳妥</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Skill 无响应：</strong><br/>
+1. 确认文件位置：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>ls ~/.claude/skills/my-skill/SKILL.md</code><br/>
+2. 检查触发词：SKILL.md 中的 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>triggers</code> 是否匹配你说的话<br/>
+3. 确认 Skill 已加载：在 Claude Code 中输入 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>/</code> 查看列表</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.2 常见错误排查</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">错误现象</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">可能原因</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">解决方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Hook 不执行</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">JSON 格式错误</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>python3 -m json.tool</code> 验证</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">MCP 超时</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">进程未启动</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">检查 server 状态，重启 Claude Code</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Skill 无响应</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">触发词不匹配</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">检查 SKILL.md 中的 triggers</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">脚本权限错误</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">缺少执行权限</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>chmod +x script.sh</code></td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">路径找不到</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">工作目录错误</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">使用绝对路径</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">API 调用失败</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">权限不足</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">运行 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>check-permissions.ts</code></td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">封面图生成失败</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">缺少 Pillow</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">加 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>--bootstrap-pillow</code> 参数</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">HTML 样式丢失</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">微信过滤</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">确认使用内联样式</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Git 提交失败</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">没有变更</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">加 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>2&gt;/dev/null \|\| true</code></td>
+</tr>
+</tbody>
+</table>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.3 性能优化建议</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">减少不必要的 Hook 触发：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 不好：全局匹配</span>
+<span class="nt">"matcher"</span><span class="p">:</span><span class="w"> </span><span class="nt">""</span>
+
+<span class="c1">// 好：精准匹配</span>
+<span class="nt">"matcher"</span><span class="p">:</span><span class="w"> </span><span class="s2">"articles/workspaces/.*\\.md$"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">MCP server 按需启动：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">低频使用的 MCP 不要常驻，用到了再启动。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 只配置你需要的 MCP server</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"frequently-used"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"my-frequent-server"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="c1">// 不配置低频 server，需要时再添加</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">提示：</strong> 可以用命令行动态管理 MCP server：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>claude<span class="w"> </span>mcp<span class="w"> </span>list
+
+claude<span class="w"> </span>mcp<span class="w"> </span>add<span class="w"> </span>my-server<span class="w"> </span>--<span class="w"> </span>npx<span class="w"> </span>-y<span class="w"> </span>my-server
+
+claude<span class="w"> </span>mcp<span class="w"> </span>remove<span class="w"> </span>my-server
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">并行任务并发控制：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>ls<span class="w"> </span>*.md<span class="w"> </span><span class="p">|</span><span class="w"> </span>xargs<span class="w"> </span>-P<span class="w"> </span><span class="m">3</span><span class="w"> </span>-I<span class="w"> </span><span class="o">{}</span><span class="w"> </span>./process.sh<span class="w"> </span><span class="o">{}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">缓存审阅结果：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">如果文章没变，不需要重复审阅。可以在 frontmatter 中记录 hash：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nn">---</span>
+<span class="nt">content_hash</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">abc123</span><span class="w">  </span><span class="c1"># 文章内容的 hash</span>
+<span class="nt">reviewed_at</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2024-01-15</span>
+<span class="nn">---</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.4 安全注意事项</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">不要硬编码敏感信息：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 不好</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"my-server"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sk-xxxxx"</span><span class="w">  </span><span class="c1">// 不要这样写！</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// 好：使用环境变量</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"my-server"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"API_KEY"</span><span class="p">:</span><span class="w"> </span><span class="s2">"${MY_API_KEY}"</span><span class="w">  </span><span class="c1">// 从环境变量读取</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">MCP server 限制可访问目录：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"filesystem"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"-y"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"@modelcontextprotocol/server-filesystem"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"/Users/you/articles"</span><span class="p">,</span><span class="w">  </span><span class="c1">// 只允许访问这个目录</span>
+<span class="w">        </span><span class="s2">"--readonly"</span><span class="w">            </span><span class="c1">// 只读模式</span>
+<span class="w">      </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">审阅结果人工复核：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">自动化审阅可能误判。建议：<br/>
+- 禁用词检查报告只作为参考，人工确认后再改<br/>
+- 技术审阅的结果，让作者自己决定是否采纳</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.5 渐进式自动化建议</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">不要一次性把所有环节都自动化。建议顺序：</p>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">先自动化最频繁、最机械的步骤</strong><br/>
+   - 格式化（每次都要做）<br/>
+   - 封面生成（每次都要做）<br/>
+   - 这些步骤出错概率低，自动化收益高</p>
+</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">再自动化需要人工复核的步骤</strong><br/>
+   - 禁用词检查（误报可以忽略）<br/>
+   - 技术审阅（结果需要人工判断）</p>
+</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">最后自动化跨阶段编排</strong><br/>
+   - 完整流水线<br/>
+   - 条件分支</p>
+</li>
+</ol>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">何时停止自动化：</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">边际收益递减：花在调试自动化上的时间，比手动操作还多</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">灵活性下降：每次调整都要改配置，不如手动快</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">维护成本过高：配置文件比实际工作还复杂</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">记住：自动化的目的是省心，不是炫技。如果一个流程每月只跑一次，手动做可能更划算。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">总结</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Claude Code 的自动化工作流，核心是理解三驾马车的边界：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">Hooks</strong>：轻量级事件触发，适合「在某个时机自动执行脚本」</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">MCP</strong>：外部能力扩展，适合「让 Claude 访问数据或工具」</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">Skills</strong>：任务封装复用，适合「复杂多步骤流程」</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">组合使用，就能搭建出真正省心的自动化流水线。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这篇文章以内容生产为例，但思路可以迁移到任何场景：代码审查流水线、项目脚手架、数据报表生成……关键是拆解阶段、明确边界、渐进式自动化。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">完整的配置文件和脚本，都可以在这个仓库里找到。</strong> 照着抄作业，再根据自己的需求调整，就能跑起来。</p>
+</body>
+</html>

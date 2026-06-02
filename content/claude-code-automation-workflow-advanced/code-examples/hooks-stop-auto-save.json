@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /path/to/articles/workspaces && git add . && git commit -m 'auto: draft save at $(date +%Y%m%d-%H%M)' 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
