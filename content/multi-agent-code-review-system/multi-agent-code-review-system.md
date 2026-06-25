@@ -1,3 +1,10 @@
+---
+title: 我搭了一套三 Agent 代码审查系统：检出率 91%、成本 $0.03
+author: 银色超音速可乐
+summary: 完整 Workflow 脚本 + MCP 工具 + 踩坑复盘，可直接复用
+coverImage: imgs/cover.png
+---
+
 # 我搭了一套三 Agent 代码审查系统：检出率 91%、成本 $0.03
 
 **副标题：** 完整 Workflow 脚本 + MCP 工具 + 踩坑复盘，可直接复用
