@@ -132,17 +132,19 @@
 <hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
 <h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">一、快速上手（3 分钟）</h2>
 <p style="margin: 16px 0; line-height: 1.85; color: #263a49">想先看效果？</p>
-<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Aias00/agent-skills
-<span class="nb">cd</span><span class="w"> </span>agent-skills/content/multi-agent-code-review-system
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Aias00/agent-skills<span class="w"> </span>/tmp/agent-skills
+
+cp<span class="w"> </span>/tmp/agent-skills/content/multi-agent-code-review-system/code-review.workflow.js<span class="w"> </span><span class="se">\</span>
+<span class="w">   </span>/path/to/your-project/.claude/workflows/
 
 <span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_BASE_URL</span><span class="o">=</span>https://api.deepseek.com/anthropic
 <span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_AUTH_TOKEN</span><span class="o">=</span>&lt;你的<span class="w"> </span>DeepSeek<span class="w"> </span>API<span class="w"> </span>Key&gt;
 <span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_SONNET_MODEL</span><span class="o">=</span>deepseek-v4-pro<span class="o">[</span>1m<span class="o">]</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_HAIKU_MODEL</span><span class="o">=</span>deepseek-v4-flash
 
-<span class="nb">cd</span><span class="w"> </span>/path/to/your/go-project
+<span class="nb">cd</span><span class="w"> </span>/path/to/your-project
 claude
-&gt;<span class="w"> </span>/workflow<span class="w"> </span>code-review.workflow.js
+&gt;<span class="w"> </span>/workflow<span class="w"> </span>code-review
 </code></pre></div>
 <p style="margin: 16px 0; line-height: 1.85; color: #263a49">Workflow 会自动获取当前分支的 diff，跑三 Agent 流水线，输出 Review Report。完整配置（GitHub MCP、Lint MCP、知识库 MCP）见第六节和第九节。</p>
 <hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>

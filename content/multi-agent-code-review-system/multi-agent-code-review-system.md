@@ -37,19 +37,22 @@
 
 ```bash
 # 1. Clone 仓库
-git clone https://github.com/Aias00/agent-skills
-cd agent-skills/content/multi-agent-code-review-system
+git clone https://github.com/Aias00/agent-skills /tmp/agent-skills
 
-# 2. 配置 DeepSeek API
+# 2. 把 Workflow 脚本复制到你的项目
+cp /tmp/agent-skills/content/multi-agent-code-review-system/code-review.workflow.js \
+   /path/to/your-project/.claude/workflows/
+
+# 3. 配置 DeepSeek API
 export ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic
 export ANTHROPIC_AUTH_TOKEN=<你的 DeepSeek API Key>
 export ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro[1m]
 export ANTHROPIC_DEFAULT_HAIKU_MODEL=deepseek-v4-flash
 
-# 3. 进入项目目录，运行 Workflow
-cd /path/to/your/go-project
+# 4. 在你的项目目录运行
+cd /path/to/your-project
 claude
-> /workflow code-review.workflow.js
+> /workflow code-review
 ```
 
 Workflow 会自动获取当前分支的 diff，跑三 Agent 流水线，输出 Review Report。完整配置（GitHub MCP、Lint MCP、知识库 MCP）见第六节和第九节。
