@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章</title>
+    <style>
+        :root {
+            
+  /* ===== 主色系 ===== */
+  --primary-purple: #4b6b81;      /* 兼容旧变量名，实际作为主品牌色 */
+  --primary-blue: #4b6b81;        /* 主蓝灰色 - 标题、链接、强调 */
+  --primary-cyan: #6f8fa4;        /* 辅助浅蓝灰 - 技术类提示 */
+  --primary-teal: #5c7a8d;        /* 次级强调色 */
+
+  /* ===== 功能色 ===== */
+  --success-green: #5d7b6a;
+  --warning-amber: #b88c54;
+  --danger-red: #a36b68;
+  --info-blue: #4b6b81;
+
+  /* ===== 文字色系 ===== */
+  --text-primary: #263a49;
+  --text-secondary: #3e596a;
+  --text-tertiary: #627584;
+  --text-light: #8c9aa5;
+
+  /* ===== 背景色系 ===== */
+  --bg-white: #fffdf9;
+  --bg-gray-50: #f8fafb;
+  --bg-gray-100: #eef3f5;
+  --bg-purple-50: #eef3f5;
+  --bg-blue-50: #eef3f5;
+  --bg-cyan-50: #f1f5f7;
+  --bg-green-50: #f3f6f4;
+  --bg-amber-50: #faf6ef;
+  --bg-red-50: #faf3f2;
+
+  /* ===== 代码块色系 ===== */
+  --code-bg: #243543;
+  --code-text: #d9e3e9;
+  --code-keyword: #a9c0cf;
+  --code-function: #c7d7e1;
+  --code-string: #c8d7c8;
+  --code-number: #d4b690;
+  --code-comment: #8aa0ad;
+  --code-variable: #d6c1bf;
+  --code-builtin: #d9c8a8;
+
+  /* ===== 边框色系 ===== */
+  --border-light: #d7dfe5;
+  --border-medium: #c3d0d8;
+  --border-dark: #90a2ad;
+
+  /* ===== 阴影色系 ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(38, 58, 73, 0.06);
+  --shadow-md: 0 8px 16px -10px rgba(38, 58, 73, 0.16);
+  --shadow-lg: 0 16px 32px -18px rgba(38, 58, 73, 0.18);
+
+  /* ===== 间距系统 ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ===== 圆角系统 ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+        }
+
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text-primary, #333);
+            background: var(--bg-white, #fff);
+            padding: 20px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- ⚠️ 标题请在微信公众号编辑器中单独填写，HTML 中已自动移除 H1 标题 -->
+    <p style="margin: 16px 0; line-height: 1.85; color: #263a49">完整 Workflow 脚本 + MCP 工具 + 踩坑复盘，可直接复用</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">先说结论。搭了一个<strong style="font-weight: 600; color: #263a49">三 Agent 流水线代码审查系统</strong>，实测数据：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">指标</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">数值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">检出率</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">91%</strong>（10 次 Review 与两位 Senior 工程师交叉对比）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">误报率</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">8%</strong>（远低于单 Agent 方案的 25%）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">成本</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">$0.03 / 次</strong>（人工 Review 约 $25–50）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">耗时</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">45 秒</strong>（人工 Review 约 15–30 分钟）</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">真正的价值不在速度和成本——在<strong style="font-weight: 600; color: #263a49">它发现了人工 Review 容易漏掉的东西</strong>：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">跨文件的竞态条件</strong>：Agent 1 追溯调用链 → Agent 2 检测并发安全，人工很难逐文件比对</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">隐式的 nil 指针传播路径</strong>：Agent 1 识别改动影响范围 → Agent 2 检测边界条件遗漏</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">修复建议引入新 Bug</strong>：Agent 3 生成 Patch → Agent 4 验证修复是否破坏 defer / 错误处理</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">下面把这套系统的完整实现还原出来——架构设计、Workflow 脚本、MCP 工具、成本分析、踩坑复盘。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">如果你读过我之前写的 Dynamic Workflows 解读和 Agent 工作流拆解实录，这篇是它们的落地版：一个<strong style="font-weight: 600; color: #263a49">完整可运行的项目</strong>。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><img alt="封面" src="imgs/cover.png" style="max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"/></p>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">📦 <strong style="font-weight: 600; color: #263a49">GitHub 仓库：</strong> https://github.com/Aias00/agent-skills/tree/main/content/multi-agent-code-review-system</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">所有代码、配置、Prompt 模板都可以直接复用。看完这篇文章，你就能在自己的项目里跑起来。</p>
+</blockquote>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">一、快速上手（3 分钟）</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">想先看效果？</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Aias00/agent-skills
+<span class="nb">cd</span><span class="w"> </span>agent-skills/content/multi-agent-code-review-system
+
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_BASE_URL</span><span class="o">=</span>https://api.deepseek.com/anthropic
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_AUTH_TOKEN</span><span class="o">=</span>&lt;你的<span class="w"> </span>DeepSeek<span class="w"> </span>API<span class="w"> </span>Key&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_SONNET_MODEL</span><span class="o">=</span>deepseek-v4-pro<span class="o">[</span>1m<span class="o">]</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_HAIKU_MODEL</span><span class="o">=</span>deepseek-v4-flash
+
+<span class="nb">cd</span><span class="w"> </span>/path/to/your/go-project
+claude
+&gt;<span class="w"> </span>/workflow<span class="w"> </span>code-review.workflow.js
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Workflow 会自动获取当前分支的 diff，跑三 Agent 流水线，输出 Review Report。完整配置（GitHub MCP、Lint MCP、知识库 MCP）见第六节和第九节。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">二、系统概览：三 Agent 流水线怎么跑</h2>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>git push → Webhook 触发
+  → Agent 1：代码分析（结构化扫描 PR diff，输出改动摘要）
+  → Agent 2：问题检测（Bug / 安全 / 性能，输出问题列表）
+  → Agent 3：修复建议（针对每个问题生成 Patch 建议）
+  → 汇总为 Markdown Review Report
+  → 自动评论到 GitHub PR
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">测试环境：中等规模 Go 项目（约 5 万行代码），PR 平均 187 行 diff、15 个文件。检测率和误报率来自 10 次 Review 与两位 Senior 工程师交叉对比，样本较小，仅作参考——你的项目、语言、团队规范不同，数字会有差异。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><img alt="三 Agent 流水线架构" src="imgs/pipeline-architecture.png" style="max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"/></p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">三、需求场景：为什么代码审查适合多 Agent</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">先看一组对比（同一个项目上分别测试）：</p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">方案</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">检出率</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">误报率</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">成本</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">单 Agent（超长 Prompt）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">65%</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">25%</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$0.02</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">30s</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">三 Agent 流水线</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">91%</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">8%</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">$0.03</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">45s</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">人工 Review（Senior）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">~80%</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">&lt;5%</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$25–50</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">15–30min</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">单 Agent 检出率低、误报率高，根因有三个：</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">问题 1：上下文过载。</strong> 单 Agent 要同时处理 PR diff + 仓库代码 + 调用链 + 业务文档 + 编码规范 + 历史 Bug 库。一个 200K 窗口塞不下这么多信息，Agent 只能选择性读取——漏掉关键文件，检出率直接下降。三 Agent 方案中，Agent 1 只读 PR diff + 调用链（聚焦「改了什么」），Agent 2 拿到已浓缩的结构化摘要，每个 Agent 的上下文窗口绰绰有余。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">问题 2：目标冲突。</strong>「描述代码」和「找出 Bug」是两种思维模式。同一个 Agent 既分析又检测，容易「自己认可自己」——分析时觉得逻辑合理，检测时就不会判定为 Bug。三 Agent 方案强制职责分离：Agent 1 禁止评价，Agent 2 禁止修复，Agent 3 禁止重新检测。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">问题 3：误报失控。</strong> 单 Agent 常见误报：把 Go 标准 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>if err != nil { return err }</code> 标为 Bug、把接口修改标为破坏性变更、把性能优化当「不必要的复杂度」。三 Agent 先理解改动意图再做判断，误报率从 25% 降到 8%。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">结论：</strong> 三 Agent 不是「三个比一个聪明」——是<strong style="font-weight: 600; color: #263a49">职责拆分让每个 Agent 聚焦单一目标</strong>，减少信息过载和目标冲突。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这三个 Agent 的信息流向：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>PR Diff + 仓库上下文
+        │
+        ▼
+  ┌─────────────────┐
+  │  Agent 1        │
+  │  代码分析        │
+  │  输出：结构化摘要  │
+  └────────┬────────┘
+           │ 改动摘要
+           ▼
+  ┌─────────────────┐
+  │  Agent 2        │
+  │  问题检测        │
+  │  输出：问题列表    │
+  └────────┬────────┘
+           │ 问题列表 + 上下文
+           ▼
+  ┌─────────────────┐
+  │  Agent 3        │
+  │  修复建议        │
+  │  输出：Patch + 解释 │
+  └────────┬────────┘
+           │
+           ▼
+     Review Report
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">每个 Agent 的输入是<strong style="font-weight: 600; color: #263a49">上一个 Agent 的结构化输出</strong>。信息在管道里逐层浓缩，每个 Agent 只需要盯住自己的子任务。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">四、架构设计：三个 Agent 的职责与 Prompt</h2>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.1 Agent 1：代码分析（Code Analyzer）</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">职责：</strong> 读懂 PR 改了什么，输出结构化摘要。<strong style="font-weight: 600; color: #263a49">不找 bug，只描述事实。</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>git diff</code> + 仓库关键文件（接口定义、调用链）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输出 Schema：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"summary"</span><span class="p">:</span><span class="w"> </span><span class="s2">"本次 PR 将用户权限判断从硬编码 role 检查迁移到 RBAC 策略引擎"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"changedFiles"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"internal/auth/authz.go"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"changeType"</span><span class="p">:</span><span class="w"> </span><span class="s2">"added"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"purpose"</span><span class="p">:</span><span class="w"> </span><span class="s2">"新增 authz.Check() 核心方法"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"riskLevel"</span><span class="p">:</span><span class="w"> </span><span class="s2">"high"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"callers"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"handler/user.go:45"</span><span class="p">,</span><span class="w"> </span><span class="s2">"service/order.go:120"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"dependencies"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"internal/auth/policy.go"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"affectedModules"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"auth"</span><span class="p">,</span><span class="w"> </span><span class="s2">"handler"</span><span class="p">,</span><span class="w"> </span><span class="s2">"service"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"crossCuttingConcerns"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">"所有 handler 层权限判断统一走 authz.Check"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"测试文件需要同步更新 mock"</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">核心 Prompt 设计：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>你是一个代码分析专家。你的任务是**描述**代码改了什么，而不是评价改得好不好。
+
+<span class="gu">## 输入</span>
+你将收到一个 git diff 和相关文件的上下文。
+
+<span class="gu">## 分析要求</span>
+<span class="k">1.</span> 对每个改动文件，识别：
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>改了什么（新增/修改/删除）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>这段代码的业务目的
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>谁调用了它（向上追溯调用链）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>它依赖了什么（向下追溯依赖链）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>改动风险等级（high/medium/low）
+
+<span class="k">2.</span> 识别跨文件的关联改动——如果一个文件的改动会影响另一个文件的假设，请明确标注。
+
+<span class="k">3.</span> 输出必须严格遵循 JSON Schema。不要输出多余的解释。
+
+<span class="gu">## 禁止</span>
+<span class="k">-</span><span class="w"> </span>不要评价代码质量
+<span class="k">-</span><span class="w"> </span>不要提修改建议
+<span class="k">-</span><span class="w"> </span>不要猜测作者意图（不确定就问，标记为 "uncertain"）
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">设计要点：</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">限制职责</strong>：「只描述，不评价」——这是最关键的设计决策。如果 Agent 1 混入了判断，下游 Agent 2 就会被带偏</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">结构化输出</strong>：强制 JSON Schema，确保下游 Agent 能可靠地消费数据</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">调用链追溯</strong>：Agent 1 需要 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>grep</code> 和 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>read</code> 工具来追溯调用关系</li>
+</ul>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.2 Agent 2：问题检测（Issue Detector）</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">职责：</strong> 基于 Agent 1 的摘要 + 原始代码，找出具体问题。<strong style="font-weight: 600; color: #263a49">多个检测维度并行运行。</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> Agent 1 的结构化摘要 + 改动文件的完整代码</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">检测维度（每个维度独立运行）：</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">维度</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">检测内容</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Bug</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">逻辑错误、边界条件、nil 指针、并发安全</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">DeepSeek V4-Pro</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Security</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">SQL 注入、XSS、认证绕过、敏感信息泄露</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">DeepSeek V4-Pro</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Performance</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">N+1 查询、不必要的内存分配、阻塞调用</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">DeepSeek V4-Flash</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">三个维度<strong style="font-weight: 600; color: #263a49">并行执行</strong>，互不干扰。每个维度独立输出检测结果。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Bug 检测 Prompt：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>你是一个专业的 Bug 猎手。你的任务是在给定代码中找到**可能导致生产事故的逻辑错误**。
+
+<span class="gu">## 上下文</span>
+你会收到：
+<span class="k">1.</span> 代码分析 Agent 的改动摘要（理解这段代码的目的）
+<span class="k">2.</span> 改动文件的完整代码
+
+<span class="gu">## 检测清单（按优先级）</span>
+<span class="k">1.</span> <span class="gs">**边界条件遗漏**</span>
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>空切片/空 map 的处理
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>整数溢出/下溢
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>字符串截断（多字节字符）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>时间边界（时区、闰秒）
+
+<span class="k">2.</span> <span class="gs">**并发安全**</span>
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>共享变量无保护
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>goroutine 泄漏（无 ctx 取消）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>channel 未关闭导致死锁
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>map 并发读写
+
+<span class="k">3.</span> <span class="gs">**错误处理缺陷**</span>
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>error 被吞掉（`_ = err` 或无接收）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>错误返回后继续使用返回值
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>defer 中的错误未处理
+
+<span class="k">4.</span> <span class="gs">**逻辑缺陷**</span>
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>条件判断反了（&gt; vs &gt;=）
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>提前 return 导致后续逻辑跳过
+<span class="w">   </span><span class="k">-</span><span class="w"> </span>类型断言未检查 ok
+
+<span class="gu">## 输出格式</span>
+每个问题输出：
+<span class="k">-</span><span class="w"> </span>severity: critical / high / medium / low
+<span class="k">-</span><span class="w"> </span>file + 行号
+<span class="k">-</span><span class="w"> </span>问题描述（一句话）
+<span class="k">-</span><span class="w"> </span>触发条件（什么输入/状态会触发）
+<span class="k">-</span><span class="w"> </span>影响（最坏后果是什么）
+
+不要输出「建议怎么修」——那是下一个 Agent 的工作。
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">设计要点：</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">维度并行</strong>：三个维度独立运行，速度快；各自有专门的 Prompt，检出更精准</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">用不同模型</strong>：Bug 和安全用 DeepSeek V4-Pro（需要深度推理），性能检测用 DeepSeek V4-Flash（模式匹配为主，省钱）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">和 Agent 1 解耦</strong>：Agent 2 拿到的是 Agent 1 的摘要 + 原始代码，即使 Agent 1 漏了什么，Agent 2 也能自己发现</li>
+</ul>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">3.3 Agent 3：修复建议（Fix Suggester）</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">职责：</strong> 针对 Agent 2 找出的每个问题，生成具体的 Patch 建议和解释。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输入：</strong> Agent 2 的问题列表 + Agent 1 的改动摘要 + 原始代码</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">输出格式：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"fixes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"issueRef"</span><span class="p">:</span><span class="w"> </span><span class="s2">"BUG-001"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"patch"</span><span class="p">:</span><span class="w"> </span><span class="s2">"```diff\n- if user.Role == \"admin\"\n+ if authz.Check(user, \"admin\", resource)\n```"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"explanation"</span><span class="p">:</span><span class="w"> </span><span class="s2">"原有的硬编码角色检查绕过了策略引擎，导致策略变更不生效。改为调用 authz.Check() 统一走 RBAC。"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"riskOfFix"</span><span class="p">:</span><span class="w"> </span><span class="s2">"low"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"testSuggestion"</span><span class="p">:</span><span class="w"> </span><span class="s2">"添加测试用例：普通用户直接调用此接口应返回 403"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">核心 Prompt 设计：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>你是代码修复专家。针对每个检测到的问题，生成精确的修复方案。
+
+<span class="gu">## 修复原则</span>
+<span class="k">1.</span> <span class="gs">**最小改动**</span>：用最少代码修改解决问题，不要重构整个函数
+<span class="k">2.</span> <span class="gs">**不引入新问题**</span>：修复一个 bug 时不能创建新的 bug
+<span class="k">3.</span> <span class="gs">**保持风格一致**</span>：代码风格与周围代码保持统一
+<span class="k">4.</span> <span class="gs">**给出测试建议**</span>：每个修复附一个最小的测试用例描述
+
+<span class="gu">## 输出要求</span>
+<span class="k">-</span><span class="w"> </span>patch 必须是 unified diff 格式
+<span class="k">-</span><span class="w"> </span>explanation 必须是中文（方便国内团队直接讨论）
+<span class="k">-</span><span class="w"> </span>riskOfFix 评估修复本身的风险（low/medium/high）
+<span class="k">-</span><span class="w"> </span>如果无法确定最佳修复方案，列出 2-3 个选项并标注推荐度
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">设计要点：</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">每个问题独立修复</strong>：不合并多个问题的修复，方便 PR 作者逐个确认</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">评估修复风险</strong>：有些修复方案本身就有风险（比如改动核心函数签名），需要标注出来</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">中文解释</strong>：团队内部讨论时，中文解释比英文更直接</li>
+</ul>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">五、Workflow 编排：Claude Code 的 Harness 脚本</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">下面是最核心的部分——怎么把三个 Agent 串成一条可靠的流水线。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.1 方案选择：动态 Workflow vs 静态脚本</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">维度</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">动态 Workflow</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">静态 Harness 脚本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">灵活性</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">每次根据任务调整</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">固定流程</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Token 消耗</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">高（每次生成编排）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">低（编排写一次）</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">稳定性</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">可能漂移</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">确定性强</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">适合场景</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">一次性复杂任务</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">重复性流程</strong> ✅</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">代码审查是<strong style="font-weight: 600; color: #263a49">高频重复任务</strong>——每个 PR 都要跑。这种场景<strong style="font-weight: 600; color: #263a49">用静态 Harness 脚本更合适</strong>。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.2 Workflow 脚本（核心结构）</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">完整脚本（含 Prompt 模板和 JSON Schema）见 GitHub，这里展示骨架和关键设计：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// code-review.workflow.js —— 放到 .claude/workflows/ 下</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">meta</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="s1">'code-review'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">description</span><span class="o">:</span><span class="w"> </span><span class="s1">'三 Agent 流水线代码审查：分析 → 检测 → 修复建议'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">phases</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">'Analyze'</span><span class="p">,</span><span class="w"> </span><span class="nx">detail</span><span class="o">:</span><span class="w"> </span><span class="s1">'Agent 1：结构化代码分析'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">'Detect'</span><span class="p">,</span><span class="w"> </span><span class="nx">detail</span><span class="o">:</span><span class="w"> </span><span class="s1">'Agent 2：多维度并行检测（Bug/安全/性能）'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">'Fix'</span><span class="p">,</span><span class="w"> </span><span class="nx">detail</span><span class="o">:</span><span class="w"> </span><span class="s1">'Agent 3：生成修复建议'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">title</span><span class="o">:</span><span class="w"> </span><span class="s1">'Report'</span><span class="p">,</span><span class="w"> </span><span class="nx">detail</span><span class="o">:</span><span class="w"> </span><span class="s1">'汇总输出 Review Report'</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="c1">// Phase 1 + 2：获取 PR diff → Agent 1 结构化分析</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Analyze'</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">prInfo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`获取当前分支 git diff main...HEAD`</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">analysis</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`你是代码分析专家……`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">schema</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* 强制输出 { summary, changedFiles[], affectedModules[] } */</span><span class="w"> </span><span class="p">}</span>
+<span class="p">})</span>
+
+<span class="c1">// Phase 3：Agent 2 — 三维度并行检测</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Detect'</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">DETECTION_DIMENSIONS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="s1">'bugs'</span><span class="p">,</span><span class="w">      </span><span class="nx">prompt</span><span class="o">:</span><span class="w"> </span><span class="s1">'找出所有逻辑错误……'</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="s1">'security'</span><span class="p">,</span><span class="w">  </span><span class="nx">prompt</span><span class="o">:</span><span class="w"> </span><span class="s1">'找出所有安全漏洞……'</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">key</span><span class="o">:</span><span class="w"> </span><span class="s1">'performance'</span><span class="p">,</span><span class="w"> </span><span class="nx">prompt</span><span class="o">:</span><span class="w"> </span><span class="s1">'找出所有性能隐患……'</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'haiku'</span><span class="w"> </span><span class="p">}</span>
+<span class="p">]</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">detectionResults</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">pipeline</span><span class="p">(</span>
+<span class="w">  </span><span class="nx">DETECTION_DIMENSIONS</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">d</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="nx">d</span><span class="p">.</span><span class="nx">prompt</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="sb">`detect:</span><span class="si">${</span><span class="nx">d</span><span class="p">.</span><span class="nx">key</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="nx">d</span><span class="p">.</span><span class="nx">model</span><span class="p">,</span><span class="w"> </span><span class="nx">schema</span><span class="o">:</span><span class="w"> </span><span class="nx">ISSUE_SCHEMA</span><span class="w"> </span><span class="p">}),</span>
+<span class="w">  </span><span class="nx">result</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* 按 文件+行号 去重 */</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">issues</span><span class="o">:</span><span class="w"> </span><span class="nx">deduped</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1">// Phase 4：Agent 3 — 只修 critical/high</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Fix'</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">fixes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">pipeline</span><span class="p">(</span>
+<span class="w">  </span><span class="nx">allDetectedIssues</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">i</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">severity</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">'critical'</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">severity</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s1">'high'</span><span class="p">),</span>
+<span class="w">  </span><span class="nx">issue</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`你是代码修复专家……`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="sb">`fix:</span><span class="si">${</span><span class="nx">issue</span><span class="p">.</span><span class="nx">id</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="p">,</span><span class="w"> </span><span class="nx">schema</span><span class="o">:</span><span class="w"> </span><span class="nx">FIX_SCHEMA</span><span class="w"> </span><span class="p">})</span>
+<span class="p">)</span>
+
+<span class="c1">// Phase 5：汇总 Report</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Report'</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`基于分析、检测、修复建议，生成 Review Report……`</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="w"> </span><span class="p">})</span>
+
+<span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">analysis</span><span class="p">,</span><span class="w"> </span><span class="nx">issues</span><span class="p">,</span><span class="w"> </span><span class="nx">fixes</span><span class="p">,</span><span class="w"> </span><span class="nx">report</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">📦 完整脚本（含完整 Prompt 和 JSON Schema）：<a href="https://github.com/Aias00/agent-skills/tree/main/content/multi-agent-code-review-system" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">code-review.workflow.js</a></p>
+</blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">核心设计要点：</strong></p>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">Pipeline 模式</strong>：Agent 2 三个维度并行运行，互不干扰——Bug 和安全检测同时进行，而不是等一个跑完再跑下一个</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">Schema 强制输出</strong>：每个 Agent 通过 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>schema</code> 参数强制输出符合 JSON Schema 的结构化数据，下游 Agent 可靠消费</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">去重逻辑</strong>：同一文件同一行被多个维度命中时自动过滤，避免重复报告</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">分级处理</strong>：Agent 3 只处理 critical/high 问题——如果一轮扫描没发现高危问题，跳过修复阶段，省 Token</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">模型分层</strong>：Bug/安全用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>sonnet</code>（→ DeepSeek V4-Pro），性能检测用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>haiku</code>（→ DeepSeek V4-Flash），成本差 3 倍但性能检测对推理深度要求低</li>
+</ol>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><img alt="Workflow 五阶段流程" src="imgs/workflow-phases.png" style="max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"/></p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">4.3 如何使用</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">将脚本保存到 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>.claude/workflows/code-review.workflow.js</code>，然后在 Claude Code 中运行：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>/workflow code-review
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">或者在 PR 提交后，用 Hook 自动触发：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"PostToolUse"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"matcher"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Bash"</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">"hooks"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"command"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'git push'; then claude -p '/workflow code-review' --output-format markdown &gt; review-report.md; fi"</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">六、MCP 工具定义：给 Agent 装上外部能力</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Claude Code 内置的 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Bash</code>、<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Read</code>、<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>Grep</code> 已经够 Agent 做很多事。但要把它真正嵌进开发流程，还需要三个 MCP 工具。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.1 GitHub MCP Server</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">让 Agent 能直接在 PR 下面评论，而不是输出到终端然后手动粘贴。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">安装和启动：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nb">export</span><span class="w"> </span><span class="nv">GITHUB_PERSONAL_ACCESS_TOKEN</span><span class="o">=</span>&lt;你的<span class="w"> </span>GitHub<span class="w"> </span>Token&gt;
+
+npx<span class="w"> </span>-y<span class="w"> </span>@modelcontextprotocol/server-github<span class="w"> </span>--help
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">注册到 Claude Code（<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>~/.claude/config.json</code>）：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="p">{</span>
+<span class="w">  </span><span class="nt">"mcpServers"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"github"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"command"</span><span class="p">:</span><span class="w"> </span><span class="s2">"npx"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-y"</span><span class="p">,</span><span class="w"> </span><span class="s2">"@modelcontextprotocol/server-github"</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"env"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"GITHUB_PERSONAL_ACCESS_TOKEN"</span><span class="p">:</span><span class="w"> </span><span class="s2">"${GITHUB_TOKEN}"</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">在 Workflow 中使用：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 在 Phase 5 之后追加</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Comment'</span><span class="p">)</span>
+
+<span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span>
+<span class="w">  </span><span class="sb">`将以下 Review Report 作为评论发布到当前 PR：</span>
+
+<span class="sb">  </span><span class="si">${</span><span class="nx">report</span><span class="si">}</span>
+
+<span class="sb">  使用 GitHub MCP 工具的 create_issue_comment 方法。</span>
+<span class="sb">  PR 编号从 git 分支名或 git log 中获取。`</span><span class="p">,</span>
+<span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">phase</span><span class="o">:</span><span class="w"> </span><span class="s1">'Comment'</span><span class="w"> </span><span class="p">}</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.2 自定义 Lint MCP Server</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">有些检查（代码规范、复杂度阈值）不需要大模型判断，用规则引擎更快更准。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">启动：</strong> <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>pip install fastmcp &amp;&amp; python lint-server.py</code>，然后在 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>config.json</code> 中注册 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>{ "command": "python", "args": ["lint-server.py"] }</code>。注意 ESLint 需要 Node.js 环境。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">"Lint Checker"</span><span class="p">)</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_complexity</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""检查单个文件的圈复杂度"""</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">"radon"</span><span class="p">,</span> <span class="s2">"cc"</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="s2">"-s"</span><span class="p">,</span> <span class="s2">"-n"</span><span class="p">,</span> <span class="s2">"B"</span><span class="p">],</span>
+        <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"file"</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
+        <span class="s2">"over_threshold"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()),</span>
+        <span class="s2">"details"</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">stdout</span>
+    <span class="p">}</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_eslint</span><span class="p">(</span><span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""对指定文件运行 ESLint"""</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+        <span class="p">[</span><span class="s2">"npx"</span><span class="p">,</span> <span class="s2">"eslint"</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="s2">"--format"</span><span class="p">,</span> <span class="s2">"json"</span><span class="p">],</span>
+        <span class="n">capture_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">issues</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="s1">'json'</span><span class="p">)</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="s2">"[]"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"file"</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
+        <span class="s2">"errorCount"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">issues</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"severity"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="s2">"warningCount"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">issues</span> <span class="k">if</span> <span class="n">i</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"severity"</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="s2">"issues"</span><span class="p">:</span> <span class="n">issues</span>
+    <span class="p">}</span>
+
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">单独做 Lint MCP 的原因：</strong><br/>
+- 圈复杂度和 ESLint 规则不需要 LLM 推理，工具跑一遍更快<br/>
+- 把确定性检查从 Agent 2 中剥离，Agent 2 只盯「需要推理」的问题<br/>
+- 省 Token——静态分析结果直接注入上下文，比让 Agent 读代码再分析便宜得多</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">5.3 知识库 MCP Server</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">团队通常有自己的编码规范和常见 Bug 清单。把这份知识做成 MCP Server，让 Agent 在审查时自动参考。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">启动：</strong> <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>python knowledge-mcp.py</code>，在 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>config.json</code> 注册同上。修改 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>RULES</code> 和 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>KNOWN_BUGS</code> 列表即可适配你团队的规范。</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastMCP</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="n">mcp</span> <span class="o">=</span> <span class="n">FastMCP</span><span class="p">(</span><span class="s2">"Team Knowledge Base"</span><span class="p">)</span>
+
+<span class="n">RULES</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"RULE-001"</span><span class="p">,</span>
+        <span class="s2">"category"</span><span class="p">:</span> <span class="s2">"error-handling"</span><span class="p">,</span>
+        <span class="s2">"pattern"</span><span class="p">:</span> <span class="s2">"所有公开函数必须返回 error 作为最后一个返回值"</span><span class="p">,</span>
+        <span class="s2">"severity"</span><span class="p">:</span> <span class="s2">"high"</span><span class="p">,</span>
+        <span class="s2">"example"</span><span class="p">:</span> <span class="s2">"func DoThing() error // ← 好的</span><span class="se">\n</span><span class="s2">func DoThing() // ← 违规"</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"RULE-002"</span><span class="p">,</span>
+        <span class="s2">"category"</span><span class="p">:</span> <span class="s2">"concurrency"</span><span class="p">,</span>
+        <span class="s2">"pattern"</span><span class="p">:</span> <span class="s2">"goroutine 必须接收 context.Context 用于取消"</span><span class="p">,</span>
+        <span class="s2">"severity"</span><span class="p">:</span> <span class="s2">"critical"</span><span class="p">,</span>
+        <span class="s2">"example"</span><span class="p">:</span> <span class="s2">"go worker(ctx, ch) // ← 好的</span><span class="se">\n</span><span class="s2">go worker(ch)       // ← 可能泄漏"</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"RULE-003"</span><span class="p">,</span>
+        <span class="s2">"category"</span><span class="p">:</span> <span class="s2">"database"</span><span class="p">,</span>
+        <span class="s2">"pattern"</span><span class="p">:</span> <span class="s2">"所有数据库查询必须有超时控制"</span><span class="p">,</span>
+        <span class="s2">"severity"</span><span class="p">:</span> <span class="s2">"critical"</span><span class="p">,</span>
+        <span class="s2">"example"</span><span class="p">:</span> <span class="s2">"db.QueryContext(ctx, sql, args...) // ← 好的</span><span class="se">\n</span><span class="s2">db.Query(sql, args...)           // ← 违规"</span>
+    <span class="p">}</span>
+<span class="p">]</span>
+
+<span class="n">KNOWN_BUGS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"BUG-ARCH-001"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"map 并发写导致 panic"</span><span class="p">,</span>
+        <span class="s2">"pattern"</span><span class="p">:</span> <span class="s2">"多个 goroutine 并发写同一个 map 且未加锁"</span><span class="p">,</span>
+        <span class="s2">"occurrence"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="s2">"fix"</span><span class="p">:</span> <span class="s2">"使用 sync.Map 或 sync.RWMutex"</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+        <span class="s2">"id"</span><span class="p">:</span> <span class="s2">"BUG-ARCH-002"</span><span class="p">,</span>
+        <span class="s2">"title"</span><span class="p">:</span> <span class="s2">"defer 中 err 检查失效"</span><span class="p">,</span>
+        <span class="s2">"pattern"</span><span class="p">:</span> <span class="s2">"defer 中调用的函数返回 error 但未被检查"</span><span class="p">,</span>
+        <span class="s2">"occurrence"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="s2">"fix"</span><span class="p">:</span> <span class="s2">"defer 中使用闭包 + 命名返回值捕获 error"</span>
+    <span class="p">}</span>
+<span class="p">]</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_rules</span><span class="p">(</span><span class="n">category</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""搜索团队编码规范，可按分类过滤"""</span>
+    <span class="k">if</span> <span class="n">category</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">RULES</span> <span class="k">if</span> <span class="n">r</span><span class="p">[</span><span class="s2">"category"</span><span class="p">]</span> <span class="o">==</span> <span class="n">category</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">RULES</span>
+
+<span class="nd">@mcp</span><span class="o">.</span><span class="n">tool</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">search_known_bugs</span><span class="p">(</span><span class="n">keyword</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""搜索历史 Bug 库，用于模式匹配"""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">keyword</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">KNOWN_BUGS</span>
+    <span class="n">keyword</span> <span class="o">=</span> <span class="n">keyword</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">KNOWN_BUGS</span>
+            <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">b</span><span class="p">[</span><span class="s2">"title"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="ow">or</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">b</span><span class="p">[</span><span class="s2">"pattern"</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+
+<span class="n">mcp</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">把知识库 MCP 嵌入 Agent 2：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 在 Agent 2 的 Bug 检测 Prompt 中加入：</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">teamRules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`使用 knowledge-base MCP 的 search_rules 工具，</span>
+<span class="sb">  获取所有 critical 和 high 级别的编码规范。</span>
+<span class="sb">  返回规则列表。`</span><span class="p">)</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="nx">knownBugs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span><span class="sb">`使用 knowledge-base MCP 的 search_known_bugs 工具，</span>
+<span class="sb">  获取所有历史 Bug 记录。返回列表。`</span><span class="p">)</span>
+
+<span class="c1">// 然后将 teamRules 和 knownBugs 注入 Agent 2 的 Prompt</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">bugsPrompt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sb">`</span>
+<span class="si">${</span><span class="nx">BASE_BUG_PROMPT</span><span class="si">}</span>
+
+<span class="sb">## 团队编码规范（必须遵守）</span>
+<span class="si">${</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">teamRules</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span><span class="si">}</span>
+
+<span class="sb">## 历史 Bug 模式（重点排查）</span>
+<span class="si">${</span><span class="nb">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">knownBugs</span><span class="p">,</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">)</span><span class="si">}</span>
+
+<span class="sb">如果你的检测结果命中了上述任何一条规则或历史 Bug 模式，</span>
+<span class="sb">请在输出的 description 中明确标注对应的 RULE-ID 或 BUG-ID。`</span>
+</code></pre></div>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">七、成本分析：跑一次到底花多少钱</h2>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.1 实际测试数据</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">我在一个中等规模 Go 项目（约 5 万行代码）上跑了 10 次 Review，统计如下：</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">实验条件：</strong><br/>
+- PR 大小：平均 187 行 diff（15 个文件）<br/>
+- 模型：Bug/安全用 DeepSeek V4-Pro，性能用 DeepSeek V4-Flash<br/>
+- Claude Code 通过 Anthropic 兼容协议对接 DeepSeek API（配置见下文）<br/>
+- 单次运行包含完整的「分析 → 检测 → 修复建议 → 评论」流程</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">成本明细（单次平均）：</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">阶段</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">Agent</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">模型</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">Input Tokens</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">Output Tokens</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">PR 信息获取</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Main</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">2,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">500</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$0.001</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">代码分析</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Agent 1</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">15,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">2,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">$0.008</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Bug 检测</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Agent 2a</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">12,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">1,500</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$0.007</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">安全检测</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Agent 2b</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">10,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">800</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">$0.005</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">性能检测</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Agent 2c</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">V4-Flash</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">8,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">400</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$0.001</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">修复建议（平均 3 个高危）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Agent 3 × 3</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">6,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">1,200</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">$0.004</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Report 生成</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Main</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">V4-Pro</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">8,000</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">1,500</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">$0.005</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">合计</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">~61,000</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">~7,900</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;"><strong style="font-weight: 600; color: #263a49">~$0.03</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">注：成本基于 2026 年 6 月 DeepSeek 官方 API 定价（V4-Pro：$0.435/$0.87 每百万 input/output token；V4-Flash：$0.14/$0.28）。实际价格以 <a href="https://api-docs.deepseek.com/quick_start/pricing" style="color: #4b6b81; text-decoration: none; border-bottom: 1px solid #4b6b81">api-docs.deepseek.com</a> 为准。对比 Claude Sonnet 4.6（$3/$15）同流程约 $0.21，DeepSeek 成本约为 1/7。</p>
+</blockquote>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">DeepSeek 接入配置：</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Claude Code 原生支持 Anthropic 兼容协议，通过环境变量即可指向 DeepSeek API：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_BASE_URL</span><span class="o">=</span>https://api.deepseek.com/anthropic
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_AUTH_TOKEN</span><span class="o">=</span>&lt;你的<span class="w"> </span>DeepSeek<span class="w"> </span>API<span class="w"> </span>Key&gt;
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_SONNET_MODEL</span><span class="o">=</span>deepseek-v4-pro<span class="o">[</span>1m<span class="o">]</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ANTHROPIC_DEFAULT_HAIKU_MODEL</span><span class="o">=</span>deepseek-v4-flash
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Workflow 脚本里的 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>model: 'sonnet'</code> 和 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>model: 'haiku'</code> 无需改动，Claude Code 会自动映射到 DeepSeek 模型。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.2 与人工 Review 的成本对比</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">方式</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">时间</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">金钱成本</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">覆盖度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">人工（Senior）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">15-30 min</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">~$25-50（按$100/h 计）</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">取决于经验和精力</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">AI 三 Agent</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">~45 sec</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">~$0.03</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">固定检测清单，不疲劳</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">AI + 人工</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">5-10 min</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">~$10</strong></td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">AI 扫盲 + 人判关键</strong></td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">最佳实践是 AI + 人工：</strong><br/>
+- AI 三 Agent 流水线做第一轮全量扫描<br/>
+- 人工只看 AI 标出来的 critical/high 问题，快速判断真假<br/>
+- 中低风险问题直接看汇总，不用逐行读</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">6.3 省钱技巧</h3>
+<ol style="margin: 16px 0; padding-left: 24px; counter-reset: item">
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">按需分层用模型</strong>：Bug/安全用 V4-Pro，性能/Lint 用 V4-Flash，Report 生成可以用 V4-Flash（纯模板化）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">缓存 Agent 1 输出</strong>：如果同一个 PR 跑多次（比如改了 Review 配置），Agent 1 的结果可以复用</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">限制 Agent 1 的上下文窗口</strong>：<code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>git diff</code> 只传改动文件的接口定义，不需要整个仓库。用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>grep</code> + <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>read</code> 按需获取</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">只在有高危问题时启动 Agent 3</strong>：如果 Agent 2 只检出 low/medium，跳过修复建议阶段</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative"><strong style="font-weight: 600; color: #263a49">批量 Review</strong>：多个小 PR 可以合并跑一次 Agent 1，摊薄基础成本</li>
+</ol>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">八、踩坑记录：5 个我遇到的问题和解决方案</h2>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">坑 1：Agent 2 检出「if err != nil」作为 Bug</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">现象：</strong> Bug 检测 Agent 频繁报告「错误处理不当」，实际只是 Go 标准写法 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>if err != nil { return err }</code>。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">根因：</strong> Prompt 中只说了「检查错误处理缺陷」，Agent 过度敏感，把标准模式也当问题了。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解法：</strong> 在 Bug 检测 Prompt 中加入正例 + 负例：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## 不是 Bug 的情况（不要报告）</span>
+<span class="k">1.</span> Go 标准错误处理：`if err != nil { return err }<span class="sb">` 或 `</span>if err != nil { return fmt.Errorf("...: %w", err) }`
+<span class="k">2.</span> 显式的错误忽略且有注释说明：`//nolint:errcheck` 或 <span class="sb">`// safe to ignore because ...`</span>
+<span class="k">3.</span> defer 中调用的 Close() 错误被显式忽略（Go 惯用法）
+
+<span class="gu">## 是 Bug 的情况（请报告）</span>
+<span class="k">1.</span> <span class="sb">`_ = err`</span> 或 <span class="sb">`err`</span> 赋值后无后续检查
+<span class="k">2.</span> 错误返回后继续使用了可能为空的返回值
+<span class="k">3.</span> defer 中的 recover() 吞掉了 panic 且未记录日志
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">坑 2：Agent 1 把整个仓库读进上下文</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">现象：</strong> Agent 1 的 input token 达到了 120K，一次 Review 花了 $0.08。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">根因：</strong> Prompt 中写了「读取所有相关文件」，Agent 用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>find . -name "*.go" | xargs cat</code> 把整个仓库吞进去了。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解法：</strong> 严格限定上下文范围：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## 上下文获取策略</span>
+<span class="k">1.</span> 只读取 git diff 中出现的文件
+<span class="k">2.</span> 对于每个改动文件，只 grep 它的调用者（被谁 import），不递归
+<span class="k">3.</span> 最多读取 5 个关联文件
+<span class="k">4.</span> 如果关联文件超过 5 个，只读接口定义（函数签名 + 注释），不读实现
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">效果：</strong> Input token 从 120K 降到 15K，成本降到 1/8，且分析质量没有下降。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">坑 3：并行 Agent 的 Schema 不一致导致合并失败</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">现象：</strong> Agent 2 三个维度并行跑完后，合并结果时报 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>undefined is not iterable</code>。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">根因：</strong> Bug 检测返回 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>{ dimension: "bugs", issues: [...] }</code>，但性能检测返回 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>{ dimension: "performance", findings: [...] }</code>——字段名不一致。并行 Agent 各自解释 Schema，没有严格 enforce。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解法：</strong> 给每个 Agent 显式指定 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>schema</code> 参数（见上面 Workflow 脚本中的 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>schema</code> 字段）。Schema 强制 Agent 使用 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>StructuredOutput</code> 工具，输出必定符合格式，不存在字段名不一致的问题。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">教训：</strong> 多 Agent 系统里，Agent 之间的接口（即 Schema）比 Agent 内部的 Prompt 更重要。<strong style="font-weight: 600; color: #263a49">先定 Schema，再写 Prompt。</strong></p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">坑 4：Agent 3 的修复引入了新 Bug</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">现象：</strong> Agent 3 为一个 SQL 注入问题生成了修复，但修复代码中 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>db.Query()</code> 改为 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>db.QueryContext()</code> 后遗漏了 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>rows.Close()</code>。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">根因：</strong> Agent 3 只看当前问题的上下文，不知道这个函数的完整实现。它看到了 SQL 注入，但没看到原本有 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>defer rows.Close()</code>。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解法：</strong> 在 Agent 3 的 Prompt 中强制要求：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="gu">## 修复前必须</span>
+<span class="k">1.</span> 读取目标文件的完整函数实现（不只是问题所在的那几行）
+<span class="k">2.</span> 确认修复不会破坏现有的 defer、错误处理、资源释放逻辑
+<span class="k">3.</span> 如果修复涉及变量名/函数签名变更，grep 整个仓库确认影响范围
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">更好的方案：</strong> 在 Workflow 中加入一个<strong style="font-weight: 600; color: #263a49">验证 Agent（Agent 4）</strong>，它在 Agent 3 之后运行，验证每个修复不会引入新问题：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// Phase 4.5：验证修复（成本不高，但能大幅降低误修率）</span>
+<span class="nx">phase</span><span class="p">(</span><span class="s1">'Verify'</span><span class="p">)</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">verified</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">pipeline</span><span class="p">(</span>
+<span class="w">  </span><span class="nx">validFixes</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">fix</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">agent</span><span class="p">(</span>
+<span class="w">    </span><span class="sb">`## 验证任务</span>
+<span class="sb">    以下修复建议是否可能引入新问题？</span>
+
+<span class="sb">    原始问题：</span><span class="si">${</span><span class="nx">fix</span><span class="p">.</span><span class="nx">issueRef</span><span class="si">}</span>
+<span class="sb">    修复 Patch：</span><span class="si">${</span><span class="nx">fix</span><span class="p">.</span><span class="nx">patch</span><span class="si">}</span>
+<span class="sb">    修复解释：</span><span class="si">${</span><span class="nx">fix</span><span class="p">.</span><span class="nx">explanation</span><span class="si">}</span>
+
+<span class="sb">    请读取目标文件的完整代码，判断：</span>
+<span class="sb">    1. 修复是否正确解决了问题</span>
+<span class="sb">    2. 修复是否引入了新问题（破坏 defer/错误处理/资源释放/并发安全）</span>
+<span class="sb">    3. 如果引入了新问题，给出修正后的 Patch</span>
+
+<span class="sb">    输出：{ verdict: "approved" | "rejected" | "needs_revision", reason: "...", revisedPatch?: "..." }`</span><span class="p">,</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="sb">`verify:</span><span class="si">${</span><span class="nx">fix</span><span class="p">.</span><span class="nx">issueRef</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"> </span><span class="nx">phase</span><span class="o">:</span><span class="w"> </span><span class="s1">'Verify'</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="o">:</span><span class="w"> </span><span class="s1">'sonnet'</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">坑 5：Hook 触发 Workflow 时没有 PR 上下文</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">现象：</strong> 用 Hook 在 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>git push</code> 后自动触发 Workflow，但 Agent 拿到的是空上下文——不知道当前是哪个 PR。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">根因：</strong> Hook 触发时，Claude Code 启动的是全新会话，PR 编号、分支信息都没有。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">解法：</strong> 在 Hook 脚本中注入上下文：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="ch">#!/bin/bash</span>
+
+<span class="nv">BRANCH</span><span class="o">=</span><span class="k">$(</span>git<span class="w"> </span>rev-parse<span class="w"> </span>--abbrev-ref<span class="w"> </span>HEAD<span class="k">)</span>
+<span class="nv">PR_NUMBER</span><span class="o">=</span><span class="k">$(</span>gh<span class="w"> </span>pr<span class="w"> </span>view<span class="w"> </span>--json<span class="w"> </span>number<span class="w"> </span>-q<span class="w"> </span><span class="s1">'.number'</span><span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">""</span><span class="k">)</span>
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-z<span class="w"> </span><span class="s2">"</span><span class="nv">$PR_NUMBER</span><span class="s2">"</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">  </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"No PR found for branch </span><span class="nv">$BRANCH</span><span class="s2">, skipping review"</span>
+<span class="w">  </span><span class="nb">exit</span><span class="w"> </span><span class="m">0</span>
+<span class="k">fi</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"PR_NUMBER=</span><span class="nv">$PR_NUMBER</span><span class="s2">"</span><span class="w"> </span>&gt;<span class="w"> </span>/tmp/claude-review-context
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"BRANCH=</span><span class="nv">$BRANCH</span><span class="s2">"</span><span class="w"> </span>&gt;&gt;<span class="w"> </span>/tmp/claude-review-context
+
+claude<span class="w"> </span>-p<span class="w"> </span><span class="s2">"/workflow code-review --pr </span><span class="nv">$PR_NUMBER</span><span class="s2"> --branch </span><span class="nv">$BRANCH</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-format<span class="w"> </span>markdown<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--append-to-file<span class="w"> </span>review-report-<span class="nv">$PR_NUMBER</span>.md
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">"Review report saved to review-report-</span><span class="nv">$PR_NUMBER</span><span class="s2">.md"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">然后在 Workflow 脚本开头读取上下文：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="c1">// 从 args 或临时文件读取 PR 信息</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">prNumber</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">args</span><span class="o">?</span><span class="p">.</span><span class="nx">pr</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">PR_NUMBER</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">branch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">args</span><span class="o">?</span><span class="p">.</span><span class="nx">branch</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">BRANCH</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">汇总：5 个坑的预防清单</strong></p>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #d7dfe5; border-radius: 8px;">
+<thead style="background: #4b6b81; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">坑</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #d7dfe5; color: #ffffff; background: #4b6b81;">一句话预防</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">1. 标准写法被误报</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Prompt 中加正例 + 负例，建立「误报库」定期更新</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">2. Agent 读太多上下文</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">Prompt 限定读取范围，Schema 审计 Token 消耗，设 Input 上限</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">3. Schema 字段不一致</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;"><strong style="font-weight: 600; color: #263a49">先定 Schema 再写 Prompt</strong>，Schema 用 Git 管理变更</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">4. 修复引入新 Bug</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5; background: #eef3f5;">加 Agent 4 验证修复，Prompt 强制读完整函数再修</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">5. Hook 缺 PR 上下文</td>
+<td style="padding: 12px 16px; border: 1px solid #d7dfe5;">Hook 脚本注入上下文 + Workflow 开头检查缺失时报错退出</td>
+</tr>
+</tbody>
+</table>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">九、下一步：把这个系统做成 Skill</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Workflow 脚本能跑起来，但每次要复制粘贴或存到 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>.claude/workflows/</code> 下。更干净的方式是把整个系统打包成 <strong style="font-weight: 600; color: #263a49">Skill</strong>——一个可分发、可复用的模块。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Skill 结构：</p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>~/.claude/skills/code-review/
+├── SKILL.md                  # Skill 描述和入口
+├── workflows/
+│   └── code-review.workflow.js   # 上面的完整 Workflow 脚本
+├── mcp/
+│   ├── lint-server.py        # Lint MCP Server
+│   └── knowledge-mcp.py      # 知识库 MCP Server
+├── prompts/
+│   ├── analyzer.md           # Agent 1 Prompt 模板
+│   ├── bug-detector.md       # Agent 2a Prompt 模板
+│   ├── security-detector.md  # Agent 2b Prompt 模板
+│   ├── perf-detector.md      # Agent 2c Prompt 模板
+│   └── fix-suggester.md      # Agent 3 Prompt 模板
+└── config.json               # MCP Server 注册配置
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">SKILL.md 示例：</strong></p>
+<div class="codehilite"><pre style="background: #243543; color: #d9e3e9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.65; box-shadow: 0 1px 2px 0 rgba(38, 58, 73, 0.06)"><span></span><code style='background: transparent; color: #d9e3e9; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>三 Agent 流水线代码审查系统。输入一个 PR，输出结构化的 Review Report。
+
+<span class="gu">## 触发方式</span>
+
+在 Claude Code 中说：
+<span class="k">-</span><span class="w"> </span>"review this PR"
+<span class="k">-</span><span class="w"> </span>"帮我审查代码"
+<span class="k">-</span><span class="w"> </span>"/code-review"
+
+<span class="gu">## 前置条件</span>
+
+<span class="k">-</span><span class="w"> </span>已安装 GitHub CLI (<span class="sb">`gh`</span>) 并已登录
+<span class="k">-</span><span class="w"> </span>已配置 GitHub MCP Server（用于自动评论）
+<span class="k">-</span><span class="w"> </span>项目根目录有 <span class="sb">`.claude/`</span> 配置目录
+
+<span class="gu">## 工作流程</span>
+
+<span class="k">1.</span> 获取 PR diff
+<span class="k">2.</span> Agent 1 结构化分析
+<span class="k">3.</span> Agent 2 多维度并行检测（Bug/安全/性能）
+<span class="k">4.</span> Agent 3 修复建议生成
+<span class="k">5.</span> 可选：验证 Agent 验证修复
+<span class="k">6.</span> 汇总 + 自动评论到 PR
+
+<span class="gu">## 配置选项</span>
+
+在 config.json 中：
+<span class="k">-</span><span class="w"> </span><span class="sb">`autoComment`</span>: 是否自动评论到 PR（默认 true）
+<span class="k">-</span><span class="w"> </span><span class="sb">`minSeverity`</span>: 最低报告严重程度（默认 "low"）
+<span class="k">-</span><span class="w"> </span><span class="sb">`maxContextFiles`</span>: Agent 1 最多读取的关联文件数（默认 5）
+<span class="k">-</span><span class="w"> </span><span class="sb">`enableVerifyAgent`</span>: 是否启用修复验证 Agent（默认 false，开启后可靠性提升但成本 +30%）
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">团队成员只需说一句「review this PR」，就能触发整条流水线。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">十、总结：多 Agent 系统的三条铁律</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">搭完回头看，有三条原则贯穿始终：</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">铁律 1：Agent 之间传结构化数据，不传自然语言</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">Agent 1 输出 JSON Schema → Agent 2 输入 JSON Schema → Agent 3 输入 JSON Schema。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">自然语言在 Agent 之间传递会逐层衰减和变形。结构化数据不会。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">铁律 2：先定 Schema，再写 Prompt</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">多 Agent 系统里，单个 Agent 表现不好还能调 Prompt 修好。最头疼的是 Agent 之间的接口对不上——数据流到一半断了，整个流水线跑不起来。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">写完 Schema 后，先跑一个空的 Pipeline，确认数据能从 Agent 1 流到 Agent 3，再优化 Prompt。</p>
+<h3 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 24px; position: relative; padding-left: 18px">铁律 3：Agent 数量不是越多越好</h3>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">每增加一个 Agent，就增加一层延迟、一层 Token 消耗、一层出错概率。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">能合并的职责就合并——比如 Bug/安全/性能可以合并到一个 Agent 的 Prompt 中（适合小型 PR），但并行化适合大型 PR（每个维度深入检查）。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">判断标准：</strong> 如果一个 Agent 的 Prompt 里出现了「同时」「此外」「另一方面」这类词，说明职责可能需要拆分。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这套三 Agent 系统搭下来，最让我意外的是它发现了<strong style="font-weight: 600; color: #263a49">人工几乎找不到的问题类型</strong>：</p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">跨文件调用链的竞态条件（Agent 1 追溯调用 → Agent 2 检测并发安全）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">修复建议引入新 Bug（Agent 3 生成 Patch → Agent 4 验证是否破坏原有逻辑）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">编码规范违反但表面看起来完全正常（知识库 MCP 注入团队规则）</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">这些问题的共同特征：<strong style="font-weight: 600; color: #263a49">需要同时读多个位置、对比多个上下文、理解业务意图</strong>——恰好是单 Agent 和人工的盲区。</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">如果你的团队 Review 压力大、检出率低、误报率高——试试这套方案。或者先把文章发给你们的架构师，他们可能在搭 CI 流水线、纠结要不要引入 AI 辅助 Review，而你手上有完整可复用的方案。</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #eef3f5; border-left: 4px solid #4b6b81; border-radius: 0 8px 8px 0">
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">📦 完整代码见 GitHub：https://github.com/Aias00/agent-skills/tree/main/content/multi-agent-code-review-system</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49; font-style: italic">Clone 下来，改一下 <code style='background: #eef3f5; color: #3e596a; padding: 2px 6px; border-radius: 4px; border: 1px solid #d7dfe5; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>config.json</code> 里的团队编码规范，就能在你自己的项目上跑。</p>
+</blockquote>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<h2 style="font-weight: 700; line-height: 1.45; margin-top: 32px; margin-bottom: 16px; color: #263a49; font-size: 28px; padding: 10px 16px; border-left: 4px solid #4b6b81; background: #eef3f5">十一、常见问题</h2>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Q1: Workflow 脚本太复杂，能不能简化？</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">可以。三种简化方案：<br/>
+- 去掉 Agent 4（修复验证），成本降 30%<br/>
+- 合并 Bug/安全/性能检测到单个 Agent（适合小型 PR）<br/>
+- 去掉知识库 MCP（如果没有团队规范库）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Q2: 用 Claude Sonnet 成本太高怎么办？</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">三种省钱方案：<br/>
+- 用 DeepSeek（成本 1/7，本文已采用）<br/>
+- 性能检测和 Report 生成用 V4-Flash（成本再降 50%）<br/>
+- 限制 Agent 1 读取文件数（见坑 2 的解法）</p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Q3: 误报率高怎么办？</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">Prompt 中加入正例 + 负例对比（见坑 1）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">建立误报库，定期更新 Prompt 排除已知模式</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">知识库 MCP 注入团队规范（降低「不懂惯例」导致的误报）</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Q4: 检出率低于预期怎么办？</strong></p>
+<ul style="margin: 16px 0; padding-left: 24px">
+<li style="margin: 8px 0; line-height: 1.85; position: relative">增强 Agent 1 的调用链追溯深度</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">增加检测维度（兼容性、可维护性）</li>
+<li style="margin: 8px 0; line-height: 1.85; position: relative">加入 Agent 4 验证修复（发现修复引入的新问题）</li>
+</ul>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">Q5: 能审查 Go 以外的语言吗？</strong></p>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49">可以。对应调整：<br/>
+- Prompt 里的语言特定规则（Go 的 err 处理 → Java 的异常处理）<br/>
+- Lint MCP 换语言工具（radon → checkstyle, eslint → prettier）<br/>
+- 知识库 MCP 改语言特定规范</p>
+<hr style="border: none; height: 1px; background: #c3d0d8; margin: 36px 0"/>
+<p style="margin: 16px 0; line-height: 1.85; color: #263a49"><strong style="font-weight: 600; color: #263a49">你的团队在用什么方式做代码审查？有没有自己搭过 Agent 流水线？欢迎在评论区分享你的方案——踩过的坑、省下的时间、或者你觉得「不如人审」的场景。</strong></p>
+</body>
+</html>

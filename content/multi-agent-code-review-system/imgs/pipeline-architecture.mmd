@@ -1,0 +1,39 @@
+graph TB
+    subgraph Input["📥 输入"]
+        PR["PR Diff"]
+        CTX["仓库上下文"]
+    end
+
+    subgraph A1["🔍 Agent 1 · 代码分析"]
+        A1P["结构化扫描 PR diff<br/>追溯调用链 & 依赖链<br/>输出改动摘要"]
+    end
+
+    subgraph A2["🐛 Agent 2 · 问题检测（并行）"]
+        A2A["Bug 检测<br/>逻辑错误 · 并发安全<br/>边界条件 · 错误处理"]
+        A2B["安全检测<br/>SQL注入 · XSS<br/>认证绕过 · 信息泄露"]
+        A2C["性能检测<br/>N+1查询 · 内存分配<br/>阻塞IO · 大对象拷贝"]
+    end
+
+    subgraph A3["🔧 Agent 3 · 修复建议"]
+        A3P["针对 critical/high 问题<br/>生成 Patch + 解释<br/>评估修复风险"]
+    end
+
+    subgraph Output["📤 输出"]
+        REPORT["Markdown Review Report<br/>自动评论到 GitHub PR"]
+    end
+
+    PR --> A1
+    CTX --> A1
+    A1 -->|"结构化摘要 JSON"| A2
+    A2 --> A2A
+    A2 --> A2B
+    A2 --> A2C
+    A2A -->|"Bug 列表"| A3
+    A2B -->|"安全漏洞列表"| A3
+    A2C -->|"性能隐患列表"| A3
+    A3 -->|"修复建议"| REPORT
+
+    style A1 fill:#7c3aed,color:#fff,stroke:#6d28d9
+    style A2 fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    style A3 fill:#a78bfa,color:#fff,stroke:#8b5cf6
+    style REPORT fill:#059669,color:#fff,stroke:#047857

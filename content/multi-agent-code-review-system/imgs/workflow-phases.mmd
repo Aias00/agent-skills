@@ -1,0 +1,39 @@
+graph LR
+    subgraph Phase1["Phase 1: 获取 PR"]
+        P1["git diff<br/>main...HEAD"]
+    end
+
+    subgraph Phase2["Phase 2: Agent 1 分析"]
+        P2["结构化摘要<br/>JSON Schema 输出"]
+    end
+
+    subgraph Phase3["Phase 3: Agent 2 并行检测"]
+        P3A["Bug"]
+        P3B["Security"]
+        P3C["Perf"]
+    end
+
+    subgraph Phase4["Phase 4: Agent 3 修复"]
+        P4["仅处理 critical/high<br/>Patch + 解释"]
+    end
+
+    subgraph Phase5["Phase 5: 汇总"]
+        P5["Review Report<br/>自动评论 PR"]
+    end
+
+    P1 --> P2
+    P2 --> P3A
+    P2 --> P3B
+    P2 --> P3C
+    P3A -->|"去重合并"| P4
+    P3B -->|"去重合并"| P4
+    P3C -->|"去重合并"| P4
+    P4 --> P5
+
+    style P1 fill:#6b7280,color:#fff,stroke:#4b5563
+    style P2 fill:#7c3aed,color:#fff,stroke:#6d28d9
+    style P3A fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    style P3B fill:#8b5cf6,color:#fff,stroke:#7c3aed
+    style P3C fill:#a78bfa,color:#fff,stroke:#8b5cf6
+    style P4 fill:#ec4899,color:#fff,stroke:#db2777
+    style P5 fill:#059669,color:#fff,stroke:#047857
