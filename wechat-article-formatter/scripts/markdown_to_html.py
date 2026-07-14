@@ -24,15 +24,40 @@ cssutils.log.setLevel(logging.CRITICAL)
 class WeChatHTMLConverter:
     """微信公众号HTML转换器"""
 
-    def __init__(self, theme: str = 'mist-blue'):
+    def __init__(self, theme: str = 'ai-tech'):
         self.theme = theme
         self.theme_css = self._load_theme_css()
+        self.code_text_color = self._extract_var('--code-text', '#e8d4cf')
+        self.code_bg_color = self._extract_var('--code-bg', '#2d3748')
+        # 表格主题色
+        self.table_header_bg = self._extract_var('--primary-purple', '#7c3aed')
+        self.table_border_color = self._extract_var('--border-light', '#e5e7eb')
+        self.table_even_bg = self._extract_var('--bg-purple-50', '#faf5ff')
+
+    def _extract_var(self, var_name: str, fallback: str) -> str:
+        """从主题 CSS 中提取 CSS 变量值"""
+        pattern = rf'{re.escape(var_name)}:\s*([^;]+);'
+        match = re.search(pattern, self.theme_css)
+        if match:
+            return match.group(1).strip()
+        return fallback
 
     def _load_theme_css(self) -> str:
         """加载主题CSS"""
         theme_map = {
             'ai-tech': 'ai-tech-theme.css',
             'mist-blue': 'mist-blue-theme.css',
+            'forest': 'forest-theme.css',
+            'sunset': 'sunset-theme.css',
+            'slate': 'slate-theme.css',
+            'midnight': 'midnight-theme.css',
+            # 新增主题
+            'tech-blue': 'tech-blue-theme.css',
+            'warm-orange': 'warm-orange-theme.css',
+            'forest-green': 'forest-green-theme.css',
+            'midnight-purple': 'midnight-purple-theme.css',
+            'business-gray': 'business-gray-theme.css',
+            'light-purple': 'light-purple-theme.css',
         }
 
         if self.theme not in theme_map:
@@ -118,6 +143,54 @@ class WeChatHTMLConverter:
                 # 忽略无法处理的选择器
                 continue
 
+        # 特殊处理：修复代码块样式，确保微信公众号兼容
+        # 微信公众号可能会过滤部分样式，所以需要：
+        # 1. 确保 pre 有正确的深色背景
+        # 2. 确保 code 继承背景色并使用正确的文字颜色
+        for pre in soup.find_all('pre'):
+            # 设置 pre 的深色背景
+            pre_style = pre.get('style', '')
+            if 'background' not in pre_style:
+                pre['style'] = f'{pre_style}; background: {self.code_bg_color}'.lstrip('; ')
+
+            code = pre.find('code')
+            if code:
+                # 设置 code 继承背景色并使用正确的文字颜色
+                code['style'] = f'background: transparent; color: {self.code_text_color}; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'
+
+        # 特殊处理：修复表格样式，确保微信公众号兼容
+        # 微信公众号不支持 CSS 变量，需要直接设置颜色值
+        for table in soup.find_all('table'):
+            # 表格整体样式
+            table['style'] = f'width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid {self.table_border_color}; border-radius: 8px;'
+
+            # 处理 thead
+            thead = table.find('thead')
+            if thead:
+                thead['style'] = f'background: {self.table_header_bg}; color: #ffffff;'
+
+            # 处理所有 th
+            for th in table.find_all('th'):
+                th['style'] = f'padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid {self.table_border_color}; color: #ffffff; background: {self.table_header_bg};'
+
+            # 处理所有 td
+            for i, td in enumerate(table.find_all('td')):
+                # 斑马纹：偶数行浅色背景
+                parent_tr = td.find_parent('tr')
+                if parent_tr:
+                    tbody = parent_tr.find_parent('tbody')
+                    if tbody:
+                        trs = tbody.find_all('tr')
+                        tr_index = trs.index(parent_tr) if parent_tr in trs else -1
+                        if tr_index % 2 == 1:  # 偶数行（0-indexed）
+                            td['style'] = f'padding: 12px 16px; border: 1px solid {self.table_border_color}; background: {self.table_even_bg};'
+                        else:
+                            td['style'] = f'padding: 12px 16px; border: 1px solid {self.table_border_color};'
+                    else:
+                        td['style'] = f'padding: 12px 16px; border: 1px solid {self.table_border_color};'
+                else:
+                    td['style'] = f'padding: 12px 16px; border: 1px solid {self.table_border_color};'
+
         return str(soup)
 
     def _enhance_code_blocks(self, html: str) -> str:
@@ -140,6 +213,27 @@ class WeChatHTMLConverter:
                 if language:
                     pre['data-lang'] = language
 
+                # 清理 code 标签的内联样式，让 pre 的深色背景显示
+                # 微信公众号可能会过滤 pre 的样式，所以需要把样式放到 code 上
+                if code.has_attr('style'):
+                    # 移除浅色背景和边框，继承 pre 的深色主题
+                    style_dict = {}
+                    for item in code['style'].split(';'):
+                        if ':' in item:
+                            key, value = item.split(':', 1)
+                            key = key.strip()
+                            value = value.strip()
+                            # 保留字体相关样式，移除背景和边框
+                            if key not in ['background', 'background-color', 'border', 'padding', 'color']:
+                                style_dict[key] = value
+                    # 设置深色主题的代码样式
+                    style_dict['background'] = 'transparent'
+                    style_dict['color'] = '#e8d4cf'
+                    style_dict['font-family'] = '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace'
+                    style_dict['font-size'] = '14px'
+                    style_dict['line-height'] = '1.65'
+                    code['style'] = '; '.join(f'{k}: {v}' for k, v in style_dict.items())
+
         return str(soup)
 
     def _process_images(self, html: str) -> str:
@@ -153,6 +247,31 @@ class WeChatHTMLConverter:
                 style_additions = 'max-width: 100%; height: auto; display: block; margin: 24px auto;'
                 img['style'] = f'{existing_style}; {style_additions}' if existing_style else style_additions
 
+        return str(soup)
+
+    def _strip_subtitle_label(self, markdown_text: str) -> str:
+        """移除正文中的「副标题：」标签，保留副标题文案"""
+        # **副标题：** 文案 → 文案
+        markdown_text = re.sub(
+            r'\*\*副标题[：:]\*\*\s*',
+            '',
+            markdown_text,
+        )
+        # > **副标题：** 文案 → > 文案
+        markdown_text = re.sub(
+            r'(>\s*)\*\*副标题[：:]\*\*\s*',
+            r'\1',
+            markdown_text,
+        )
+        return markdown_text
+
+    def _strip_subtitle_label_html(self, html: str) -> str:
+        """HTML 兜底：移除 <strong>副标题：</strong> 标签"""
+        soup = BeautifulSoup(html, 'html.parser')
+        for strong in soup.find_all('strong'):
+            text = strong.get_text(strip=True)
+            if text in ('副标题：', '副标题:'):
+                strong.decompose()
         return str(soup)
 
     def _process_custom_blocks(self, markdown_text: str) -> str:
@@ -209,6 +328,9 @@ class WeChatHTMLConverter:
 
         markdown_text = '\n'.join(filtered_lines)
 
+        # 移除「副标题：」标签（保留副标题正文）
+        markdown_text = self._strip_subtitle_label(markdown_text)
+
         # ✅ 新增：处理自定义块语法
         markdown_text = self._process_custom_blocks(markdown_text)
 
@@ -232,6 +354,9 @@ class WeChatHTMLConverter:
         # 转换Markdown为HTML
         md = markdown.Markdown(extensions=extensions, extension_configs=extension_configs)
         html_content = md.convert(markdown_text)
+
+        # HTML 兜底：移除可能残留的「副标题：」标签
+        html_content = self._strip_subtitle_label_html(html_content)
 
         # ✅ 新增：处理徽章语法
         html_content = self._process_badges(html_content)
@@ -289,6 +414,16 @@ class WeChatHTMLConverter:
 
         return html_template
 
+    @staticmethod
+    def _strip_frontmatter(markdown_text: str) -> str:
+        """剥离文件开头的 YAML frontmatter（--- ... ---）。
+
+        仅在文本起始处匹配一次，避免误删正文中作为分隔线的 ``---``。
+        frontmatter 是元数据（title/summary/author/coverImage 等），
+        不应进入公众号正文。
+        """
+        return re.sub(r'\A---\s*\n[\s\S]*?\n---\s*\n?', '', markdown_text, count=1)
+
     def convert_file(self, input_file: str, output_file: Optional[str] = None) -> str:
         """转换Markdown文件为HTML文件"""
         input_path = Path(input_file)
@@ -299,6 +434,9 @@ class WeChatHTMLConverter:
         # 读取Markdown文件
         with open(input_path, 'r', encoding='utf-8') as f:
             markdown_text = f.read()
+
+        # 剥离 frontmatter 元数据，避免 title/author/coverImage 等进入正文
+        markdown_text = self._strip_frontmatter(markdown_text)
 
         # 转换为HTML
         html_content = self.convert(markdown_text)
@@ -341,6 +479,11 @@ def main():
 可用主题:
   mist-blue - 雾霾蓝主题（默认，低饱和蓝灰编辑风，适合技术长文与公众号正文）
   ai-tech   - AI 科技主题（渐进式紫蓝绿配色，丰富组件，专为 AI 领域内容设计）
+  forest    - 森林绿主题（清新自然的绿色系）
+  sunset    - 日落主题（温暖的橙红色系）
+  slate     - 石板灰主题（中性的灰蓝色系）
+  midnight  - 深夜主题（深邃的暗蓝色系）
+  light-purple - 浅紫主题（明亮紫色调，浅色代码块，适合技术教程和 AI 主题）
 
 新增语法支持:
   信息框：::: info / success / warning / danger / tech
@@ -350,9 +493,10 @@ def main():
 
     parser.add_argument('-i', '--input', required=True, help='输入的Markdown文件路径')
     parser.add_argument('-o', '--output', help='输出的HTML文件路径（默认：与输入文件同名.html）')
-    parser.add_argument('-t', '--theme', default='mist-blue',
-                        choices=['ai-tech', 'mist-blue'],
-                        help='选择主题：mist-blue（默认）或 ai-tech')
+    parser.add_argument('-t', '--theme', default='ai-tech',
+                        choices=['ai-tech', 'mist-blue', 'forest', 'sunset', 'slate', 'midnight',
+                                 'tech-blue', 'warm-orange', 'forest-green', 'midnight-purple', 'business-gray', 'light-purple'],
+                        help='选择主题：ai-tech（默认）、mist-blue、forest、sunset、slate、midnight、tech-blue、warm-orange、forest-green、midnight-purple、business-gray、light-purple')
     parser.add_argument('-p', '--preview', action='store_true',
                         help='转换后在浏览器中打开预览')
 

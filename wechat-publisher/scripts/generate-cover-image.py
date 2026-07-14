@@ -192,15 +192,110 @@ def fit_text_block(
     return fallback, lines, lh, gap
 
 
-def draw_gradient(draw, w: int, h: int) -> None:
-    start = (9, 23, 62)
-    end = (32, 74, 145)
+def draw_gradient(draw, w: int, h: int, colors: dict) -> None:
+    start = colors["gradient_start"]
+    end = colors["gradient_end"]
     for y in range(h):
         t = y / max(h - 1, 1)
         r = int(start[0] + (end[0] - start[0]) * t)
         g = int(start[1] + (end[1] - start[1]) * t)
         b = int(start[2] + (end[2] - start[2]) * t)
         draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+
+# Color themes for cover images
+THEMES = {
+    "ocean": {
+        "gradient_start": (9, 23, 62),
+        "gradient_end": (32, 74, 145),
+        "circles": [
+            (0.82, 0.18, 0.34, (67, 129, 255, 90)),
+            (0.22, 0.90, 0.33, (24, 168, 185, 78)),
+            (0.57, 0.47, 0.35, (129, 89, 255, 64)),
+        ],
+        "frame_outline": (75, 132, 216),
+        "title_color": (245, 250, 255),
+        "summary_color": (204, 225, 250),
+        "badge_outline": (144, 203, 255),
+        "badge_fill": (14, 40, 95),
+        "badge_text": (225, 241, 255),
+    },
+    "forest": {
+        "gradient_start": (12, 35, 28),
+        "gradient_end": (34, 95, 64),
+        "circles": [
+            (0.82, 0.18, 0.34, (72, 187, 120, 90)),
+            (0.22, 0.90, 0.33, (45, 212, 140, 78)),
+            (0.57, 0.47, 0.35, (104, 211, 145, 64)),
+        ],
+        "frame_outline": (72, 187, 120),
+        "title_color": (240, 255, 248),
+        "summary_color": (180, 230, 210),
+        "badge_outline": (104, 211, 145),
+        "badge_fill": (20, 60, 45),
+        "badge_text": (220, 255, 235),
+    },
+    "sunset": {
+        "gradient_start": (45, 20, 35),
+        "gradient_end": (140, 50, 75),
+        "circles": [
+            (0.82, 0.18, 0.34, (255, 120, 100, 90)),
+            (0.22, 0.90, 0.33, (255, 180, 120, 78)),
+            (0.57, 0.47, 0.35, (255, 150, 180, 64)),
+        ],
+        "frame_outline": (255, 140, 120),
+        "title_color": (255, 250, 245),
+        "summary_color": (255, 220, 200),
+        "badge_outline": (255, 180, 160),
+        "badge_fill": (80, 30, 50),
+        "badge_text": (255, 240, 230),
+    },
+    "purple": {
+        "gradient_start": (30, 15, 50),
+        "gradient_end": (90, 40, 120),
+        "circles": [
+            (0.82, 0.18, 0.34, (180, 100, 255, 90)),
+            (0.22, 0.90, 0.33, (140, 80, 220, 78)),
+            (0.57, 0.47, 0.35, (200, 120, 255, 64)),
+        ],
+        "frame_outline": (160, 100, 220),
+        "title_color": (250, 245, 255),
+        "summary_color": (210, 190, 240),
+        "badge_outline": (180, 130, 255),
+        "badge_fill": (50, 25, 75),
+        "badge_text": (245, 235, 255),
+    },
+    "slate": {
+        "gradient_start": (25, 30, 38),
+        "gradient_end": (55, 65, 85),
+        "circles": [
+            (0.82, 0.18, 0.34, (120, 140, 180, 90)),
+            (0.22, 0.90, 0.33, (100, 130, 170, 78)),
+            (0.57, 0.47, 0.35, (140, 160, 200, 64)),
+        ],
+        "frame_outline": (130, 150, 180),
+        "title_color": (245, 248, 255),
+        "summary_color": (190, 200, 220),
+        "badge_outline": (160, 180, 210),
+        "badge_fill": (40, 48, 60),
+        "badge_text": (235, 240, 255),
+    },
+    "midnight": {
+        "gradient_start": (10, 12, 25),
+        "gradient_end": (30, 35, 65),
+        "circles": [
+            (0.82, 0.18, 0.34, (60, 80, 160, 90)),
+            (0.22, 0.90, 0.33, (80, 60, 140, 78)),
+            (0.57, 0.47, 0.35, (100, 90, 180, 64)),
+        ],
+        "frame_outline": (70, 90, 160),
+        "title_color": (240, 245, 255),
+        "summary_color": (170, 185, 220),
+        "badge_outline": (110, 130, 200),
+        "badge_fill": (20, 25, 45),
+        "badge_text": (225, 235, 255),
+    },
+}
 
 
 def ensure_pillow(allow_bootstrap: bool) -> None:
@@ -232,22 +327,22 @@ def ensure_pillow(allow_bootstrap: bool) -> None:
     os.execve(str(py), [str(py), __file__, *sys.argv[1:]], env)
 
 
-def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str) -> None:
+def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str, theme: str) -> None:
     from PIL import Image, ImageDraw, ImageFont
 
     w, h = parse_size(size)
+    colors = THEMES.get(theme, THEMES["ocean"])
 
-    img = Image.new("RGB", (w, h), (9, 23, 62))
+    img = Image.new("RGB", (w, h), colors["gradient_start"])
     draw = ImageDraw.Draw(img)
-    draw_gradient(draw, w, h)
+    draw_gradient(draw, w, h, colors)
 
     # Ambient color circles keep the same visual identity across posts.
     overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
     circles = [
-        (int(w * 0.82), int(h * 0.18), int(min(w, h) * 0.34), (67, 129, 255, 90)),
-        (int(w * 0.22), int(h * 0.90), int(min(w, h) * 0.33), (24, 168, 185, 78)),
-        (int(w * 0.57), int(h * 0.47), int(min(w, h) * 0.35), (129, 89, 255, 64)),
+        (int(w * cx), int(h * cy), int(min(w, h) * r), c)
+        for cx, cy, r, c in colors["circles"]
     ]
     for cx, cy, radius, color in circles:
         od.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=color)
@@ -259,7 +354,7 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
     draw.rounded_rectangle(
         (frame_inset, frame_inset, w - frame_inset, h - frame_inset),
         radius=max(14, int(h * 0.08)),
-        outline=(75, 132, 216),
+        outline=colors["frame_outline"],
         width=max(2, int(h * 0.006)),
         fill=None,
     )
@@ -301,7 +396,7 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
 
     y = safe_top
     for i, line in enumerate(title_lines):
-        draw.text((safe_left, y), line, font=title_font, fill=(245, 250, 255))
+        draw.text((safe_left, y), line, font=title_font, fill=colors["title_color"])
         y += title_lh
         if i < len(title_lines) - 1:
             y += title_gap
@@ -322,7 +417,7 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
     if summary_lines and summary_space > 10:
         y += int(h * 0.05)
         for i, line in enumerate(summary_lines):
-            draw.text((safe_left, y), line, font=summary_font, fill=(204, 225, 250))
+            draw.text((safe_left, y), line, font=summary_font, fill=colors["summary_color"])
             y += summary_lh
             if i < len(summary_lines) - 1:
                 y += summary_gap
@@ -339,9 +434,9 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
     draw.rounded_rectangle(
         (badge_x, badge_y, badge_x + badge_w, badge_y + badge_h),
         radius=max(12, int(badge_h / 2.2)),
-        outline=(144, 203, 255),
+        outline=colors["badge_outline"],
         width=2,
-        fill=(14, 40, 95),
+        fill=colors["badge_fill"],
     )
     draw.text(
         (
@@ -350,7 +445,7 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
         ),
         badge,
         font=badge_font,
-        fill=(225, 241, 255),
+        fill=colors["badge_text"],
     )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -369,6 +464,12 @@ def parse_args() -> argparse.Namespace:
         help="Image size, default 900x383 (WeChat-friendly wide ratio)",
     )
     parser.add_argument("--out", help="Output png path; default: <markdown_dir>/imgs/cover.png")
+    parser.add_argument(
+        "--theme",
+        choices=list(THEMES.keys()),
+        default="ocean",
+        help="Color theme: ocean (default, blue), forest (green), sunset (warm), purple, slate (gray), midnight (dark)",
+    )
     parser.add_argument("--bootstrap-pillow", action="store_true", help="Auto-create local venv and install Pillow if missing")
     return parser.parse_args()
 
@@ -409,9 +510,9 @@ def main() -> int:
         out_path = Path.cwd() / "imgs" / "cover.png"
 
     ensure_pillow(allow_bootstrap=args.bootstrap_pillow)
-    render_cover(title=title, summary=summary, out_path=out_path, size=args.size, badge=args.badge)
+    render_cover(title=title, summary=summary, out_path=out_path, size=args.size, badge=args.badge, theme=args.theme)
 
-    print("[OK] cover generated")
+    print(f"[OK] cover generated (theme: {args.theme})")
     print(f"[OUT] {out_path}")
     return 0
 

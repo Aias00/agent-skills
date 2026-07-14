@@ -5,17 +5,14 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { renderMarkdownWithPreferredFormatter } from "./preferred-markdown-render.ts";
+import {
+  loadWechatPublisherExtendConfig,
+  type WechatPublisherExtendConfig,
+} from "./wechat-extend-config.ts";
 
 type PublishMethod = "api" | "browser";
 type SourceKind = "markdown" | "html";
-
-interface ExtendConfig {
-  defaultPublishMethod?: PublishMethod;
-  defaultTheme?: string;
-  defaultColor?: string;
-  defaultAuthor?: string;
-  chromeProfilePath?: string;
-}
+type ExtendConfig = WechatPublisherExtendConfig;
 
 interface CliOptions {
   source: string;
@@ -34,6 +31,8 @@ interface CliOptions {
 interface ResolvedSource {
   path: string;
   kind: SourceKind;
+  /** Original markdown path before formatter conversion, used for title/frontmatter derivation. */
+  markdownPath?: string;
 }
 
 const SKILL_DIR = path.dirname(import.meta.path);
@@ -41,39 +40,7 @@ const WECHAT_API = path.join(SKILL_DIR, "wechat-api.ts");
 const WECHAT_ARTICLE = path.join(SKILL_DIR, "wechat-article.ts");
 
 function loadExtendConfig(): ExtendConfig {
-  const extendPaths = [
-    path.join(process.cwd(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
-    path.join(os.homedir(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
-  ];
-  const extendPath = extendPaths.find((candidate) => fs.existsSync(candidate));
-  if (!extendPath) return {};
-
-  const config: ExtendConfig = {};
-  const content = fs.readFileSync(extendPath, "utf-8");
-  for (const rawLine of content.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const colonIdx = line.indexOf(":");
-    if (colonIdx <= 0) continue;
-
-    const key = line.slice(0, colonIdx).trim().toLowerCase();
-    const value = line.slice(colonIdx + 1).trim();
-    if (!value) continue;
-
-    if (key === "default_publish_method" && (value === "api" || value === "browser")) {
-      config.defaultPublishMethod = value;
-    } else if (key === "default_theme") {
-      config.defaultTheme = value;
-    } else if (key === "default_color") {
-      config.defaultColor = value;
-    } else if (key === "default_author") {
-      config.defaultAuthor = value;
-    } else if (key === "chrome_profile_path") {
-      config.chromeProfilePath = value;
-    }
-  }
-
-  return config;
+  return loadWechatPublisherExtendConfig();
 }
 
 function loadEnvFile(envPath: string): Record<string, string> {
@@ -129,7 +96,7 @@ function formatMarkdownWithPreferredFormatter(
     outputPath: source.path.replace(/\.md$/i, ".wechat-publisher.html"),
     logPrefix: "[wechat-publish]",
   });
-  return { path: outputPath, kind: "html" };
+  return { path: outputPath, kind: "html", markdownPath: source.path };
 }
 
 function resolveSource(inputPath: string, method: PublishMethod): ResolvedSource {
@@ -150,14 +117,49 @@ function resolveSource(inputPath: string, method: PublishMethod): ResolvedSource
   }
 
   const ext = path.extname(resolved).toLowerCase();
-  if (ext === ".md") return { path: resolved, kind: "markdown" };
-  if (ext === ".html" || ext === ".htm") return { path: resolved, kind: "html" };
+  if (ext === ".md") return { path: resolved, kind: "markdown", markdownPath: resolved };
+  if (ext === ".html" || ext === ".htm") {
+    // For an HTML source, remember a sibling .md if present so we can still derive
+    // a title from frontmatter/H1 instead of falling back to the (often generic) <title>.
+    const siblingMd = resolved.replace(/\.wechat-publisher\.html$/i, ".md").replace(/\.html?$/i, ".md");
+    const markdownPath = fs.existsSync(siblingMd) ? siblingMd : undefined;
+    return { path: resolved, kind: "html", markdownPath };
+  }
   throw new Error(`Unsupported source type for WeChat publishing: ${resolved}`);
+}
+
+/**
+ * Derive an article title from a markdown file: frontmatter `title` first, then
+ * the first H1. Returns undefined when nothing usable is found, so the caller
+ * can fall back to wechat-api's own <title> extraction. Mirrors the logic in
+ * wechat-api.ts so the two stay consistent.
+ */
+function deriveTitleFromMarkdown(markdownPath: string): string | undefined {
+  if (!markdownPath || !fs.existsSync(markdownPath)) return undefined;
+  const content = fs.readFileSync(markdownPath, "utf-8");
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+  if (fmMatch) {
+    for (const line of fmMatch[1]!.split("\n")) {
+      const colonIdx = line.indexOf(":");
+      if (colonIdx <= 0) continue;
+      const key = line.slice(0, colonIdx).trim();
+      if (key === "title") {
+        let value = line.slice(colonIdx + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        if (value) return value;
+      }
+    }
+  }
+  const h1Match = content.match(/^#\s+(.+)$/m);
+  return h1Match ? h1Match[1]!.trim() : undefined;
 }
 
 function buildApiCommand(source: ResolvedSource, options: CliOptions, extend: ExtendConfig): string[] {
   const cmd = ["bun", WECHAT_API, source.path];
-  const title = options.title;
+  const title = options.title || deriveTitleFromMarkdown(source.markdownPath || "");
   const summary = options.summary;
   const author = options.author || extend.defaultAuthor;
   const theme = options.theme || extend.defaultTheme;
@@ -179,13 +181,14 @@ function buildBrowserCommand(source: ResolvedSource, options: CliOptions, extend
   if (source.kind === "markdown") cmd.push("--markdown", source.path);
   else cmd.push("--html", source.path);
 
+  const title = options.title || deriveTitleFromMarkdown(source.markdownPath || "");
   const author = options.author || extend.defaultAuthor;
   const theme = options.theme || extend.defaultTheme;
   const color = options.color || extend.defaultColor;
   const profile = options.profile || extend.chromeProfilePath;
   const needsMarkdownRenderFlags = source.kind === "markdown";
 
-  if (options.title) cmd.push("--title", options.title);
+  if (title) cmd.push("--title", title);
   if (options.summary) cmd.push("--summary", options.summary);
   if (author) cmd.push("--author", author);
   if (options.cover) cmd.push("--cover", path.resolve(options.cover));
@@ -228,7 +231,7 @@ Usage:
 
 Options:
   --method <api|browser|auto>  Publish method. Default: EXTEND.md or auto
-  --title <text>               Override article title
+  --title <text>               Override article title (defaults to frontmatter title or first H1)
   --summary <text>             Override article summary
   --author <name>              Override author
   --cover <path>               Override cover image path

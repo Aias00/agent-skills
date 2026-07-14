@@ -11,6 +11,8 @@ description: 审阅并整理技术文章的发文前准备项，输出可执行�
 
 这个 skill 的目标不是直接重写一切，而是把发文前准备收成一个固定流程：先审稿，再修图，再生成最终发布包，最后做本地验证。
 
+对微信公众号链路，这个 skill 是 `technical-article-review`、`wechat-article-formatter`、`wechat-publisher` 之间的发布前总闸。只要任务包含“写完并发布”“发到公众号草稿箱”“生成可发包再发布”，就先用这里的检查结果决定能不能进入发布脚本。
+
 补充规则：
 
 - 对技术文章，`写完首稿` 不等于 `稿件就绪`
@@ -30,6 +32,19 @@ Preflight Progress:
 - [ ] Step 7: Verify final package locally
 - [ ] Step 8: Declare ready or list blockers
 ```
+
+## WeChat Standard Path
+
+Use this sequence for WeChat article delivery:
+
+1. Keep Markdown as the source of truth.
+2. Run `technical-article-review` and apply blocking fixes to the Markdown.
+3. Check cover and inline images before generating final output.
+4. Regenerate WeChat HTML through `wechat-article-formatter`.
+5. Run `wechat-publisher/scripts/wechat-publish.ts <article.md> --dry-run`.
+6. Publish only after the dry run resolves title, summary, author, cover, theme, and source path correctly.
+
+Do not treat a successful formatter run as publish readiness. Formatter output proves only that HTML can be generated; it does not prove the article is reviewed, images are publishable, or the final WeChat draft metadata is correct.
 
 ### Step 1: Find the Source of Truth
 
@@ -177,6 +192,8 @@ Operational rules:
 ## Hard Rules
 
 - Edit the source article before regenerating derived HTML.
+- Do not skip preflight when the same task asks to write or revise a technical article and publish it.
 - Treat clipped or distorted diagrams as publish blockers.
 - Time-sensitive figures must include a date or an explicit caveat.
 - Do not publish a package you have not previewed locally when local preview is feasible.
+- For WeChat, do not publish until `wechat-publish.ts --dry-run` confirms the resolved source, title, and theme path.

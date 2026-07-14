@@ -6,11 +6,37 @@ const SCRIPT_DIR = path.dirname(import.meta.path);
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "..", "..");
 const FORMATTER_DIR = path.join(REPO_ROOT, "wechat-article-formatter");
 const FORMATTER_SCRIPT = path.join(FORMATTER_DIR, "scripts", "markdown_to_html.py");
+const FORMATTER_TEMPLATES_DIR = path.join(FORMATTER_DIR, "templates");
 const FORMATTER_VENV_PYTHON = process.platform === "win32"
   ? path.join(FORMATTER_DIR, ".venv", "Scripts", "python.exe")
   : path.join(FORMATTER_DIR, ".venv", "bin", "python");
-const PREFERRED_THEMES = new Set(["mist-blue", "ai-tech"]);
+
+// Legacy theme aliases that predate the repo-local formatter; all map to the
+// original default theme. Kept so old invocations keep working.
 const LEGACY_THEME_ALIASES = new Set(["default", "grace", "simple", "modern"]);
+
+/**
+ * Discover available themes by reading the formatter's templates/ directory
+ * (`<name>-theme.css` -> `<name>`). This stays in sync with whatever themes the
+ * formatter actually ships, so passing any real theme works instead of being
+ * silently downgraded to the default.
+ *
+ * Falls back to a minimal known set if the templates dir is unreadable (e.g.
+ * running outside the repo layout), so the function never throws on lookup.
+ */
+function discoverAvailableThemes(): Set<string> {
+  const themes = new Set<string>(["mist-blue", "ai-tech"]);
+  try {
+    if (!fs.existsSync(FORMATTER_TEMPLATES_DIR)) return themes;
+    for (const entry of fs.readdirSync(FORMATTER_TEMPLATES_DIR)) {
+      const match = entry.match(/^(.+)-theme\.css$/i);
+      if (match) themes.add(match[1]!.toLowerCase());
+    }
+  } catch {
+    // Non-fatal: callers fall back to the default theme on unknown input.
+  }
+  return themes;
+}
 
 function pythonHasFormatterDeps(pythonBin: string): boolean {
   const result = spawnSync(
@@ -24,12 +50,13 @@ function pythonHasFormatterDeps(pythonBin: string): boolean {
 export function normalizePreferredFormatterTheme(theme?: string, logPrefix = "[wechat]"): string {
   const normalized = theme?.trim().toLowerCase();
   if (!normalized) return "mist-blue";
-  if (PREFERRED_THEMES.has(normalized)) return normalized;
+  const available = discoverAvailableThemes();
+  if (available.has(normalized)) return normalized;
   if (LEGACY_THEME_ALIASES.has(normalized)) {
     console.error(`${logPrefix} Legacy markdown theme "${normalized}" detected. Using "mist-blue" with the repo-local formatter.`);
     return "mist-blue";
   }
-  console.error(`${logPrefix} Unknown markdown theme "${theme}". Using "mist-blue" with the repo-local formatter.`);
+  console.error(`${logPrefix} Unknown markdown theme "${theme}". Available: ${[...available].sort().join(", ")}. Using "mist-blue" with the repo-local formatter.`);
   return "mist-blue";
 }
 
