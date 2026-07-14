@@ -82,6 +82,17 @@ If you need direct control:
 
 But these are still **secondary entries**. The canonical path is `scripts/wechat-publish.ts`.
 
+## Publishing Gate
+
+When the source is a technical article, publishing is not the first validation step. Before invoking the real API/browser publish path:
+
+1. Run `technical-article-review` on the Markdown source and apply blocking fixes.
+2. Run `technical-article-preflight` for source, cover, images, regenerated HTML, and local preview readiness.
+3. Run `scripts/wechat-publish.ts <article.md> --dry-run` and inspect the resolved source, title, author, cover, comments, and theme path.
+4. Publish only when the dry-run output matches the intended article package.
+
+Exception: if the user explicitly asks only to test API credentials, list/delete drafts, or inspect environment permissions, skip article preflight because no article is being published.
+
 ## Incorrect Or Legacy Paths
 
 Mark these as **non-standard** when helping users:
@@ -242,7 +253,7 @@ The direct scripts also read `wechat-publisher/EXTEND.md`, so CLI runs stay alig
 
 ### Step 0.5: Prepare Article Package For Submission
 
-For long technical articles, do NOT jump directly from markdown draft to WeChat publish.
+For technical articles, do NOT jump directly from markdown draft to WeChat publish.
 Run this prep flow first:
 
 1. **Review the article for technical publish readiness**

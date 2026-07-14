@@ -3,6 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { prepareWechatCoverPath } from "./cover-utils.ts";
 import { normalizePreferredFormatterTheme, renderMarkdownWithPreferredFormatter } from "./preferred-markdown-render.ts";
+import { loadWechatPublisherExtendConfig } from "./wechat-extend-config.ts";
 
 interface WechatConfig {
   appId: string;
@@ -82,42 +83,8 @@ const DRAFT_URL = "https://api.weixin.qq.com/cgi-bin/draft/add";
 const DRAFT_BATCHGET_URL = "https://api.weixin.qq.com/cgi-bin/draft/batchget";
 const DRAFT_DELETE_URL = "https://api.weixin.qq.com/cgi-bin/draft/delete";
 
-function parseBool(value?: string): boolean | undefined {
-  if (!value) return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "off"].includes(normalized)) return false;
-  return undefined;
-}
-
 function loadExtendConfig(): ExtendConfig {
-  const extendPaths = [
-    path.join(process.cwd(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
-    path.join(os.homedir(), ".baoyu-skills", "wechat-publisher", "EXTEND.md"),
-  ];
-  const extendPath = extendPaths.find((candidate) => fs.existsSync(candidate));
-  if (!extendPath) return {};
-
-  const config: ExtendConfig = {};
-  const content = fs.readFileSync(extendPath, "utf-8");
-  for (const rawLine of content.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const colonIdx = line.indexOf(":");
-    if (colonIdx <= 0) continue;
-
-    const key = line.slice(0, colonIdx).trim().toLowerCase();
-    const value = line.slice(colonIdx + 1).trim();
-    if (!value) continue;
-
-    if (key === "default_theme") config.defaultTheme = value;
-    else if (key === "default_color") config.defaultColor = value;
-    else if (key === "default_author") config.defaultAuthor = value;
-    else if (key === "need_open_comment") config.needOpenComment = parseBool(value);
-    else if (key === "only_fans_can_comment") config.onlyFansCanComment = parseBool(value);
-  }
-
-  return config;
+  return loadWechatPublisherExtendConfig();
 }
 
 function loadEnvFile(envPath: string): Record<string, string> {
@@ -875,7 +842,10 @@ async function main(): Promise<void> {
   if (args.isHtml) {
     htmlPath = filePath;
     htmlContent = normalizeHtmlForWeChatApi(extractHtmlContent(htmlPath));
-    const mdPath = filePath.replace(/\.html$/i, ".md");
+    let mdPath = filePath.replace(/\.html$/i, ".md");
+    if (!fs.existsSync(mdPath)) {
+      mdPath = filePath.replace(/\.wechat-publisher\.html$/i, ".md");
+    }
     if (fs.existsSync(mdPath)) {
       const mdContent = fs.readFileSync(mdPath, "utf-8");
       const parsed = parseFrontmatter(mdContent);

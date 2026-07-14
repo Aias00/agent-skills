@@ -30,7 +30,8 @@ Technical Article Review Flow:
 - [ ] Step 4: Audit structure and teaching clarity
 - [ ] Step 5: Polish language without diluting technical density
 - [ ] Step 6: Apply revisions when rewrite is requested or clearly implied
-- [ ] Step 7: Produce final deliverable (report or rewritten draft)
+- [ ] Step 7: Run banned-pattern final sweep on the rewritten draft
+- [ ] Step 8: Produce final deliverable (report or rewritten draft)
 ```
 
 ### Step 1: Determine mode and platform
@@ -118,6 +119,15 @@ During language polish, explicitly check for these patterns and rewrite them int
 - avoid contrasty framing around examples like `不只是让 agent 看代码，还要...`; prefer direct phrasing of what the system can do
 - replace vague motion metaphors such as `漂掉` with concrete engineering language like `变形` / `走样` / `失去边界`
 - replace weak translated summaries like `吞吐量没有掉，反而继续往上走` with precise engineering phrasing such as `整体交付吞吐量没有下降，还继续提高了`
+- avoid `把...压住` / `压什么问题` as a default explanatory verb for article prose or figure captions; prefer concrete verbs like `处理` / `减少` / `收进规则里`
+- avoid vague architecture phrases such as `做薄` / `保持轻`; describe what the layer actually does, for example `CLI 负责入口`
+- avoid empty trend/opening lines such as `最近看到一个仓库：` / `这两天 ... 讨论得很多` when they do not add concrete context
+- avoid stitched transition sentences like `如果只看表面...` / `这篇文章往下展开的是...`; state the point directly
+- when referring to a public figure or company, add the minimum useful identity context once if it helps general readers (for example a well-known role or current position), but do not let that identity dominate the article
+- for Chinese tech commentary and WeChat-style prose, prefer `能看出` / `主要看` / `这次观察范围` over report-like phrasing such as `更适合` / `不太适合` / `用于回答`
+- avoid abstract transition lines such as `最先跳出来的是...` / `这一项要单独看` / `这三点先记住，后面的数据就不容易看偏`; rewrite them into natural spoken-written Chinese
+- when polishing article leads and section openers, bias toward `先看一个最直观的变化...` / `先把边界摆出来...` / `这件事更值得注意...` style phrasing instead of summary-report tone
+- if the user is clearly pushing the draft toward “更像人写的公众号口吻”, preserve the facts and structure but relax the register: shorter clauses, fewer meta-judgments, fewer “研究摘要体” sentences, and more natural explanatory transitions
 
 ### Step 6: Apply Revisions
 
@@ -141,7 +151,40 @@ When revising:
 - if the article has a downstream HTML publish artifact, treat markdown as the source of truth and let a later step regenerate HTML
 - prefer direct declarative phrasing over meta commentary about how the article is structured
 
-### Step 7: Final deliverable
+### Step 7: Banned-Pattern Final Sweep
+
+Before returning any rewritten Chinese draft, do a literal final sweep on the final text.
+
+Preferred command:
+
+```bash
+python3 scripts/check_banned_scaffolding.py --input /abs/path/to/final-draft.md
+```
+
+If the draft only exists in-memory, write it to a temporary file first, then run the checker before delivery.
+
+Minimum blocked patterns to scan for:
+
+- `不是`
+- `而是`
+- `不只是`
+- `如果只`
+- `也就是说`
+- `这一步很关键`
+
+How to apply the sweep:
+
+1. Search the final draft for the blocked strings.
+2. Read every hit in context.
+3. If the hit forms analysis scaffolding, contrast framing, or AI-sounding exposition in unquoted prose, rewrite it.
+4. Repeat until no blocked pattern remains in unquoted prose, or the remaining hit is clearly a source quote that must stay verbatim.
+
+Hard gate:
+
+- If `不是……而是……` or `不只是……而是……` remains in non-quoted prose, the draft is not ready and must not be returned.
+- If the user explicitly flags a pattern during the conversation, elevate that pattern to a hard ban for the rest of the task.
+
+### Step 8: Final deliverable
 
 If user asks for review:
 
@@ -200,6 +243,7 @@ If the user first asked for review and then asked to revise:
 - [ ] Examples and commands are executable/traceable
 - [ ] Title matches article scope
 - [ ] No filler-only paragraphs
+- [ ] No banned scaffolding patterns remain in unquoted prose
 ```
 
 ## Hard Rules
@@ -209,6 +253,8 @@ If the user first asked for review and then asked to revise:
 - Never trade correctness for rhetorical smoothness.
 - Prefer concise edits that are easy for authors to accept.
 - If a claim is time-sensitive and cannot be verified locally, say so explicitly.
+- Never return a rewritten Chinese draft while banned scaffolding patterns remain in unquoted prose.
+- Treat the banned-pattern final sweep as a release gate, not a style suggestion.
 
 ## References
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { launchChrome, tryConnectExisting, findExistingChromeDebugPort, getPageSession, waitForNewTab, clickElement, typeText, evaluate, sleep, type ChromeSession, type CdpConnection } from './cdp.ts';
 import { prepareWechatCoverPath } from './cover-utils.ts';
 import { normalizePreferredFormatterTheme, renderMarkdownWithPreferredFormatter } from './preferred-markdown-render.ts';
+import { loadWechatPublisherExtendConfig } from './wechat-extend-config.ts';
 
 const WECHAT_URL = 'https://mp.weixin.qq.com/';
 
@@ -41,32 +42,7 @@ interface ExtendConfig {
 }
 
 function loadExtendConfig(): ExtendConfig {
-  const extendPaths = [
-    path.join(process.cwd(), '.baoyu-skills', 'wechat-publisher', 'EXTEND.md'),
-    path.join(os.homedir(), '.baoyu-skills', 'wechat-publisher', 'EXTEND.md'),
-  ];
-  const extendPath = extendPaths.find((candidate) => fs.existsSync(candidate));
-  if (!extendPath) return {};
-
-  const config: ExtendConfig = {};
-  const content = fs.readFileSync(extendPath, 'utf-8');
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const colonIdx = line.indexOf(':');
-    if (colonIdx <= 0) continue;
-
-    const key = line.slice(0, colonIdx).trim().toLowerCase();
-    const value = line.slice(colonIdx + 1).trim();
-    if (!value) continue;
-
-    if (key === 'default_theme') config.defaultTheme = value;
-    else if (key === 'default_color') config.defaultColor = value;
-    else if (key === 'default_author') config.defaultAuthor = value;
-    else if (key === 'chrome_profile_path') config.chromeProfilePath = value;
-  }
-
-  return config;
+  return loadWechatPublisherExtendConfig();
 }
 
 async function waitForLogin(session: ChromeSession, timeoutMs = 120_000): Promise<boolean> {
