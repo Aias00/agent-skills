@@ -160,5 +160,6 @@ agent-skills/
 ├── chrome-extension-e2e-automation/
 ├── chrome-extension-publish/
 ├── chrome-extension-social-promo/
-└── chrome-webstore-image-generator/
+├── chrome-webstore-image-generator/
+└── code-review/
 ```
