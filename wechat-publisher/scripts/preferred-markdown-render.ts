@@ -74,7 +74,7 @@ export function resolvePreferredFormatterPython(): string | undefined {
 
 export function renderMarkdownWithPreferredFormatter(
   markdownPath: string,
-  options: { theme?: string; outputPath?: string; logPrefix?: string } = {},
+  options: { theme?: string; outputPath?: string; logPrefix?: string; preserveExistingHtml?: boolean } = {},
 ): string {
   if (!fs.existsSync(FORMATTER_SCRIPT)) {
     throw new Error(
@@ -95,6 +95,11 @@ export function renderMarkdownWithPreferredFormatter(
   const theme = normalizePreferredFormatterTheme(options.theme, options.logPrefix || "[wechat]");
   const outputPath = options.outputPath || markdownPath.replace(/\.md$/i, ".wechat-publisher.html");
   const logPrefix = options.logPrefix || "[wechat]";
+
+  if (options.preserveExistingHtml && fs.existsSync(outputPath)) {
+    console.error(`${logPrefix} Found existing themed HTML at ${outputPath}; skipping re-render. Pass --theme to force.`);
+    return outputPath;
+  }
   const args = [
     FORMATTER_SCRIPT,
     "--input", markdownPath,

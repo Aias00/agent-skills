@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号文章</title>
+    <style>
+        :root {
+            
+  /* ===== 主色系 ===== */
+  --primary-purple: #7c3aed;      /* 主紫色 - 标题、强调 */
+  --primary-blue: #3b82f6;        /* 主蓝色 - 链接、信息 */
+  --primary-cyan: #06b6d4;        /* 青色 - 技术类提示框 */
+  --primary-teal: #14b8a6;        /* 青绿色 - 代码相关 */
+
+  /* ===== 功能色 ===== */
+  --success-green: #10b981;       /* 成功 - 成功提示、正确示例 */
+  --warning-amber: #f59e0b;       /* 警告 - 注意事项 */
+  --danger-red: #ef4444;          /* 危险 - 错误示例、重要警告 */
+  --info-blue: #3b82f6;           /* 信息 - 普通提示 */
+
+  /* ===== 文字色系 ===== */
+  --text-primary: #1f2937;        /* 主文字 - 深灰 */
+  --text-secondary: #4b5563;      /* 次文字 - 中灰 */
+  --text-tertiary: #6b7280;       /* 辅助文字 - 浅灰 */
+  --text-light: #9ca3af;          /* 淡文字 - 超浅灰 */
+
+  /* ===== 背景色系 ===== */
+  --bg-white: #ffffff;            /* 主背景 */
+  --bg-gray-50: #f9fafb;          /* 浅灰背景 - 卡片、表格偶数行 */
+  --bg-gray-100: #f3f4f6;         /* 中灰背景 - 引用块 */
+  --bg-purple-50: #faf5ff;        /* 淡紫背景 - 重点提示 */
+  --bg-blue-50: #eff6ff;          /* 淡蓝背景 - 信息框 */
+  --bg-cyan-50: #ecfeff;          /* 淡青背景 - 技术框 */
+  --bg-green-50: #f0fdf4;         /* 淡绿背景 - 成功框 */
+  --bg-amber-50: #fffbeb;         /* 淡黄背景 - 警告框 */
+  --bg-red-50: #fef2f2;           /* 淡红背景 - 危险框 */
+
+  /* ===== 代码块色系（Atom One Dark） ===== */
+  --code-bg: #282c34;             /* 代码块背景 */
+  --code-text: #abb2bf;           /* 代码文字 */
+  --code-keyword: #c678dd;        /* 关键字 - 紫色 */
+  --code-function: #61afef;       /* 函数 - 蓝色 */
+  --code-string: #98c379;         /* 字符串 - 绿色 */
+  --code-number: #d19a66;         /* 数字 - 橙色 */
+  --code-comment: #5c6370;        /* 注释 - 灰色 */
+  --code-variable: #e06c75;       /* 变量 - 红色 */
+  --code-builtin: #e6c07b;        /* 内置函数 - 黄色 */
+
+  /* ===== 边框色系 ===== */
+  --border-light: #e5e7eb;        /* 浅边框 */
+  --border-medium: #d1d5db;       /* 中边框 */
+  --border-dark: #9ca3af;         /* 深边框 */
+
+  /* ===== 阴影色系 ===== */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* ===== 间距系统 ===== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* ===== 圆角系统 ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+        }
+
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text-primary, #333);
+            background: var(--bg-white, #fff);
+            padding: 20px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- ⚠️ 标题请在微信公众号编辑器中单独填写，HTML 中已自动移除 H1 标题 -->
+    <hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">很多读者问：<strong style="font-weight: 600; color: #1f2937">「Claude Code 太贵，国产模型又怕长会话上下文乱掉——有没有专门为 DeepSeek 调优的 Agent？」</strong></p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">2026 年 4 月，GitHub 上出现了一个专门做这件事的项目：<strong style="font-weight: 600; color: #1f2937">DeepSeek-Reasonix</strong>（https://github.com/esengine/DeepSeek-Reasonix）。不到 4 个月，<strong style="font-weight: 600; color: #1f2937">30851 stars</strong>，作者 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>esengine</code> 给它一句话定位：</p>
+<blockquote style="margin: 24px 0; padding: 20px 24px; background: #f3f4f6; border-left: 4px solid #7c3aed; border-radius: 0 8px 8px 0; position: relative">
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937; font-style: italic">面向终端的 DeepSeek 原生 AI coding agent。</p>
+</blockquote>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">「DeepSeek-native」</strong> 不是营销词——整个架构围绕 DeepSeek 的 <strong style="font-weight: 600; color: #1f2937">prefix cache（前缀缓存）</strong> 重新设计。</p>
+<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<h2 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 28px; padding-left: 16px; border-left: 4px solid #7c3aed; background: #faf5ff; padding-top: 8px; padding-bottom: 8px">一、为什么「DeepSeek 原生」是一个工程命题</h2>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #e5e7eb; border-radius: 8px;">
+<thead style="background: #7c3aed; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; color: #ffffff; background: #7c3aed;">维度</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; color: #ffffff; background: #7c3aed;">通用 Agent</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; color: #ffffff; background: #7c3aed;">DeepSeek-Reasonix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">上下文维护</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">朴素 compaction，容易丢约束</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;"><strong style="font-weight: 600; color: #1f2937">prefix-cache 友好</strong>：稳定摘要 + stale snip</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">长会话成本</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">长上下文反复重算</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;"><strong style="font-weight: 600; color: #1f2937">命中 prefix cache</strong>，成本可控</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">分发</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">依赖运行时、node_modules</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;"><strong style="font-weight: 600; color: #1f2937">单一静态 Go 二进制</strong>，CGO_ENABLED=0</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">插件</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">厂商私有协议</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;"><strong style="font-weight: 600; color: #1f2937">MCP 兼容</strong>，stdio JSON-RPC</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">什么是 prefix cache？大模型推理时，如果请求的前缀（system prompt + 历史上下文）和上一次请求相同，服务端可以复用已计算的 KV cache，不用重算。DeepSeek 对命中的部分按更低费率计费——<strong style="font-weight: 600; color: #1f2937">前缀越稳定，省得越多</strong>。但多数 Agent 的上下文管理在每次轮次中插入新内容、删除旧内容、重排消息顺序，前缀一直在变，缓存命中率自然低。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">Reasonix 把整个 context 维护流程重新设计——启动时注入稳定的环境摘要，stale 工具输出在进入摘要压缩前先 snip/prune，工具 schema 有合约和回归测试保护。</p>
+<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<h2 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 28px; padding-left: 16px; border-left: 4px solid #7c3aed; background: #faf5ff; padding-top: 8px; padding-bottom: 8px">二、五条核心特性</h2>
+<h3 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">1. 配置驱动</h3>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">Provider、agent、工具、插件全在 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>reasonix.toml</code> 里声明，<strong style="font-weight: 600; color: #1f2937">内核没有硬编码模型</strong>。任何 OpenAI 兼容端点只需新增一条 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>[[providers]]</code> 配置：</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="n">default_model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-flash"</span>
+
+<span class="k">[[providers]]</span>
+<span class="n">name</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-flash"</span>
+<span class="n">kind</span><span class="w">        </span><span class="o">=</span><span class="w"> </span><span class="s2">"openai"</span>
+<span class="n">base_url</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://api.deepseek.com"</span>
+<span class="n">model</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-v4-flash"</span>
+<span class="n">api_key_env</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"DEEPSEEK_API_KEY"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">密钥通过 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>api_key_env</code> 引用环境变量，值放在全局 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>.env</code> 里，仓库里不出现 API key。换模型、加 provider 只改配置不改代码，<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>reasonix.toml</code> 可以随仓库走，团队共享同一套配置。</p>
+<h3 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">2. 双模型协同：执行器 + 规划器</h3>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">[agent]</span>
+<span class="n">default_model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-flash"</span><span class="w">      </span><span class="c1"># 执行器：高频、便宜</span>
+<span class="n">planner_model</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-pro"</span><span class="w">       </span><span class="c1"># 规划器：低频、强能力</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">两个模型跑在<strong style="font-weight: 600; color: #1f2937">独立、缓存稳定的 session</strong> 里，各自的前缀缓存不被对方中断。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">除了执行器 + 规划器，还可以配置子 agent 用的模型：</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">[agent]</span>
+<span class="n">subagent_model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"deepseek-pro"</span><span class="w">     </span><span class="c1"># 子 agent 默认模型</span>
+<span class="n">subagent_models</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">review</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"deepseek-pro"</span><span class="p">,</span><span class="w"> </span><span class="n">security_review</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"deepseek-pro"</span><span class="w"> </span><span class="p">}</span>
+<span class="n">max_subagent_depth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="w">              </span><span class="c1"># 嵌套委派深度</span>
+<span class="n">max_subagent_concurrency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6</span><span class="w">        </span><span class="c1"># 并发子 agent 数</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">执行器做具体活儿，规划器低频出谋划策，子 agent 处理 review、安全审查等专项任务——三层分工，每层的前缀缓存各自独立。简单任务跑 Flash 省钱，复杂规划交给 Pro，长会话不会因为模型切换导致缓存失效、token 成本失控。</p>
+<h3 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">3. 插件驱动：MCP 兼容</h3>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">外部工具以子进程运行，通过 stdio JSON-RPC 通信，<strong style="font-weight: 600; color: #1f2937">完全兼容 MCP</strong>。内置工具编译期自注册，零启动开销。内置工具和 MCP 插件走同一套审批和沙箱。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">添加一个 MCP 插件只需要几行配置：</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">[[plugins]]</span>
+<span class="n">name</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s2">"example"</span>
+<span class="n">command</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"reasonix-plugin-example"</span>
+<span class="n">startup_timeout_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">call_timeout_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">600</span>
+<span class="n">tool_timeout_seconds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">"generate_video"</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1800</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">每个插件可以单独设超时，长任务（视频生成、大批量数据处理）不会被全局超时杀掉。接入文件系统、浏览器、数据库等 MCP 工具不用自己写集成代码，配置即启用。</p>
+<h3 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">4. 缓存友好的上下文维护</h3>
+<table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 15px; border: 1px solid #e5e7eb; border-radius: 8px;">
+<thead style="background: #7c3aed; color: #ffffff;">
+<tr>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; color: #ffffff; background: #7c3aed;">机制</th>
+<th style="padding: 12px 16px; text-align: left; font-weight: 600; border: 1px solid #e5e7eb; color: #ffffff; background: #7c3aed;">作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">启动注入稳定环境摘要</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">前缀稳定，后续请求更容易命中 cache</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">stale 工具输出 snip/prune</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">compaction 前先裁掉旧输出</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">工具 schema 合约</td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb;">回归测试保护，避免 schema 漂移</td>
+</tr>
+<tr>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;"><code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>tool_result_snip_ratio = 0.6</code></td>
+<td style="padding: 12px 16px; border: 1px solid #e5e7eb; background: #faf5ff;">可配置的裁剪比例</td>
+</tr>
+</tbody>
+</table>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">多数 Agent 的 compaction 在摘要前不做预裁剪，Reasonix 先 snip/prune 再摘要——这个顺序直接影响 prefix cache 命中率。实际效果：长会话跑几十轮后 token 成本仍然可控，早期约束不容易在摘要压缩中丢失。</p>
+<h3 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 24px; position: relative; padding-left: 20px">5. 零摩擦分发</h3>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>make<span class="w"> </span>build<span class="w">      </span><span class="c1"># -&gt; bin/reasonix</span>
+make<span class="w"> </span>cross<span class="w">      </span><span class="c1"># -&gt; dist/（6 平台）</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937"><code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>CGO_ENABLED=0</code> 单一静态二进制，唯一依赖一个 TOML 解析库。内网机器 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>chmod +x</code> 就能跑，不需要装 Node、Python 或任何运行时——内网部署、离线环境、CI runner 都是丢进去就能用。</p>
+<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<h2 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 28px; padding-left: 16px; border-left: 4px solid #7c3aed; background: #faf5ff; padding-top: 8px; padding-bottom: 8px">三、安装与快速开始</h2>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>npm<span class="w"> </span>i<span class="w"> </span>-g<span class="w"> </span>reasonix<span class="w">                  </span><span class="c1"># 任意系统</span>
+brew<span class="w"> </span>install<span class="w"> </span>esengine/reasonix/reasonix<span class="w">   </span><span class="c1"># macOS</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">桌面端（macOS/Windows/Linux）和 VS Code 扩展（<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>SivanLiu.reasonix-agent</code>）也在官网 https://reasonix.io/ 提供。三者共用同一套本地引擎。</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>reasonix<span class="w"> </span>setup<span class="w">                      </span><span class="c1"># 配置 provider 和模型</span>
+reasonix<span class="w">                            </span><span class="c1"># 启动交互式会话</span>
+reasonix<span class="w"> </span>run<span class="w"> </span><span class="s2">"把 main.go 里的 TODO 实现掉"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">交互式会话里 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>/init</code> 生成项目指令，相当于 Claude Code 的 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>CLAUDE.md</code>。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937"><code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>reasonix serve</code> 把本地引擎套一层浏览器 UI，适合远程开发机或团队共享会话：</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>reasonix<span class="w"> </span>serve<span class="w">                              </span><span class="c1"># 本地 127.0.0.1:8787</span>
+reasonix<span class="w"> </span>serve<span class="w"> </span>--addr<span class="w"> </span><span class="m">0</span>.0.0.0:8787<span class="w"> </span>--auth<span class="w"> </span>token<span class="w">   </span><span class="c1"># 对外暴露时启用认证</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">Remote SSH 在远程主机上跑 Reasonix，通过本地 SSH 隧道访问：</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">[remote]</span>
+<span class="k">[[remote.hosts]]</span>
+<span class="n">name</span><span class="w">          </span><span class="o">=</span><span class="w"> </span><span class="s2">"gpu-box"</span>
+<span class="n">host</span><span class="w">          </span><span class="o">=</span><span class="w"> </span><span class="s2">"203.0.113.7"</span>
+<span class="n">user</span><span class="w">          </span><span class="o">=</span><span class="w"> </span><span class="s2">"dev"</span>
+<span class="n">identity_file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"~/.ssh/id_ed25519"</span>
+<span class="n">workspace</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s2">"~/projects/app"</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937"><code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>[remote]</code> 是 user-global 配置，项目级 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>reasonix.toml</code> 不能注入远程主机——<strong style="font-weight: 600; color: #1f2937">克隆的仓库永远不能操纵 SSH 连接目标</strong>。</p>
+<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<h2 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 28px; padding-left: 16px; border-left: 4px solid #7c3aed; background: #faf5ff; padding-top: 8px; padding-bottom: 8px">四、安全与隐私</h2>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'><span class="k">[permissions]</span>
+<span class="n">mode</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s2">"ask"</span><span class="w">                                </span><span class="c1"># 没有规则匹配时弹窗</span>
+<span class="n">deny</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"Bash(rm -rf*)"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Bash(git push*)"</span><span class="p">]</span><span class="w"> </span><span class="c1"># 任何模式下硬封</span>
+<span class="n">allow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"Bash(go test:*)"</span><span class="p">]</span><span class="w">                  </span><span class="c1"># 永不弹窗</span>
+
+<span class="k">[sandbox]</span>
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">配置解析顺序：<strong style="font-weight: 600; color: #1f2937">flag &gt; <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>./reasonix.toml</code> &gt; 用户全局配置 &gt; 内置默认值</strong>。<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>[permissions]</code> 控制工具执行审批，<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>[sandbox]</code> 控制文件系统边界，两套独立防线。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">权限模式下 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>ask</code> 是 writer 兜底——没有规则匹配时弹窗确认，不自动放行。<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>deny</code> 是硬封，任何模式下都生效。沙箱限制文件写入范围、可读取路径，<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>forbid_read</code> 可以保护 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>~/.ssh</code> 等敏感目录。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">遥测方面，每日一次匿名 ping（128 位 install ID、CLI 版本、OS、架构），<strong style="font-weight: 600; color: #1f2937">绝不上传</strong> prompt、answer、reasoning、工具输出、路径、token 数等。<code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>DO_NOT_TRACK</code> 直接关闭。崩溃报告本地脱敏后通过 <code style='background: #f5f5f5; color: #e83e8c; padding: 2px 6px; border-radius: 4px; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 0.9em; font-weight: 500'>reasonix report send</code> 显式发送，从不自动上传。</p>
+<hr style="border: none; height: 2px; background: #7c3aed; margin: 40px 0; opacity: 0.5"/>
+<h2 style="font-weight: 700; line-height: 1.4; margin-top: 32px; margin-bottom: 16px; color: #1f2937; font-size: 28px; padding-left: 16px; border-left: 4px solid #7c3aed; background: #faf5ff; padding-top: 8px; padding-bottom: 8px">结语</h2>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">过去两年，AI Agent 工具链在卷「谁能把闭源模型用得最花」。Reasonix 走了另一条路：<strong style="font-weight: 600; color: #1f2937">围绕一个开源模型，把工程做扎实</strong>。</p>
+<div class="codehilite"><pre style="background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 20px 0; position: relative; line-height: 1.6"><span></span><code style='background: transparent; color: #abb2bf; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace; font-size: 14px; line-height: 1.65; border: none; padding: 0'>npm<span class="w"> </span>i<span class="w"> </span>-g<span class="w"> </span>reasonix
+reasonix<span class="w"> </span>setup
+reasonix
+</code></pre></div>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937">三条命令，你的 DeepSeek API key 就能在终端里跑一个为它调优的 Agent。</p>
+<p style="margin: 16px 0; line-height: 1.8; color: #1f2937"><strong style="font-weight: 600; color: #1f2937">项目地址</strong>：https://github.com/esengine/DeepSeek-Reasonix · MIT</p>
+</body>
+</html>

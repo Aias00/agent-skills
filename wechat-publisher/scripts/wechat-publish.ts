@@ -95,6 +95,7 @@ function formatMarkdownWithPreferredFormatter(
     theme,
     outputPath: source.path.replace(/\.md$/i, ".wechat-publisher.html"),
     logPrefix: "[wechat-publish]",
+    preserveExistingHtml: !options.theme,
   });
   return { path: outputPath, kind: "html", markdownPath: source.path };
 }

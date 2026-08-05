@@ -490,6 +490,11 @@ def main() -> int:
         fm, body = parse_frontmatter(content)
         if not title:
             title = (fm.get("title") or "").strip()
+        if not title:
+            h1_match = re.search(r"^#\s+(.+)$", body, re.MULTILINE)
+            if h1_match:
+                title = h1_match.group(1).strip()
+                print(f"[cover] Using H1 as title: {title}", file=sys.stderr)
         if not summary:
             summary = (fm.get("summary") or fm.get("digest") or "").strip()
         if not summary:
