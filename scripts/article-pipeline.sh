@@ -55,7 +55,8 @@ if [[ "$COVER" == "true" ]]; then
   echo "[3/5] Generate cover..."
   python3 "$REPO/wechat-publisher/scripts/generate-cover-image.py" \
     --markdown "$INPUT" \
-    --theme ocean
+    --theme purple \
+    --badge ""
   echo "  [OK]"
 else
   echo "[3/5] Cover: skipped"
