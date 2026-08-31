@@ -5,6 +5,28 @@ description: 审阅并整理技术文章的发文前准备项，输出可执行�
 
 # Technical Article Preflight
 
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/run_preflight.py` | Unified entry: banned check → HTML check → cover check → publisher dry-run |
+| `scripts/check_html.py` | Verify HTML structure: H1 removed, tag balance for table/pre/blockquote/ul/ol/div |
+| `scripts/check_cover.py` | Verify cover image: exists, non-zero, PNG dimensions (900x383, ratio 2.2-2.5) |
+
+### Quick run
+
+```bash
+python3 scripts/run_preflight.py --markdown /abs/path/article.md
+```
+
+### Options
+
+```
+run_preflight.py --markdown <path> [--html <path>] [--cover <path>] [--skip-banned] [--skip-dry-run]
+check_html.py --html <path>
+check_cover.py --cover <path> | --markdown <path>
+```
+
 ## Overview
 
 在技术文章进入发布前，先做一次“预检”，避免把不稳定的稿件、裁切的配图、过时的数字、或已经失真的 HTML 直接推进发布。

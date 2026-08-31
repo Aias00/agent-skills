@@ -13,6 +13,8 @@ from pathlib import Path
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("不是……而是……", re.compile(r"不是[^。！？\n]{0,80}而是")),
     ("不只是……而是……", re.compile(r"不只是[^。！？\n]{0,80}而是")),
+    ("不……而是……", re.compile(r"不[^\n。！？]{0,60}?而是")),
+    ("而不是", re.compile(r"而不是")),
     ("如果只", re.compile(r"如果只")),
     ("也就是说", re.compile(r"也就是说")),
     ("这一步很关键", re.compile(r"这一步很关键")),

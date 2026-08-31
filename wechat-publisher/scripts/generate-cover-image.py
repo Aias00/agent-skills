@@ -367,7 +367,7 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
 
     badge_h = max(36, int(h * 0.135))
     badge_y = h - safe_bottom - badge_h
-    text_bottom_limit = badge_y - int(h * 0.06)
+    text_bottom_limit = (badge_y - int(h * 0.06)) if (badge or "").strip() else (h - safe_bottom)
 
     font_path = resolve_font_path()
 
@@ -423,30 +423,31 @@ def render_cover(title: str, summary: str, out_path: Path, size: str, badge: str
                 y += summary_gap
 
     # Badge in safe area, width adapts to text length.
-    badge = (badge or "AI Agent / Architecture").strip()
-    badge_font = load_font(ImageFont, font_path, max(16, int(badge_h * 0.43)))
-    badge_box = draw.textbbox((0, 0), badge, font=badge_font)
-    badge_text_w = max(1, badge_box[2] - badge_box[0])
-    badge_text_h = max(1, badge_box[3] - badge_box[1])
+    badge = (badge or "").strip()
+    if badge:
+        badge_font = load_font(ImageFont, font_path, max(16, int(badge_h * 0.43)))
+        badge_box = draw.textbbox((0, 0), badge, font=badge_font)
+        badge_text_w = max(1, badge_box[2] - badge_box[0])
+        badge_text_h = max(1, badge_box[3] - badge_box[1])
 
-    badge_x = safe_left
-    badge_w = max(int(w * 0.30), min(int(w * 0.62), badge_text_w + int(w * 0.07)))
-    draw.rounded_rectangle(
-        (badge_x, badge_y, badge_x + badge_w, badge_y + badge_h),
-        radius=max(12, int(badge_h / 2.2)),
-        outline=colors["badge_outline"],
-        width=2,
-        fill=colors["badge_fill"],
-    )
-    draw.text(
-        (
-            badge_x + (badge_w - badge_text_w) // 2,
-            badge_y + (badge_h - badge_text_h) // 2 - 1,
-        ),
-        badge,
-        font=badge_font,
-        fill=colors["badge_text"],
-    )
+        badge_x = safe_left
+        badge_w = max(int(w * 0.30), min(int(w * 0.62), badge_text_w + int(w * 0.07)))
+        draw.rounded_rectangle(
+            (badge_x, badge_y, badge_x + badge_w, badge_y + badge_h),
+            radius=max(12, int(badge_h / 2.2)),
+            outline=colors["badge_outline"],
+            width=2,
+            fill=colors["badge_fill"],
+        )
+        draw.text(
+            (
+                badge_x + (badge_w - badge_text_w) // 2,
+                badge_y + (badge_h - badge_text_h) // 2 - 1,
+            ),
+            badge,
+            font=badge_font,
+            fill=colors["badge_text"],
+        )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(out_path, "PNG")
@@ -490,6 +491,11 @@ def main() -> int:
         fm, body = parse_frontmatter(content)
         if not title:
             title = (fm.get("title") or "").strip()
+        if not title:
+            h1_match = re.search(r"^#\s+(.+)$", body, re.MULTILINE)
+            if h1_match:
+                title = h1_match.group(1).strip()
+                print(f"[cover] Using H1 as title: {title}", file=sys.stderr)
         if not summary:
             summary = (fm.get("summary") or fm.get("digest") or "").strip()
         if not summary:

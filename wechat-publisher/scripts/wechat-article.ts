@@ -25,6 +25,7 @@ interface ArticleOptions {
   coverPath?: string;
   theme?: string;
   color?: string;
+  themeExplicitlyProvided?: boolean;
   author?: string;
   summary?: string;
   images?: string[];
@@ -966,6 +967,7 @@ export async function postArticle(options: ArticleOptions): Promise<void> {
       theme: normalizePreferredFormatterTheme(theme, '[wechat]'),
       outputPath: markdownFile.replace(/\.md$/i, '.wechat-publisher.html'),
       logPrefix: '[wechat]',
+      preserveExistingHtml: !options.themeExplicitlyProvided,
     });
     const meta = parseHtmlMeta(formattedHtmlPath);
     effectiveTitle = effectiveTitle || meta.title;
@@ -1314,6 +1316,7 @@ async function main(): Promise<void> {
   let htmlFile: string | undefined;
   let markdownFile: string | undefined;
   let theme: string | undefined = extendConfig.defaultTheme;
+  let themeExplicit = false;
   let color: string | undefined = extendConfig.defaultColor;
   let author: string | undefined = extendConfig.defaultAuthor;
   let summary: string | undefined;
@@ -1328,7 +1331,7 @@ async function main(): Promise<void> {
     else if (arg === '--content' && args[i + 1]) content = args[++i];
     else if (arg === '--html' && args[i + 1]) htmlFile = args[++i];
     else if (arg === '--markdown' && args[i + 1]) markdownFile = args[++i];
-    else if (arg === '--theme' && args[i + 1]) theme = args[++i];
+    else if (arg === '--theme' && args[i + 1]) { theme = args[++i]; themeExplicit = true; }
     else if (arg === '--color' && args[i + 1]) color = args[++i];
     else if (arg === '--author' && args[i + 1]) author = args[++i];
     else if (arg === '--summary' && args[i + 1]) summary = args[++i];
@@ -1342,7 +1345,7 @@ async function main(): Promise<void> {
   if (!markdownFile && !htmlFile && !title) { console.error('Error: --title is required (or use --markdown/--html)'); process.exit(1); }
   if (!markdownFile && !htmlFile && !content) { console.error('Error: --content, --html, or --markdown is required'); process.exit(1); }
 
-  await postArticle({ title: title || '', content, htmlFile, markdownFile, coverPath, theme, color, author, summary, images, submit, profileDir, cdpPort });
+  await postArticle({ title: title || '', content, htmlFile, markdownFile, coverPath, theme, color, author, summary, images, submit, profileDir, cdpPort, themeExplicitlyProvided: themeExplicit });
 }
 
 await main().then(() => {

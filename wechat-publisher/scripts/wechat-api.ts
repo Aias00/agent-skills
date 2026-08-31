@@ -429,11 +429,12 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, string
   return { frontmatter, body: match[2]! };
 }
 
-function renderMarkdownToHtml(markdownPath: string, theme: string = "mist-blue", _color?: string): string {
+function renderMarkdownToHtml(markdownPath: string, theme: string = "mist-blue", _color?: string, preserveExistingHtml?: boolean): string {
   return renderMarkdownWithPreferredFormatter(markdownPath, {
     theme: normalizePreferredFormatterTheme(theme, "[wechat-api]"),
     outputPath: markdownPath.replace(/\.md$/i, ".wechat-publisher.html"),
     logPrefix: "[wechat-api]",
+    preserveExistingHtml,
   });
 }
 
@@ -873,7 +874,7 @@ async function main(): Promise<void> {
     if (!digest) digest = frontmatter.digest || frontmatter.summary || frontmatter.description || "";
 
     console.error(`[wechat-api] Theme: ${resolvedTheme}${resolvedColor ? `, color: ${resolvedColor}` : ""}`);
-    htmlPath = renderMarkdownToHtml(filePath, resolvedTheme, resolvedColor);
+    htmlPath = renderMarkdownToHtml(filePath, resolvedTheme, resolvedColor, !args.theme);
     console.error(`[wechat-api] HTML generated: ${htmlPath}`);
     htmlContent = normalizeHtmlForWeChatApi(extractHtmlContent(htmlPath));
   }
