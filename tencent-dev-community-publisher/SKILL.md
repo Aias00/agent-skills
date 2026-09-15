@@ -141,6 +141,13 @@ Report should include:
 - selected tag (`#腾讯云架构师技术同盟`)
 - if failed: failed phase + retry command
 
+### Review stage note
+
+Publishing succeeds when the page shows 发布成功/提交成功/审核中 text. Newly
+published articles enter platform review and may not appear in the user's
+article list immediately — a missing article ID after success text is expected
+and is NOT a publish failure. Do not retry publishing in that case.
+
 ## Security Notes
 
 - `run.py` prevents path traversal and only executes scripts in `scripts/`.

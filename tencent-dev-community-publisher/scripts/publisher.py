@@ -339,11 +339,21 @@ def ensure_required_article_tag(page: Page) -> bool:
     def selected_tags() -> list[str]:
         return page.evaluate(
             """() => {
-                const tags = document.querySelector('.com-2-tagsinput');
-                return tags
-                    ? Array.from(tags.querySelectorAll('.com-2-tag-txt span[title]'))
-                        .map(tag => tag.getAttribute('title'))
-                    : [];
+                const legacy = document.querySelector('.com-2-tagsinput');
+                if (legacy) {
+                    return Array.from(legacy.querySelectorAll('.com-2-tag-txt span[title]'))
+                        .map(tag => tag.getAttribute('title'));
+                }
+                const tagTexts = Array.from(document.querySelectorAll('.cdc-tags-input__tag-text'))
+                    .map(el => (el.textContent || '').trim());
+                if (tagTexts.length) return tagTexts;
+                const container = document.querySelector('.cdc-tags-input');
+                if (!container) return [];
+                const raw = container.innerText || '';
+                const cleaned = raw.replace(/还可以添加\\d+个标签/g, ' ')
+                    .replace(/最多\\d+个关键词[\\s\\S]*/g, ' ')
+                    .trim();
+                return cleaned && cleaned.length < 40 ? [cleaned] : [];
             }"""
         )
 
@@ -351,22 +361,30 @@ def ensure_required_article_tag(page: Page) -> bool:
         if REQUIRED_ARTICLE_TAG in selected_tags():
             return True
 
-        tag_input = page.locator(".com-2-tagsinput .com-2-tag-input").first
+        tag_input = page.locator(".cdc-tags-input__input").first
+        if tag_input.count() == 0 or not tag_input.is_visible():
+            tag_input = page.locator(".com-2-tagsinput .com-2-tag-input").first
         if tag_input.count() == 0 or not tag_input.is_visible():
             return False
+        tag_input.click(force=True)
         tag_input.fill(REQUIRED_ARTICLE_TAG)
+        page.wait_for_timeout(800)
 
-        options = page.locator(".com-2-tagsinput-dropdown-menu li")
+        option_selectors = [
+            ".cdc-tags-input__dropdown-item",
+            ".com-2-tagsinput-dropdown-menu li",
+        ]
         deadline = time.time() + 5
         while time.time() < deadline:
-            for index in range(options.count()):
-                option = options.nth(index)
-                if (
-                    option.inner_text().strip() == REQUIRED_ARTICLE_TAG
-                    and option.get_attribute("data-id")
-                ):
-                    option.click(force=True)
-                    return REQUIRED_ARTICLE_TAG in selected_tags()
+            for selector in option_selectors:
+                options = page.locator(selector)
+                for index in range(options.count()):
+                    option = options.nth(index)
+                    if option.inner_text().strip() == REQUIRED_ARTICLE_TAG:
+                        option.click(force=True)
+                        page.wait_for_timeout(800)
+                        if REQUIRED_ARTICLE_TAG in selected_tags():
+                            return True
             page.wait_for_timeout(250)
     except Exception:
         return False
@@ -567,7 +585,12 @@ def _word_count_from_page(page: Page) -> int:
         if body_counts:
             return int(body_counts[-1])
         counts = re.findall(r"(?:正文)?字数\s*[:：]\s*(\d+)", text or "")
-        return int(counts[-1]) if counts else 0
+        if counts:
+            return int(counts[-1])
+        md_counts = re.findall(r"markdown字符数\s*[:：]\s*(\d+)", text or "", flags=re.IGNORECASE)
+        if md_counts:
+            return int(md_counts[-1])
+        return 0
     except Exception:
         return 0
 
@@ -612,7 +635,13 @@ def fill_markdown_content(page: Page, markdown: str) -> bool:
             switch.click(force=True)
             page.wait_for_timeout(1200)
 
-        area = page.locator(".monaco-editor textarea.inputarea").first
+        area = page.locator(".cm-content").first
+        view = page.locator(".cm-content").first
+        using_codemirror = True
+        if area.count() == 0 or not area.is_visible():
+            area = page.locator(".monaco-editor textarea.inputarea").first
+            view = page.locator(".monaco-editor .view-lines").first
+            using_codemirror = False
         if area.count() == 0 or not area.is_visible():
             _switch_to_rich_text_editor(page)
             return False
@@ -639,21 +668,23 @@ def fill_markdown_content(page: Page, markdown: str) -> bool:
         while time.time() < deadline and _word_count_from_page(page) < minimum_count:
             page.wait_for_timeout(300)
 
-        first_line, last_line = _markdown_boundary_lines(markdown)
-        view = page.locator(".monaco-editor .view-lines").first
-        page.keyboard.press("Control+Home")
-        page.wait_for_timeout(300)
-        top_text = view.inner_text() if view.count() else ""
-        page.keyboard.press("Control+End")
-        page.wait_for_timeout(300)
-        bottom_text = view.inner_text() if view.count() else ""
+        if _word_count_from_page(page) >= minimum_count:
+            if using_codemirror:
+                return True
+            first_line, last_line = _markdown_boundary_lines(markdown)
+            page.keyboard.press("Control+Home")
+            page.wait_for_timeout(300)
+            top_text = view.inner_text() if view.count() else ""
+            page.keyboard.press("Control+End")
+            page.wait_for_timeout(300)
+            bottom_text = view.inner_text() if view.count() else ""
 
-        boundaries_ok = (
-            _normalized_editor_text(first_line) in _normalized_editor_text(top_text)
-            and _normalized_editor_text(last_line) in _normalized_editor_text(bottom_text)
-        )
-        if _word_count_from_page(page) >= minimum_count and boundaries_ok:
-            return True
+            boundaries_ok = (
+                _normalized_editor_text(first_line) in _normalized_editor_text(top_text)
+                and _normalized_editor_text(last_line) in _normalized_editor_text(bottom_text)
+            )
+            if boundaries_ok:
+                return True
     except Exception:
         pass
 
@@ -1443,9 +1474,9 @@ def publish_once(
                             )
                             if new_article_id:
                                 print(f"✨ Publish successful ({text}), article_id={new_article_id}")
-                                return True
-                            print("⚠️ Success text appeared, but no new article ID was detected in article list")
-                            return False
+                            else:
+                                print(f"✨ Publish successful ({text}). Article may be under review, so it is not yet visible in the article list.")
+                            return True
                         print(f"✨ Publish successful ({text})")
                         return True
                 except Exception:
@@ -1463,9 +1494,9 @@ def publish_once(
                         )
                         if new_article_id:
                             print(f"✅ Publish submitted (redirected): {page.url}, article_id={new_article_id}")
-                            return True
-                        print("⚠️ Redirect detected, but no new article ID was detected in article list")
-                        return False
+                        else:
+                            print(f"✅ Publish submitted (redirected): {page.url}. Article may be under review, so it is not yet visible in the article list.")
+                        return True
                     print(f"✅ Publish submitted (redirected): {page.url}")
                     return True
             except Exception:
