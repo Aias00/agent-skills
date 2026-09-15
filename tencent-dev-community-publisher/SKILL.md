@@ -68,7 +68,7 @@ Tencent Community Publishing Progress:
 - [ ] Step 1: Run pre-flight checks
 - [ ] Step 2: Ensure authentication is valid
 - [ ] Step 3: Resolve publish params (title/content/cover)
-- [ ] Step 4: Execute publish flow
+- [ ] Step 4: Select #腾讯云架构师技术同盟 and execute publish flow
 - [ ] Step 5: Report result and next actions
 ```
 
@@ -106,6 +106,7 @@ Rules:
 - `--content` accepts file path or inline text.
 - `--cover` is optional.
 - `--no-cover` can force no-cover mode.
+- Every article must select the existing platform tag `腾讯云架构师技术同盟` (displayed as `#腾讯云架构师技术同盟`). Do not submit if the selected tag cannot be verified.
 - When `--content` is a Markdown file that contains local image references like `![图](images/01.jpg)`, the publisher now uploads those body images in order and inserts them into the editor.
 - If `--cover` points to the same image as the first Markdown image, the body insertion step skips that duplicate and keeps it only as cover.
 
@@ -137,6 +138,7 @@ Report should include:
 - resolved options (`headless`, `no_cover`, `raw`)
 - auth state (existing/new login)
 - publish result (success/failure)
+- selected tag (`#腾讯云架构师技术同盟`)
 - if failed: failed phase + retry command
 
 ## Security Notes

@@ -7,6 +7,12 @@
 - `--title "<title>"`: Recommended for automation stability
 - `--cover <path>`: Local cover image path
 
+## Required article tag
+
+- Every Tencent Developer Community article must select the existing tag `腾讯云架构师技术同盟` (shown as `#腾讯云架构师技术同盟`).
+- The `#` is display notation, not part of the platform tag name.
+- If the selected tag cannot be verified, stop before confirming publication.
+
 ## Markdown image behavior
 
 - Local Markdown images such as `![配图](images/01.jpg)` are uploaded into the Tencent editor and inserted into the body in order.

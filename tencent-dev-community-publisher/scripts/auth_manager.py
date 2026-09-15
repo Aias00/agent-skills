@@ -45,18 +45,9 @@ class AuthManager:
     def has_profile_auth_state(self) -> bool:
         return self._profile_cookie_db().exists()
 
-    def is_authenticated(self) -> bool:
-        if not self.state_file.exists():
-            return False
-
-        age_days = (time.time() - self.state_file.stat().st_mtime) / 86400
-        if age_days > 7:
-            print(f"⚠️ Browser state is {age_days:.1f} days old; re-auth may be needed")
-        return True
-
     def get_auth_info(self) -> Dict[str, Any]:
         info: Dict[str, Any] = {
-            "authenticated": self.is_authenticated(),
+            "authenticated": None,
             "state_file": str(self.state_file),
             "state_exists": self.state_file.exists(),
             "profile_cookie_db": str(self._profile_cookie_db()),
@@ -84,7 +75,11 @@ class AuthManager:
         context = None
         try:
             playwright = sync_playwright().start()
-            context = BrowserFactory.launch_persistent_context(playwright, headless=headless)
+            context = BrowserFactory.launch_persistent_context(
+                playwright,
+                headless=headless,
+                restore_state=False,
+            )
 
             page = context.new_page()
             page.goto(LOGIN_URL, wait_until="domcontentloaded")
@@ -166,10 +161,9 @@ class AuthManager:
 
             if is_authenticated_url(page.url):
                 print("  ✅ Authentication is valid")
-                if not self.state_file.exists():
-                    self._save_browser_state(context)
-                    self._save_auth_info()
-                    print("  💾 Auto-saved browser state from existing profile login")
+                self._save_browser_state(context)
+                self._save_auth_info()
+                print("  💾 Refreshed browser state from the validated profile")
                 return True
 
             print(f"  ⚠️ Unknown validation URL: {page.url}")
@@ -278,7 +272,9 @@ def main() -> None:
             sys.exit(1)
 
     elif args.command == "status":
+        authenticated = auth.validate_auth()
         info = auth.get_auth_info()
+        info["authenticated"] = authenticated
         print("\n🔐 Authentication Status:")
         print(f"  Authenticated: {'Yes' if info['authenticated'] else 'No'}")
         if info.get("profile_cookie_db_exists"):

@@ -6,6 +6,7 @@ import json
 import os
 import random
 import time
+from pathlib import Path
 
 from patchright.sync_api import BrowserContext, Page, Playwright
 
@@ -20,7 +21,10 @@ class BrowserFactory:
         playwright: Playwright,
         headless: bool = True,
         user_data_dir: str = str(BROWSER_PROFILE_DIR),
+        restore_state: bool = True,
     ) -> BrowserContext:
+        profile_cookie_db = Path(user_data_dir) / "Default" / "Cookies"
+        had_profile_cookie_db = profile_cookie_db.exists()
         launch_kwargs = {
             "user_data_dir": user_data_dir,
             "headless": headless,
@@ -36,7 +40,8 @@ class BrowserFactory:
             launch_kwargs["channel"] = "chrome"
 
         context = playwright.chromium.launch_persistent_context(**launch_kwargs)
-        BrowserFactory._inject_cookies(context)
+        if restore_state and not had_profile_cookie_db:
+            BrowserFactory._inject_cookies(context)
         return context
 
     @staticmethod

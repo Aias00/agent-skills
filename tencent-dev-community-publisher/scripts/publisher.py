@@ -67,6 +67,21 @@ def build_summary(title: str, content_text: str, max_len: int = 120) -> str:
     return summary
 
 
+def _strip_leading_markdown_title(markdown: str, title: str) -> str:
+    if not markdown or not title:
+        return markdown
+
+    lines = markdown.replace("\r\n", "\n").splitlines(keepends=True)
+    expected = f"# {title.strip()}"
+    for index, line in enumerate(lines):
+        if not line.strip():
+            continue
+        if line.strip() == expected:
+            return "".join(lines[index + 1 :]).lstrip("\n")
+        break
+    return markdown
+
+
 def _parse_local_markdown_image(line: str, content_source_path: Optional[str]) -> Optional[str]:
     if not content_source_path:
         return None
@@ -137,7 +152,7 @@ def screenshot(page: Page, enabled: bool, name: str) -> None:
 def discover_articles_url(page: Page) -> Optional[str]:
     try:
         href = page.evaluate(
-            """() => {
+            r"""() => {
                 const link = Array.from(document.querySelectorAll('a[href*="/developer/user/"]')).find(a => a.href);
                 if (!link) return '';
                 return link.href.replace(/\/$/, '') + '/articles';
@@ -317,75 +332,44 @@ def ensure_source_selected(page: Page) -> None:
     click_text_button(page, ["原创"], timeout_ms=1500)
 
 
-def _remaining_tag_slots(page: Page) -> Optional[int]:
-    try:
-        text = page.evaluate(
-            """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
+REQUIRED_ARTICLE_TAG = "腾讯云架构师技术同盟"
+
+
+def ensure_required_article_tag(page: Page) -> bool:
+    def selected_tags() -> list[str]:
+        return page.evaluate(
+            """() => {
+                const tags = document.querySelector('.com-2-tagsinput');
+                return tags
+                    ? Array.from(tags.querySelectorAll('.com-2-tag-txt span[title]'))
+                        .map(tag => tag.getAttribute('title'))
+                    : [];
+            }"""
         )
-        m = re.search(r"还可以添加\s*(\d+)\s*个标签", text or "")
-        if not m:
-            return None
-        return int(m.group(1))
-    except Exception:
-        return None
 
-
-def ensure_article_tag(page: Page, candidates) -> bool:
-    before = _remaining_tag_slots(page)
-    if before is not None and before < 5:
-        return True
-
-    def use_new_tags_input(keyword: str) -> bool:
-        try:
-            ok = page.evaluate(
-                """(kw) => {
-                    const inputs = Array.from(document.querySelectorAll('input.cdc-tags-input__input'));
-                    const el = inputs[0];
-                    if (!el) return false;
-                    el.scrollIntoView({ block: 'center' });
-                    el.focus();
-                    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                    setter.call(el, '');
-                    el.dispatchEvent(new Event('input', { bubbles: true }));
-                    return document.activeElement === el;
-                }""",
-                keyword,
-            )
-            if not ok:
-                return False
-            page.wait_for_timeout(300)
-            page.keyboard.type(keyword, delay=60)
-            page.wait_for_timeout(900)
-            page.keyboard.press("ArrowDown")
-            page.keyboard.press("Enter")
-            page.wait_for_timeout(1000)
-            after = _remaining_tag_slots(page)
-            return after is not None and after < 5
-        except Exception:
-            return False
-
-    def use_legacy_tags_input(keyword: str) -> bool:
-        try:
-            tag_input = page.locator("input.com-2-tag-input").first
-            if tag_input.count() == 0 or not tag_input.is_visible():
-                return False
-            tag_input.click()
-            tag_input.fill(keyword)
-            page.wait_for_timeout(700)
-            page.keyboard.press("ArrowDown")
-            page.keyboard.press("Enter")
-            page.wait_for_timeout(700)
-            after = _remaining_tag_slots(page)
-            return after is not None and after < 5
-        except Exception:
-            return False
-
-    for keyword in candidates:
-        kw = (keyword or "").strip()
-        if not kw:
-            continue
-        if use_new_tags_input(kw) or use_legacy_tags_input(kw):
+    try:
+        if REQUIRED_ARTICLE_TAG in selected_tags():
             return True
+
+        tag_input = page.locator(".com-2-tagsinput .com-2-tag-input").first
+        if tag_input.count() == 0 or not tag_input.is_visible():
+            return False
+        tag_input.fill(REQUIRED_ARTICLE_TAG)
+
+        options = page.locator(".com-2-tagsinput-dropdown-menu li")
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            for index in range(options.count()):
+                option = options.nth(index)
+                if (
+                    option.inner_text().strip() == REQUIRED_ARTICLE_TAG
+                    and option.get_attribute("data-id")
+                ):
+                    option.click(force=True)
+                    return REQUIRED_ARTICLE_TAG in selected_tags()
+            page.wait_for_timeout(250)
+    except Exception:
+        return False
     return False
 
 
@@ -434,29 +418,6 @@ def click_confirm_publish(page: Page, timeout_ms: int = 10000) -> bool:
     return False
 
 
-def can_confirm_publish(page: Page) -> bool:
-    try:
-        btn = page.get_by_role("button", name="确认发布").first
-        if btn.count() > 0 and btn.is_visible():
-            return not btn.is_disabled()
-    except Exception:
-        pass
-
-    try:
-        return bool(
-            page.evaluate(
-                """() => {
-                    const btn = Array.from(document.querySelectorAll('button')).find(
-                        el => (el.innerText || '').includes('确认发布')
-                    );
-                    return !!btn && !btn.disabled && btn.getAttribute('aria-disabled') !== 'true';
-                }"""
-            )
-        )
-    except Exception:
-        return False
-
-
 def fill_title(page: Page, title: str) -> bool:
     selectors = [
         'input[placeholder*="标题"]',
@@ -502,16 +463,6 @@ def fill_title(page: Page, title: str) -> bool:
 
 
 def fill_content(page: Page, html: str) -> bool:
-    def current_word_count() -> int:
-        try:
-            text = page.evaluate(
-                """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
-            )
-            m = re.search(r"(?:正文)?字数\s*[:：]\s*(\d+)(?:\s*/\s*50000)?", text or "")
-            return int(m.group(1)) if m else 0
-        except Exception:
-            return 0
-
     selectors = [
         ".public-DraftEditor-content",
         ".ql-editor",
@@ -542,7 +493,7 @@ def fill_content(page: Page, html: str) -> bool:
                 if not _type_text_into_editor(loc, plain_text):
                     return False
                 page.wait_for_timeout(800)
-                return current_word_count() > 0
+                return _word_count_from_page(page) > 0
         except Exception:
             pass
 
@@ -581,7 +532,7 @@ def fill_content(page: Page, html: str) -> bool:
         )
         if bool(ok):
             page.wait_for_timeout(800)
-            if current_word_count() > 0:
+            if _word_count_from_page(page) > 0:
                 return True
     except Exception:
         pass
@@ -597,7 +548,7 @@ def fill_content(page: Page, html: str) -> bool:
             if not _type_text_into_editor(loc, plain_text):
                 return False
             page.wait_for_timeout(800)
-            return current_word_count() > 0
+            return _word_count_from_page(page) > 0
     except Exception:
         pass
 
@@ -609,10 +560,105 @@ def _word_count_from_page(page: Page) -> int:
         text = page.evaluate(
             """() => (document.body && document.body.innerText) ? document.body.innerText : ''"""
         )
-        m = re.search(r"(?:正文)?字数\s*[:：]\s*(\d+)(?:\s*/\s*50000)?", text or "")
-        return int(m.group(1)) if m else 0
+        body_counts = re.findall(
+            r"(?:正文)?字数\s*[:：]\s*(\d+)\s*/\s*50000",
+            text or "",
+        )
+        if body_counts:
+            return int(body_counts[-1])
+        counts = re.findall(r"(?:正文)?字数\s*[:：]\s*(\d+)", text or "")
+        return int(counts[-1]) if counts else 0
     except Exception:
         return 0
+
+
+def _normalized_editor_text(text: str) -> str:
+    return re.sub(r"\s+", "", (text or "").replace("\xa0", " "))
+
+
+def _normalize_markdown_for_tencent(markdown: str) -> str:
+    return re.sub(r"^```text\s*$", "```txt", markdown or "", flags=re.MULTILINE)
+
+
+def _markdown_boundary_lines(markdown: str) -> tuple[str, str]:
+    lines = [
+        line.strip()
+        for line in (markdown or "").splitlines()
+        if line.strip() and line.strip() not in {"---", "```"}
+    ]
+    if not lines:
+        return "", ""
+    return lines[0], lines[-1]
+
+
+def _switch_to_rich_text_editor(page: Page) -> None:
+    try:
+        switch = page.get_by_text("切换到富文本编辑器", exact=False).first
+        if switch.count() > 0 and switch.is_visible():
+            switch.click(force=True)
+            page.wait_for_timeout(1200)
+    except Exception:
+        pass
+
+
+def fill_markdown_content(page: Page, markdown: str) -> bool:
+    if not markdown:
+        return True
+
+    markdown = _normalize_markdown_for_tencent(markdown)
+    try:
+        switch = page.get_by_text("切换到Markdown编辑器", exact=False).first
+        if switch.count() > 0 and switch.is_visible():
+            switch.click(force=True)
+            page.wait_for_timeout(1200)
+
+        area = page.locator(".monaco-editor textarea.inputarea").first
+        if area.count() == 0 or not area.is_visible():
+            _switch_to_rich_text_editor(page)
+            return False
+
+        area.click(force=True)
+        page.keyboard.press("ControlOrMeta+A")
+        page.keyboard.press("Backspace")
+        area.evaluate(
+            """(element, text) => {
+                const data = new DataTransfer();
+                data.setData('text/plain', text);
+                element.dispatchEvent(new ClipboardEvent('paste', {
+                    clipboardData: data,
+                    bubbles: true,
+                    cancelable: true,
+                }));
+            }""",
+            markdown,
+        )
+
+        expected_chars = len(_html_to_editor_text(md_to_html(markdown)))
+        minimum_count = max(1, int(expected_chars * 0.6))
+        deadline = time.time() + 8
+        while time.time() < deadline and _word_count_from_page(page) < minimum_count:
+            page.wait_for_timeout(300)
+
+        first_line, last_line = _markdown_boundary_lines(markdown)
+        view = page.locator(".monaco-editor .view-lines").first
+        page.keyboard.press("Control+Home")
+        page.wait_for_timeout(300)
+        top_text = view.inner_text() if view.count() else ""
+        page.keyboard.press("Control+End")
+        page.wait_for_timeout(300)
+        bottom_text = view.inner_text() if view.count() else ""
+
+        boundaries_ok = (
+            _normalized_editor_text(first_line) in _normalized_editor_text(top_text)
+            and _normalized_editor_text(last_line) in _normalized_editor_text(bottom_text)
+        )
+        if _word_count_from_page(page) >= minimum_count and boundaries_ok:
+            return True
+    except Exception:
+        pass
+
+    _switch_to_rich_text_editor(page)
+    return False
 
 
 def _html_to_editor_text(html: str) -> str:
@@ -1235,18 +1281,17 @@ def publish_once(
     wait_seconds: int,
 ) -> bool:
     resolved_title = clip_title(title or "")
-    tag_candidates = []
-    if resolved_title:
-        for m in re.findall(r"[A-Za-z][A-Za-z0-9_-]{2,}", resolved_title):
-            tag_candidates.append(m.lower())
-    tag_candidates.extend(["agent", "ai", "开发", "技术"])
-    # Preserve order while de-duplicating.
-    tag_candidates = list(dict.fromkeys(tag_candidates))
+    body_content_text = content_text or ""
+    if body_content_text and not raw:
+        body_content_text = _strip_leading_markdown_title(
+            body_content_text,
+            resolved_title,
+        )
 
     final_html = ""
-    if content_text:
+    if body_content_text:
         print("🔄 Converting content to HTML...")
-        final_html = raw_text_to_html(content_text) if raw else md_to_html(content_text)
+        final_html = raw_text_to_html(body_content_text) if raw else md_to_html(body_content_text)
 
     auth_manager = AuthManager()
 
@@ -1292,6 +1337,15 @@ def publish_once(
                 screenshot(page, debug_screenshots, "after_title")
 
             structured_done = False
+            if body_content_text and not raw and "![" not in body_content_text:
+                print("📝 Filling content in Markdown editor...")
+                structured_done = fill_markdown_content(page, body_content_text)
+                if structured_done:
+                    print(f"✅ Markdown content filled ({_word_count_from_page(page)} chars)")
+                    screenshot(page, debug_screenshots, "after_content")
+                else:
+                    print("⚠️ Markdown editor fill failed, falling back to rich text editor")
+
             if (
                 content_text
                 and not raw
@@ -1336,13 +1390,10 @@ def publish_once(
                 return False
 
             ensure_source_selected(page)
-            tag_ok = ensure_article_tag(page, tag_candidates)
-            if tag_ok:
-                print("✅ Tag selected")
-            elif can_confirm_publish(page):
-                print("⚠️ Could not reliably select article tag, but publish is still enabled")
+            if ensure_required_article_tag(page):
+                print(f"✅ Required tag selected: #{REQUIRED_ARTICLE_TAG}")
             else:
-                print("⚠️ Could not reliably select article tag")
+                print(f"❌ Required tag missing: #{REQUIRED_ARTICLE_TAG}")
                 screenshot(page, debug_screenshots, "tag_missing")
                 return False
 
