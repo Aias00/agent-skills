@@ -149,72 +149,6 @@ def screenshot(page: Page, enabled: bool, name: str) -> None:
         print(f"⚠️ Screenshot failed: {e}")
 
 
-def discover_articles_url(page: Page) -> Optional[str]:
-    try:
-        href = page.evaluate(
-            r"""() => {
-                const link = Array.from(document.querySelectorAll('a[href*="/developer/user/"]')).find(a => a.href);
-                if (!link) return '';
-                return link.href.replace(/\/$/, '') + '/articles';
-            }"""
-        )
-        return href or None
-    except Exception:
-        return None
-
-
-def fetch_article_ids_by_title(context, articles_url: str, title: str) -> list[str]:
-    page = context.new_page()
-    try:
-        page.goto(articles_url, wait_until="domcontentloaded", timeout=60000)
-        page.wait_for_timeout(3000)
-        rows = page.evaluate(
-            """(wantedTitle) => {
-                return Array.from(document.querySelectorAll('.com-3-article-panel')).map(panel => {
-                    const h3 = panel.querySelector('.com-3-article-panel-title');
-                    const a = panel.querySelector('a[href*="/developer/article/"]');
-                    return {
-                        title: h3 ? (h3.innerText || '').trim() : '',
-                        href: a ? a.href : '',
-                    };
-                }).filter(item => item.title === wantedTitle && item.href);
-            }""",
-            title,
-        )
-        ids: list[str] = []
-        for row in rows or []:
-            href = row.get("href", "")
-            m = re.search(r"/developer/article/(\d+)", href)
-            if m:
-                ids.append(m.group(1))
-        return ids
-    except Exception:
-        return []
-    finally:
-        try:
-            page.close()
-        except Exception:
-            pass
-
-
-def wait_for_new_article_id(
-    context,
-    articles_url: str,
-    title: str,
-    before_ids: list[str],
-    timeout_ms: int = 60000,
-) -> Optional[str]:
-    deadline = time.time() + (timeout_ms / 1000)
-    before_set = set(before_ids)
-    while time.time() < deadline:
-        ids = fetch_article_ids_by_title(context, articles_url, title)
-        for article_id in ids:
-            if article_id not in before_set:
-                return article_id
-        time.sleep(2)
-    return None
-
-
 def wait_login(page: Page, timeout_seconds: int = 300) -> bool:
     print("⏳ Waiting for manual login...")
     start = time.time()
@@ -1331,8 +1265,6 @@ def publish_once(
         page = context.pages[0] if context.pages else context.new_page()
 
         try:
-            articles_url: Optional[str] = None
-            before_article_ids: list[str] = []
             print(f"🌐 Opening publish page: {PUBLISH_URL}")
             page.goto(PUBLISH_URL, timeout=60000, wait_until="domcontentloaded")
             page.wait_for_timeout(2000)
@@ -1355,10 +1287,6 @@ def publish_once(
                     page.wait_for_timeout(2500)
 
             print("✅ Publish editor loaded")
-            if resolved_title:
-                articles_url = discover_articles_url(page)
-                if articles_url:
-                    before_article_ids = fetch_article_ids_by_title(context, articles_url, resolved_title)
             screenshot(page, debug_screenshots, "loaded")
 
             if resolved_title:
@@ -1464,19 +1392,6 @@ def publish_once(
             for text in ["发布成功", "提交成功", "已发布", "审核中", "审核通过"]:
                 try:
                     if page.get_by_text(text).is_visible():
-                        if articles_url and resolved_title:
-                            new_article_id = wait_for_new_article_id(
-                                context=context,
-                                articles_url=articles_url,
-                                title=resolved_title,
-                                before_ids=before_article_ids,
-                                timeout_ms=60000,
-                            )
-                            if new_article_id:
-                                print(f"✨ Publish successful ({text}), article_id={new_article_id}")
-                            else:
-                                print(f"✨ Publish successful ({text}). Article may be under review, so it is not yet visible in the article list.")
-                            return True
                         print(f"✨ Publish successful ({text})")
                         return True
                 except Exception:
@@ -1484,19 +1399,6 @@ def publish_once(
 
             try:
                 if "cloud.tencent.com/developer/article/write" not in (page.url or ""):
-                    if articles_url and resolved_title:
-                        new_article_id = wait_for_new_article_id(
-                            context=context,
-                            articles_url=articles_url,
-                            title=resolved_title,
-                            before_ids=before_article_ids,
-                            timeout_ms=60000,
-                        )
-                        if new_article_id:
-                            print(f"✅ Publish submitted (redirected): {page.url}, article_id={new_article_id}")
-                        else:
-                            print(f"✅ Publish submitted (redirected): {page.url}. Article may be under review, so it is not yet visible in the article list.")
-                        return True
                     print(f"✅ Publish submitted (redirected): {page.url}")
                     return True
             except Exception:

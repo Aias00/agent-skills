@@ -143,10 +143,11 @@ Report should include:
 
 ### Review stage note
 
-Publishing succeeds when the page shows 发布成功/提交成功/审核中 text. Newly
-published articles enter platform review and may not appear in the user's
-article list immediately — a missing article ID after success text is expected
-and is NOT a publish failure. Do not retry publishing in that case.
+Publishing succeeds when the page shows 发布成功/提交成功/审核中 text. That is the
+sole success signal — the publisher does not open the article list afterwards.
+Newly published articles enter platform review and may not appear in the user's
+article list for a while; this is expected and is NOT a publish failure. Do not
+retry publishing and do not poll the article list to "verify".
 
 ## Security Notes
 
